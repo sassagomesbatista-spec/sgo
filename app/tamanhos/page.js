@@ -1,12 +1,18 @@
 import db from '@/lib/db';
 import { salvarTamanhoAction } from '@/app/actions';
+import Icon from '@/app/icons';
 
 export default function TamanhosPage() {
   const tamanhos = db.prepare('SELECT * FROM tamanhos ORDER BY nome').all();
 
   return (
     <div className="card">
-      <h1>Tamanhos</h1>
+      <h1>
+        <span className="card-icon">
+          <Icon name="tag" />
+        </span>
+        Tamanhos
+      </h1>
 
       <div className="table-wrap">
         <table>

@@ -1,12 +1,18 @@
 import db from '@/lib/db';
 import { salvarModelistaAction } from '@/app/actions';
+import Icon from '@/app/icons';
 
 export default function ModelistasPage() {
   const modelistas = db.prepare('SELECT * FROM modelistas ORDER BY nome').all();
 
   return (
     <div className="card">
-      <h1>Modelistas</h1>
+      <h1>
+        <span className="card-icon">
+          <Icon name="user" />
+        </span>
+        Modelistas
+      </h1>
 
       <div className="table-wrap">
         <table>

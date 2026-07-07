@@ -2,6 +2,7 @@ import db from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { salvarTipoPecaAction } from '@/app/actions';
+import Icon from '@/app/icons';
 
 export default function PrecosPage() {
   const session = getSession();
@@ -11,7 +12,12 @@ export default function PrecosPage() {
 
   return (
     <div className="card">
-      <h1>Regra de Preços</h1>
+      <h1>
+        <span className="card-icon">
+          <Icon name="dollar" />
+        </span>
+        Regra de Preços
+      </h1>
       <p className="subtitle">Valores usados para calcular automaticamente cada lançamento</p>
 
       <div className="table-wrap">

@@ -3,6 +3,7 @@ import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import PrintButton from './PrintButton';
 import AprovacaoBadge from '@/app/AprovacaoBadge';
+import Icon from '@/app/icons';
 
 function currentMonth() {
   return new Date().toISOString().slice(0, 7);
@@ -43,7 +44,12 @@ export default function RelatorioPage({ searchParams }) {
 
   return (
     <div className="card">
-      <h1>Relatório Mensal</h1>
+      <h1>
+        <span className="card-icon">
+          <Icon name="file" />
+        </span>
+        Relatório Mensal
+      </h1>
 
       <form method="get" className="filters no-print">
         <label>

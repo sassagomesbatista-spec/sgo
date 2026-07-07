@@ -1,6 +1,7 @@
 import db from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { changePasswordAction } from '@/app/actions';
+import Icon from '@/app/icons';
 
 export default function ContaPage() {
   const session = getSession();
@@ -9,7 +10,12 @@ export default function ContaPage() {
 
   return (
     <div className="card">
-      <h1>Minha Conta</h1>
+      <h1>
+        <span className="card-icon">
+          <Icon name="account" />
+        </span>
+        Minha Conta
+      </h1>
       <p className="subtitle">
         Logada como {session.nome} ({isAdmin ? 'Administradora' : 'Assistente'})
       </p>

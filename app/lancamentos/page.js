@@ -2,6 +2,7 @@ import Link from 'next/link';
 import db from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import AprovacaoBadge from '@/app/AprovacaoBadge';
+import Icon from '@/app/icons';
 
 function currentMonth() {
   return new Date().toISOString().slice(0, 7);
@@ -25,7 +26,12 @@ export default function LancamentosPage() {
 
   return (
     <div className="card">
-      <h1>Lançamentos do Mês</h1>
+      <h1>
+        <span className="card-icon">
+          <Icon name="list" />
+        </span>
+        Lançamentos do Mês
+      </h1>
       <p className="subtitle">{mes}</p>
       {rows.length === 0 && <p>Nenhuma peça lançada este mês ainda.</p>}
       {rows.length > 0 && (

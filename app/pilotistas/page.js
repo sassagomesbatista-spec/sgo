@@ -2,6 +2,7 @@ import db from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { salvarPilotistaAction } from '@/app/actions';
+import Icon from '@/app/icons';
 
 export default function PilotistasPage() {
   const session = getSession();
@@ -11,7 +12,12 @@ export default function PilotistasPage() {
 
   return (
     <div className="card">
-      <h1>Pilotistas</h1>
+      <h1>
+        <span className="card-icon">
+          <Icon name="scissors" />
+        </span>
+        Pilotistas
+      </h1>
 
       <div className="table-wrap">
         <table>

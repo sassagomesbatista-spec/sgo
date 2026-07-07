@@ -3,6 +3,7 @@ import db from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { atualizarLancamentoAction } from '@/app/actions';
 import SelectOrNew from '@/app/SelectOrNew';
+import Icon from '@/app/icons';
 
 function currentMonth() {
   return new Date().toISOString().slice(0, 7);
@@ -26,9 +27,17 @@ export default function EditarLancamentoPage({ params }) {
 
   return (
     <div className="card">
-      <h1>Editar Peça</h1>
-      <form action={atualizarLancamentoAction} className="form">
+      <h1>
+        <span className="card-icon">
+          <Icon name="list" />
+        </span>
+        Editar Peça
+      </h1>
+      <p className="subtitle">Ref. {row.referencia || row.id}</p>
+      <form action={atualizarLancamentoAction} className="form-grid">
         <input type="hidden" name="id" value={row.id} />
+
+        <div className="field-full form-section-label">Identificação</div>
         <label>
           Data
           <input type="date" name="data" defaultValue={row.data} required />
@@ -45,6 +54,8 @@ export default function EditarLancamentoPage({ params }) {
           Descrição do Produto
           <input name="descricao_produto" defaultValue={row.descricao_produto || ''} />
         </label>
+
+        <div className="field-full form-section-label">Peça</div>
         <label>
           Tipo de Peça
           <select name="tipo_peca_id" defaultValue={row.tipo_peca_id || ''} required>
@@ -74,10 +85,6 @@ export default function EditarLancamentoPage({ params }) {
           </select>
         </label>
         <label>
-          Nome da Modelista
-          <SelectOrNew name="nome_modelista" options={modelistas} defaultValue={row.nome_modelista || ''} />
-        </label>
-        <label>
           Pilotista
           <select name="pilotista_id" defaultValue={row.pilotista_id || ''} required>
             <option value="" disabled>
@@ -90,6 +97,12 @@ export default function EditarLancamentoPage({ params }) {
             ))}
           </select>
         </label>
+
+        <div className="field-full form-section-label">Produção</div>
+        <label>
+          Nome da Modelista
+          <SelectOrNew name="nome_modelista" options={modelistas} defaultValue={row.nome_modelista || ''} />
+        </label>
         <label>
           Aprovação
           <select name="aprovacao" defaultValue={row.aprovacao || 'Pendente'}>
@@ -98,17 +111,18 @@ export default function EditarLancamentoPage({ params }) {
             <option value="Reprovado">Reprovado</option>
           </select>
         </label>
-        <label>
-          Observações
-          <textarea name="observacoes" rows={3} defaultValue={row.observacoes || ''}></textarea>
-        </label>
         {isAdmin && (
           <label>
             Valor (R$)
             <input type="number" step="0.01" name="valor" defaultValue={row.valor ?? ''} />
           </label>
         )}
-        <button className="btn" type="submit">
+        <label className="field-full">
+          Observações
+          <textarea name="observacoes" rows={3} defaultValue={row.observacoes || ''}></textarea>
+        </label>
+
+        <button className="btn field-full" type="submit">
           Salvar Alterações
         </button>
       </form>

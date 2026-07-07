@@ -34,7 +34,12 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <h1>Painel</h1>
+      <h1>
+        <span className="card-icon">
+          <Icon name="home" />
+        </span>
+        Painel
+      </h1>
       <p className="subtitle">Visão geral de {mes}</p>
 
       <div className="stats">

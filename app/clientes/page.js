@@ -1,12 +1,18 @@
 import db from '@/lib/db';
 import { salvarClienteAction } from '@/app/actions';
+import Icon from '@/app/icons';
 
 export default function ClientesPage() {
   const clientes = db.prepare('SELECT * FROM clientes ORDER BY nome').all();
 
   return (
     <div className="card">
-      <h1>Clientes</h1>
+      <h1>
+        <span className="card-icon">
+          <Icon name="users" />
+        </span>
+        Clientes
+      </h1>
 
       <div className="table-wrap">
         <table>

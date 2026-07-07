@@ -1,6 +1,7 @@
 import db from '@/lib/db';
 import { criarLancamentoAction } from '@/app/actions';
 import SelectOrNew from '@/app/SelectOrNew';
+import Icon from '@/app/icons';
 
 export default function LancarPage() {
   const tipos = db.prepare('SELECT * FROM tipos_peca ORDER BY nome').all();
@@ -12,9 +13,15 @@ export default function LancarPage() {
 
   return (
     <div className="card">
-      <h1>Lançar Peça</h1>
+      <h1>
+        <span className="card-icon">
+          <Icon name="plus-circle" />
+        </span>
+        Lançar Peça
+      </h1>
       <p className="subtitle">Preencha os dados da peça pilotada</p>
-      <form action={criarLancamentoAction} className="form">
+      <form action={criarLancamentoAction} className="form-grid">
+        <div className="field-full form-section-label">Identificação</div>
         <label>
           Data
           <input type="date" name="data" defaultValue={hoje} required />
@@ -31,6 +38,8 @@ export default function LancarPage() {
           Descrição do Produto
           <input name="descricao_produto" placeholder="ex: short soltinho estampado" />
         </label>
+
+        <div className="field-full form-section-label">Peça</div>
         <label>
           Tipo de Peça
           <select name="tipo_peca_id" required defaultValue="">
@@ -60,10 +69,6 @@ export default function LancarPage() {
           </select>
         </label>
         <label>
-          Nome da Modelista
-          <SelectOrNew name="nome_modelista" options={modelistas} />
-        </label>
-        <label>
           Pilotista
           <select name="pilotista_id" required defaultValue="">
             <option value="" disabled>
@@ -76,6 +81,12 @@ export default function LancarPage() {
             ))}
           </select>
         </label>
+
+        <div className="field-full form-section-label">Produção</div>
+        <label>
+          Nome da Modelista
+          <SelectOrNew name="nome_modelista" options={modelistas} />
+        </label>
         <label>
           Aprovação
           <select name="aprovacao" defaultValue="Pendente">
@@ -84,11 +95,12 @@ export default function LancarPage() {
             <option value="Reprovado">Reprovado</option>
           </select>
         </label>
-        <label>
+        <label className="field-full">
           Observações
           <textarea name="observacoes" rows={3}></textarea>
         </label>
-        <button className="btn" type="submit">
+
+        <button className="btn field-full" type="submit">
           Salvar Peça
         </button>
       </form>
