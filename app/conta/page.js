@@ -1,4 +1,5 @@
-import db from '@/lib/db';
+import fs from 'fs';
+import db, { BACKUP_DIR } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { changePasswordAction } from '@/app/actions';
 import Icon from '@/app/icons';
@@ -7,6 +8,9 @@ export default function ContaPage() {
   const session = getSession();
   const isAdmin = session.role === 'admin';
   const usuarios = isAdmin ? db.prepare('SELECT usuario, nome, role FROM usuarios').all() : [];
+  const backupsAutomaticos = isAdmin && fs.existsSync(BACKUP_DIR)
+    ? fs.readdirSync(BACKUP_DIR).filter((f) => f.endsWith('.db')).sort().reverse()
+    : [];
 
   return (
     <div className="card">
@@ -49,12 +53,28 @@ export default function ContaPage() {
         <>
           <h2>Backup dos Dados</h2>
           <p className="subtitle">
-            Baixa uma cópia completa do banco de dados (pilotistas, clientes, lançamentos,
-            preços) pro seu computador. Recomendado fazer isso de vez em quando, por segurança.
+            O sistema salva uma cópia automática dos dados todo dia. Você também pode baixar
+            uma cópia na hora, sempre que quiser.
           </p>
           <a href="/api/backup" className="btn" download>
-            Baixar Backup
+            Baixar Backup Agora
           </a>
+
+          {backupsAutomaticos.length > 0 && (
+            <>
+              <h2>Backups Automáticos</h2>
+              <ul className="totals">
+                {backupsAutomaticos.slice(0, 14).map((f) => (
+                  <li key={f}>
+                    <span>{f.replace('pilotagem-', '').replace('.db', '')}</span>
+                    <a href={`/api/backup?file=${f}`} download>
+                      Baixar
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </>
       )}
     </div>
