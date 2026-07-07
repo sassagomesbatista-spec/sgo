@@ -112,10 +112,17 @@ export async function salvarTipoPecaAction(formData) {
   const id = formData.get('id');
   const nome = formData.get('nome')?.toString().trim();
   const parse = (v) => (v === null || v === '' ? null : Number(v));
-  const preco_simples = parse(formData.get('preco_simples'));
+  let preco_simples = parse(formData.get('preco_simples'));
   const preco_medio = parse(formData.get('preco_medio'));
-  const preco_dificil = parse(formData.get('preco_dificil'));
+  let preco_dificil = parse(formData.get('preco_dificil'));
   if (!nome) return;
+
+  // Se só o preço Médio for informado, calcula Simples (-5%) e Difícil
+  // (+20%) automaticamente, seguindo o mesmo padrão dos demais tipos.
+  if (preco_medio != null) {
+    if (preco_simples == null) preco_simples = Math.round(preco_medio * 0.95);
+    if (preco_dificil == null) preco_dificil = Math.round(preco_medio * 1.2);
+  }
 
   if (id) {
     db.prepare(
