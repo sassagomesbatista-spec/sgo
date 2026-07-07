@@ -2,6 +2,7 @@ import db from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import PrintButton from './PrintButton';
+import AprovacaoBadge from '@/app/AprovacaoBadge';
 
 function currentMonth() {
   return new Date().toISOString().slice(0, 7);
@@ -102,7 +103,9 @@ export default function RelatorioPage({ searchParams }) {
                   <td>{r.tamanho}</td>
                   <td>{r.nivel}</td>
                   <td>{r.pilotista_nome}</td>
-                  <td>{r.aprovacao}</td>
+                  <td>
+                    <AprovacaoBadge status={r.aprovacao} />
+                  </td>
                   <td>R$ {(r.valor || 0).toFixed(2)}</td>
                 </tr>
               ))}

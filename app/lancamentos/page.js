@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import db from '@/lib/db';
 import { getSession } from '@/lib/auth';
+import AprovacaoBadge from '@/app/AprovacaoBadge';
 
 function currentMonth() {
   return new Date().toISOString().slice(0, 7);
@@ -58,7 +59,9 @@ export default function LancamentosPage() {
                   <td>{r.nivel}</td>
                   <td>{r.nome_modelista}</td>
                   <td>{r.pilotista_nome}</td>
-                  <td>{r.aprovacao}</td>
+                  <td>
+                    <AprovacaoBadge status={r.aprovacao} />
+                  </td>
                   {isAdmin && <td>{r.valor != null ? `R$ ${r.valor.toFixed(2)}` : '-'}</td>}
                   <td>
                     <Link href={`/lancamentos/${r.id}`}>Editar</Link>
