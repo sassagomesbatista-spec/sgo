@@ -943,7 +943,10 @@ document.getElementById("btnConnect").onclick = async ()=>{
   }
   state.token = val;
   const errEl = document.getElementById("connectError");
+  const btn = document.getElementById("btnConnect");
   errEl.classList.add("hidden");
+  btn.disabled = true;
+  btn.textContent = "Conectando...";
   try{
     await asanaFetch("/users/me");
     lsSet("token", state.token);
@@ -953,6 +956,9 @@ document.getElementById("btnConnect").onclick = async ()=>{
   }catch(e){
     errEl.classList.remove("hidden");
     errEl.textContent = "Token inválido ou sem conexão: "+(e.message||e);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = "Conectar";
   }
 };
 
