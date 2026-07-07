@@ -1,0 +1,974 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel de Revisão — Mix de Produtos</title>
+<style>
+  :root{
+    --bg:#f5f5f7; --panel:#ffffff; --border:#e2e2e6; --text:#1c1c1f; --muted:#6b6b76;
+    --accent:#2f5aa8; --accent-bg:#eaf0fb; --good:#1f7a4d; --bad:#a13a3a; --warn:#8a6a12;
+    --radius:12px; --shadow:0 1px 3px rgba(0,0,0,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#111113; --panel:#1b1b1e; --border:#302f34; --text:#f0f0f2; --muted:#9a9aa2;
+      --accent:#7aa2f7; --accent-bg:#1c2740; --good:#5fce93; --bad:#e18787; --warn:#e0c168; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  header.topbar{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--border);
+    display:flex;align-items:center;gap:16px;padding:10px 18px;flex-wrap:wrap}
+  header.topbar h1{font-size:15px;margin:0;font-weight:700;letter-spacing:.2px}
+  header.topbar .spacer{flex:1}
+  header.topbar .meta{font-size:12px;color:var(--muted)}
+  button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--text);padding:6px 10px}
+  button:hover{filter:brightness(1.03)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button.ghost{border-color:transparent;background:transparent}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  input[type=text],input[type=password],textarea,select{
+    font:inherit;padding:6px 9px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--text)}
+  .banner{margin:10px 18px 0;padding:10px 14px;border-radius:10px;font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .banner.warn{background:#fff6e0;color:#7a5b00;border:1px solid #f0d888}
+  .banner.err{background:#fdeaea;color:#8a2020;border:1px solid #f3b8b8}
+  .banner.info{background:var(--accent-bg);color:var(--accent);border:1px solid var(--border)}
+  @media (prefers-color-scheme: dark){
+    .banner.warn{background:#3a2f0d;color:#e0c168;border-color:#5a4a1a}
+    .banner.err{background:#3a1c1c;color:#e18787;border-color:#5a2c2c}
+  }
+  .hidden{display:none !important}
+  #connectScreen{max-width:460px;margin:80px auto;padding:26px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+  #connectScreen h2{margin-top:0;font-size:17px}
+  #connectScreen p{color:var(--muted);font-size:13px}
+  #connectScreen input{width:100%;margin:8px 0}
+  #connectScreen .row{display:flex;gap:8px}
+  #connectScreen .row button{flex:1}
+  .tabs{display:flex;gap:6px;padding:12px 18px 0;flex-wrap:wrap;align-items:center}
+  .tab{padding:7px 14px;border-radius:999px;border:1px solid var(--border);background:var(--panel);cursor:pointer;font-weight:600;font-size:13px}
+  .tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .tab.addtab{font-weight:400;color:var(--muted)}
+  .progress-wrap{padding:10px 18px 0}
+  .progress-label{font-size:13px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between}
+  .progress-bar{height:8px;border-radius:99px;background:var(--border);overflow:hidden}
+  .progress-fill{height:100%;background:var(--accent);transition:width .25s}
+  main#blocks{padding:14px 18px 60px;max-width:1100px;margin:0 auto}
+  .block{margin-bottom:18px;border:1px solid var(--border);border-radius:var(--radius);background:var(--panel);overflow:hidden}
+  .block > summary, .block-header{list-style:none;cursor:pointer;padding:12px 16px;font-weight:700;font-size:14px;
+    display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);background:var(--panel)}
+  .block > summary::-webkit-details-marker{display:none}
+  .block-count{font-weight:400;color:var(--muted);font-size:12px}
+  .block-body{padding:6px 12px 12px}
+  .segment{margin-top:10px}
+  .segment-header{display:flex;align-items:center;gap:8px;padding:6px 4px;font-size:12.5px;font-weight:700}
+  .segment-dot{width:9px;height:9px;border-radius:50%}
+  .addrow-btn{margin-left:auto;font-size:12px;padding:3px 9px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+  .card{border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--bg)}
+  .card .name{font-weight:600;font-size:13.5px;margin-bottom:4px}
+  .chips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+  .chip{font-size:10.5px;padding:2px 7px;border-radius:999px;border:1px solid var(--border);color:var(--muted)}
+  .chip.seg{font-weight:700}
+  .card .actions{display:flex;gap:6px;align-items:center}
+  .actbtn{width:30px;height:28px;padding:0;font-size:14px}
+  .actbtn.ok:hover{color:var(--good);border-color:var(--good)}
+  .actbtn.no:hover{color:var(--bad);border-color:var(--bad)}
+  .decided-badge{font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px}
+  .decided-badge.aprovado{color:var(--good);background:color-mix(in srgb, var(--good) 15%, transparent)}
+  .decided-badge.reprovado{color:var(--bad);background:color-mix(in srgb, var(--bad) 15%, transparent)}
+  .decided-badge.ajuste{color:var(--warn);background:color-mix(in srgb, var(--warn) 15%, transparent)}
+  .adjust-note{font-size:11.5px;color:var(--muted);margin-top:6px;font-style:italic}
+  .adjust-form textarea{width:100%;height:44px;font-size:12.5px;resize:vertical}
+  .adjust-form .row{display:flex;gap:6px;margin-top:6px}
+  .pending-flag{font-size:10px;color:var(--warn);margin-left:6px}
+  .addform{display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:var(--panel);border:1px dashed var(--border);
+    border-radius:8px;padding:8px;margin:8px 0}
+  .addform input[type=text]{min-width:140px;flex:1}
+  .addform textarea{width:100%;min-height:36px;font-size:12.5px}
+  .empty-msg{color:var(--muted);font-size:12.5px;padding:10px 4px}
+  .toast{position:fixed;bottom:18px;right:18px;background:var(--good);color:#fff;padding:8px 14px;border-radius:8px;
+    font-size:13px;opacity:0;transform:translateY(6px);transition:.2s;pointer-events:none;z-index:50}
+  .toast.show{opacity:1;transform:translateY(0)}
+  .footerbar{display:flex;gap:8px;padding:16px 18px 40px;max-width:1100px;margin:0 auto;flex-wrap:wrap}
+  small.hint{color:var(--muted)}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <h1>STORM · Revisão de Mix</h1>
+  <div class="spacer"></div>
+  <span class="meta" id="syncMeta"></span>
+  <button class="ghost" id="btnReload" title="Recarregar dados do Asana">↻ Recarregar</button>
+  <button class="ghost" id="btnForget" title="Esquecer token deste navegador">Desconectar</button>
+</header>
+
+<div id="setupBanner" class="banner warn hidden"></div>
+<div id="syncBanner" class="banner info hidden"></div>
+<div id="errBanner" class="banner err hidden"></div>
+
+<div id="connectScreen" class="hidden">
+  <h2>Conectar ao Asana</h2>
+  <p>Cole um Personal Access Token do Asana (Configurações → Apps → Gerenciar Token de Acesso Pessoal). Ele fica salvo
+     apenas no armazenamento local deste navegador — nunca é enviado a nenhum outro lugar.</p>
+  <input type="password" id="tokenInput" placeholder="Cole seu token aqui">
+  <div class="row">
+    <button class="primary" id="btnConnect">Conectar</button>
+  </div>
+  <p id="connectError" class="hidden" style="color:var(--bad)"></p>
+  <p><small class="hint">Dica: se a conexão falhar por bloqueio de CORS ao abrir o arquivo direto (file://), sirva a
+     pasta com um servidor local simples (ex: <code>npx serve</code>) e abra via http://localhost.</small></p>
+</div>
+
+<div id="mainScreen" class="hidden">
+  <nav class="tabs" id="tabs"></nav>
+  <div class="progress-wrap" id="progressWrap"></div>
+  <main id="blocks"></main>
+  <div class="footerbar">
+    <button class="primary" id="btnExport">Gerar PDF da Reunião</button>
+    <button class="ghost" id="btnNewMeeting">Nova Reunião (resetar roteiro desta coleção)</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- constants ---------- */
+const PROJECT_GID = "1213087540730907";
+const API_BASE = "https://app.asana.com/api/1.0";
+const LS_PREFIX = "painelRevisao.";
+const REQUIRED_FIELDS = ["Segmento","Coleção","Tema","Pacote Moldes Contratado","Pacote Pilotos Contratado","Status de Desenvolvimento"];
+const PRIORITY_COLLECTIONS = ["SS26/27","FW27","FW26"];
+const PRIORITY_SEGMENTS = ["Performance","Athleisure","Premium"];
+const APPROVE_ALIASES = ["aprovado","aprovada","aprovar"];
+const REJECT_ALIASES = ["reprovado","reprovada","reprovar","recusado","rejeitado","nao aprovado"];
+const ADJUST_ALIASES = ["ajuste solicitado","ajuste pedido","ajustar","pedido de ajuste","ajuste"];
+const NEW_OPTION_COLORS = ["blue","green","purple","orange","hot-pink","indigo","yellow-green","cool-gray"];
+const SEGMENT_PALETTE = [
+  {bg:"#eef4ff",border:"#c3d9ff",text:"#2f5aa8"},
+  {bg:"#eafaf3",border:"#bdead2",text:"#1f7a4d"},
+  {bg:"#fdf1f7",border:"#f3cbe0",text:"#a13a72"},
+  {bg:"#fff8e8",border:"#f5e0a8",text:"#8a6a12"},
+  {bg:"#f2f0ff",border:"#d6d0ff",text:"#5b4bb8"},
+  {bg:"#fff0ec",border:"#f5c9ba",text:"#b04b2b"},
+  {bg:"#eefcfb",border:"#bdeae6",text:"#1a7d78"},
+  {bg:"#f5f5f5",border:"#dcdcdc",text:"#555"}
+];
+
+/* ---------- utils ---------- */
+function norm(s){ return (s||"").toString().normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim(); }
+function esc(s){ return (s==null?"":String(s)).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function uid(){ return "tmp_"+Date.now()+"_"+Math.random().toString(36).slice(2,8); }
+function nowStr(){ const d=new Date(); return d.toLocaleDateString("pt-BR")+" "+d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}); }
+function lsGet(key, fallback){ try{ const v=localStorage.getItem(LS_PREFIX+key); return v==null?fallback:JSON.parse(v); }catch(e){ return fallback; } }
+function lsSet(key, val){ try{ localStorage.setItem(LS_PREFIX+key, JSON.stringify(val)); }catch(e){} }
+function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1400); }
+
+/* ---------- state ---------- */
+let state = {
+  token: lsGet("token", null),
+  tasks: [],
+  fieldsMeta: null,
+  sections: [],
+  decisionOptions: null,
+  overrides: lsGet("overrides", {}),          // taskGid -> {statusName, note, decidedAt}
+  localTasks: lsGet("localTasks", []),        // client-created tasks not yet confirmed
+  queue: lsGet("queue", []),
+  extraCollections: lsGet("extraCollections", []),
+  activeCollection: lsGet("activeCollection", null),
+  collapsed: lsGet("collapsed", {}),          // colecao -> {bloco1: bool}
+  segmentColors: {},
+  lastSync: lsGet("lastSync", null),
+  cachedTasks: lsGet("cachedTasks", null),
+  cachedFieldsMeta: lsGet("cachedFieldsMeta", null),
+  cachedSections: lsGet("cachedSections", null)
+};
+
+/* ---------- asana api ---------- */
+async function asanaFetch(path, opts){
+  opts = opts || {};
+  const controller = new AbortController();
+  const timeout = setTimeout(()=>controller.abort(), 12000);
+  try{
+    const res = await fetch(API_BASE+path, Object.assign({}, opts, {
+      signal: controller.signal,
+      headers: Object.assign({
+        "Authorization": "Bearer "+state.token,
+        "Content-Type": "application/json"
+      }, opts.headers||{})
+    }));
+    clearTimeout(timeout);
+    if(!res.ok){
+      let body="";
+      try{ body = JSON.stringify(await res.json()); }catch(e){}
+      throw new Error("Asana "+res.status+" "+res.statusText+" "+body);
+    }
+    if(res.status===204) return null;
+    return await res.json();
+  }catch(e){
+    clearTimeout(timeout);
+    throw e;
+  }
+}
+
+async function asanaPaginate(path){
+  let out = [];
+  let next = path;
+  while(next){
+    const json = await asanaFetch(next);
+    out = out.concat(json.data||[]);
+    if(json.next_page && json.next_page.uri){
+      next = json.next_page.uri.replace(API_BASE,"");
+    } else if (json.next_page && json.next_page.offset){
+      const sep = path.indexOf("?")>-1 ? "&" : "?";
+      next = path + sep + "offset=" + encodeURIComponent(json.next_page.offset);
+    } else {
+      next = null;
+    }
+  }
+  return out;
+}
+
+/* ---------- field / section metadata ---------- */
+async function loadFieldsMeta(){
+  const opt = "custom_field_settings.custom_field.gid,custom_field_settings.custom_field.name,custom_field_settings.custom_field.type,custom_field_settings.custom_field.enum_options.gid,custom_field_settings.custom_field.enum_options.name,custom_field_settings.custom_field.enum_options.enabled";
+  const json = await asanaFetch("/projects/"+PROJECT_GID+"?opt_fields="+encodeURIComponent(opt));
+  const settings = (json.data.custom_field_settings||[]).map(s=>s.custom_field);
+  const meta = {};
+  REQUIRED_FIELDS.forEach(name=>{
+    const f = settings.find(cf => norm(cf.name)===norm(name));
+    if(f){
+      meta[name] = { gid:f.gid, type:f.type, options: (f.enum_options||[]).filter(o=>o.enabled!==false) };
+    }
+  });
+  return meta;
+}
+
+async function loadSections(){
+  const json = await asanaFetch("/projects/"+PROJECT_GID+"/sections");
+  return json.data||[];
+}
+
+function findEnumOption(options, aliases){
+  if(!options) return null;
+  let hit = options.find(o=>aliases.includes(norm(o.name)));
+  if(hit) return hit;
+  hit = options.find(o=> aliases.some(a=> norm(o.name).includes(a) || a.includes(norm(o.name))));
+  return hit || null;
+}
+
+function resolveDecisionOptions(fieldsMeta){
+  const statusField = fieldsMeta["Status de Desenvolvimento"];
+  const options = statusField ? statusField.options : [];
+  const aprovado = findEnumOption(options, APPROVE_ALIASES);
+  const reprovado = findEnumOption(options, REJECT_ALIASES);
+  const ajuste = findEnumOption(options, ADJUST_ALIASES);
+  const missing = [];
+  if(!aprovado) missing.push("Aprovado");
+  if(!reprovado) missing.push("Reprovado");
+  if(!ajuste) missing.push("Ajuste Solicitado");
+  return { aprovado, reprovado, ajuste, missing };
+}
+
+function decisionKeyForOptionGid(gid){
+  const d = state.decisionOptions;
+  if(!d) return null;
+  if(d.aprovado && gid===d.aprovado.gid) return "aprovado";
+  if(d.reprovado && gid===d.reprovado.gid) return "reprovado";
+  if(d.ajuste && gid===d.ajuste.gid) return "ajuste";
+  return null;
+}
+
+/* ---------- section helper (get or create "[Coleção] À fazer") ---------- */
+async function getOrCreateSectionForCollection(colecaoName){
+  let sec = state.sections.find(s => s.name.indexOf("["+colecaoName+"]") === 0);
+  if(sec) return sec.gid;
+  const json = await asanaFetch("/projects/"+PROJECT_GID+"/sections", {
+    method:"POST",
+    body: JSON.stringify({data:{name:"["+colecaoName+"] À fazer"}})
+  });
+  state.sections.push(json.data);
+  lsSet("cachedSections", state.sections);
+  return json.data.gid;
+}
+
+/* ---------- load all data ---------- */
+async function loadAllTasks(){
+  const opt = [
+    "name","completed","notes","permalink_url",
+    "memberships.section.gid","memberships.section.name",
+    "custom_fields.gid","custom_fields.name","custom_fields.type",
+    "custom_fields.enum_value.gid","custom_fields.enum_value.name",
+    "custom_fields.multi_enum_values.gid","custom_fields.multi_enum_values.name",
+    "custom_fields.number_value"
+  ].join(",");
+  return asanaPaginate("/projects/"+PROJECT_GID+"/tasks?limit=100&opt_fields="+encodeURIComponent(opt));
+}
+
+function cfValue(task, fieldGid, kind){
+  const cf = (task.custom_fields||[]).find(c=>c.gid===fieldGid);
+  if(!cf) return kind==="multi_enum" ? [] : null;
+  if(kind==="enum") return cf.enum_value ? {gid:cf.enum_value.gid,name:cf.enum_value.name} : null;
+  if(kind==="multi_enum") return (cf.multi_enum_values||[]).map(v=>({gid:v.gid,name:v.name}));
+  if(kind==="number") return cf.number_value;
+  return null;
+}
+
+function buildModel(rawTasks, fieldsMeta){
+  const segF = fieldsMeta["Segmento"], colF = fieldsMeta["Coleção"], temF = fieldsMeta["Tema"];
+  const moldF = fieldsMeta["Pacote Moldes Contratado"], pilF = fieldsMeta["Pacote Pilotos Contratado"];
+  const statF = fieldsMeta["Status de Desenvolvimento"];
+
+  const pieces = [];
+  rawTasks.forEach(t=>{
+    const colecao = colF ? cfValue(t, colF.gid, "enum") : null;
+    if(!colecao) return; // skip admin/inbox tasks with no Coleção set
+    const segArr = segF ? cfValue(t, segF.gid, "multi_enum") : [];
+    const tema = temF ? cfValue(t, temF.gid, "enum") : null;
+    const moldes = moldF ? cfValue(t, moldF.gid, "number") : null;
+    const pilotos = pilF ? cfValue(t, pilF.gid, "number") : null;
+    const status = statF ? cfValue(t, statF.gid, "enum") : null;
+    const section = (t.memberships&&t.memberships[0]&&t.memberships[0].section) || null;
+    pieces.push({
+      gid: t.gid,
+      name: t.name || "(sem nome)",
+      colecaoGid: colecao.gid, colecaoName: colecao.name,
+      segmentoNames: segArr.map(s=>s.name),
+      segmentoGids: segArr.map(s=>s.gid),
+      tema: tema ? tema.name : null,
+      moldes: moldes, pilotos: pilotos,
+      statusGid: status ? status.gid : null,
+      statusName: status ? status.name : null,
+      notes: t.notes||"",
+      permalink: t.permalink_url||"#",
+      sectionName: section ? section.name : null,
+      local: false
+    });
+  });
+  // merge locally created tasks not yet confirmed by server
+  state.localTasks.forEach(lt=>{
+    if(!rawTasks.some(t=>t.gid===lt.gid)) pieces.push(Object.assign({}, lt, {local:true}));
+  });
+  return pieces;
+}
+
+/* ---------- decision helpers ---------- */
+function currentDecisionKey(piece){
+  const ov = state.overrides[piece.gid];
+  const statusName = ov ? ov.statusName : piece.statusName;
+  if(!statusName) return null;
+  const n = norm(statusName);
+  if(state.decisionOptions){
+    if(state.decisionOptions.aprovado && n===norm(state.decisionOptions.aprovado.name)) return "aprovado";
+    if(state.decisionOptions.reprovado && n===norm(state.decisionOptions.reprovado.name)) return "reprovado";
+    if(state.decisionOptions.ajuste && n===norm(state.decisionOptions.ajuste.name)) return "ajuste";
+  }
+  return null;
+}
+function currentNote(piece){
+  const ov = state.overrides[piece.gid];
+  return ov ? (ov.note||"") : "";
+}
+
+/* ---------- meeting snapshot (baseline for block placement) ---------- */
+function getSnapshot(colecaoName){
+  const key = "snapshot_"+colecaoName;
+  let snap = lsGet(key, null);
+  return snap;
+}
+function ensureSnapshot(colecaoName, piecesInCollection){
+  const key = "snapshot_"+colecaoName;
+  let snap = lsGet(key, null);
+  if(!snap){
+    snap = { startedAt: Date.now(), baseline: {} };
+    piecesInCollection.forEach(p=>{ snap.baseline[p.gid] = p.statusName || null; });
+    lsSet(key, snap);
+  } else {
+    // add baseline entries for any pieces not yet seen (new since snapshot was taken -> stay undecided/bucket3)
+    let changed=false;
+    piecesInCollection.forEach(p=>{
+      if(!(p.gid in snap.baseline)){ snap.baseline[p.gid]=null; changed=true; }
+    });
+    if(changed) lsSet(key, snap);
+  }
+  return snap;
+}
+function resetSnapshot(colecaoName, piecesInCollection){
+  const key = "snapshot_"+colecaoName;
+  const snap = { startedAt: Date.now(), baseline: {} };
+  piecesInCollection.forEach(p=>{ snap.baseline[p.gid] = currentStatusNameLive(p); });
+  lsSet(key, snap);
+  return snap;
+}
+function currentStatusNameLive(piece){
+  const ov = state.overrides[piece.gid];
+  return ov ? ov.statusName : piece.statusName;
+}
+function baselineDecisionKey(baselineStatusName){
+  if(!baselineStatusName || !state.decisionOptions) return null;
+  const n = norm(baselineStatusName);
+  if(state.decisionOptions.aprovado && n===norm(state.decisionOptions.aprovado.name)) return "aprovado";
+  if(state.decisionOptions.reprovado && n===norm(state.decisionOptions.reprovado.name)) return "reprovado";
+  if(state.decisionOptions.ajuste && n===norm(state.decisionOptions.ajuste.name)) return "ajuste";
+  return null;
+}
+function classifyBucket(piece, snap){
+  const baselineStatus = snap.baseline.hasOwnProperty(piece.gid) ? snap.baseline[piece.gid] : null;
+  const key = baselineDecisionKey(baselineStatus);
+  if(key==="aprovado" || key==="reprovado") return 1;
+  if(key==="ajuste") return 2;
+  return 3;
+}
+
+/* ---------- segment colors ---------- */
+function segmentColor(name){
+  if(!state.segmentColors[name]){
+    const idx = Object.keys(state.segmentColors).length % SEGMENT_PALETTE.length;
+    state.segmentColors[name] = SEGMENT_PALETTE[idx];
+  }
+  return state.segmentColors[name];
+}
+function sortSegments(names){
+  return names.slice().sort((a,b)=>{
+    const ia = PRIORITY_SEGMENTS.indexOf(a), ib = PRIORITY_SEGMENTS.indexOf(b);
+    const pa = ia===-1?999:ia, pb = ib===-1?999:ib;
+    if(pa!==pb) return pa-pb;
+    return a.localeCompare(b);
+  });
+}
+function sortCollections(names){
+  return names.slice().sort((a,b)=>{
+    const ia = PRIORITY_COLLECTIONS.indexOf(a), ib = PRIORITY_COLLECTIONS.indexOf(b);
+    const pa = ia===-1?999:ia, pb = ib===-1?999:ib;
+    if(pa!==pb) return pa-pb;
+    return a.localeCompare(b);
+  });
+}
+
+/* ---------- queue (offline-safe writes) ---------- */
+function enqueue(item){
+  item.id = uid(); item.attempts = 0; item.createdAt = Date.now();
+  state.queue.push(item);
+  lsSet("queue", state.queue);
+  processQueue();
+}
+async function processQueue(){
+  if(!state.token) return;
+  renderSyncBanner();
+  for(const item of state.queue.slice()){
+    try{
+      if(item.kind==="update_status"){
+        await asanaFetch("/tasks/"+item.taskGid, {method:"PUT", body: JSON.stringify({data:{custom_fields:{[item.fieldGid]: item.optionGid}}})});
+      } else if(item.kind==="add_comment"){
+        await asanaFetch("/tasks/"+item.taskGid+"/stories", {method:"POST", body: JSON.stringify({data:{text:item.text}})});
+      } else if(item.kind==="create_task"){
+        const json = await asanaFetch("/tasks", {method:"POST", body: JSON.stringify({data:item.body})});
+        const realGid = json.data.gid;
+        // reconcile temp id -> real gid
+        state.localTasks = state.localTasks.filter(t=>t.gid!==item.tempId);
+        lsSet("localTasks", state.localTasks);
+        if(state.overrides[item.tempId]){
+          state.overrides[realGid] = state.overrides[item.tempId];
+          delete state.overrides[item.tempId];
+          lsSet("overrides", state.overrides);
+        }
+        const p = state.tasks.find(t=>t.gid===item.tempId);
+        if(p){ p.gid = realGid; p.local=false; }
+        if(item.commentText){
+          enqueue({kind:"add_comment", taskGid: realGid, text: item.commentText});
+        }
+      }
+      state.queue = state.queue.filter(q=>q.id!==item.id);
+      lsSet("queue", state.queue);
+    }catch(e){
+      item.attempts++;
+      item.lastError = String(e.message||e);
+      lsSet("queue", state.queue);
+    }
+  }
+  renderSyncBanner();
+  render();
+}
+setInterval(processQueue, 20000);
+window.addEventListener("online", processQueue);
+
+/* ---------- actions ---------- */
+function setDecision(taskGid, key, note){
+  const opt = state.decisionOptions[key];
+  if(!opt) return;
+  state.overrides[taskGid] = { statusName: opt.name, note: note||"", decidedAt: Date.now() };
+  lsSet("overrides", state.overrides);
+  const statF = state.fieldsMeta["Status de Desenvolvimento"];
+  enqueue({kind:"update_status", taskGid, fieldGid: statF.gid, optionGid: opt.gid});
+  let commentText = null;
+  if(key==="ajuste" && note){
+    commentText = "Ajuste solicitado em reunião ("+nowStr()+"): "+note;
+  } else if(key==="aprovado"){
+    commentText = "Aprovado em reunião ("+nowStr()+").";
+  } else if(key==="reprovado"){
+    commentText = "Reprovado em reunião ("+nowStr()+").";
+  }
+  if(commentText) enqueue({kind:"add_comment", taskGid, text: commentText});
+  toast("Salvo ✓");
+  render();
+}
+window.approvePiece = function(gid){ setDecision(gid, "aprovado", ""); };
+window.rejectPiece = function(gid){ setDecision(gid, "reprovado", ""); };
+window.openAdjust = function(gid){
+  state._adjustOpen = state._adjustOpen || {};
+  state._adjustOpen[gid] = true;
+  render();
+  setTimeout(()=>{ const el = document.getElementById("adjtext_"+gid); if(el) el.focus(); }, 30);
+};
+window.cancelAdjust = function(gid){
+  if(state._adjustOpen) delete state._adjustOpen[gid];
+  render();
+};
+window.confirmAdjust = function(gid){
+  const el = document.getElementById("adjtext_"+gid);
+  const note = el ? el.value.trim() : "";
+  if(!note){ toast("Escreva a observação do cliente"); return; }
+  if(state._adjustOpen) delete state._adjustOpen[gid];
+  setDecision(gid, "ajuste", note);
+};
+
+window.addPiece = function(colecaoName, colecaoGid, defaultSegment, blockKey){
+  const nameEl = document.getElementById("newname_"+blockKey);
+  const segEl = document.getElementById("newseg_"+blockKey);
+  const obsEl = document.getElementById("newobs_"+blockKey);
+  const name = nameEl.value.trim();
+  const segName = segEl.value;
+  const obs = obsEl.value.trim();
+  if(!name){ toast("Digite o nome da peça"); return; }
+  const segF = state.fieldsMeta["Segmento"];
+  const segOpt = segF.options.find(o=>o.name===segName);
+  const tempId = uid();
+  const piece = {
+    gid: tempId, name, colecaoGid, colecaoName,
+    segmentoNames: segOpt ? [segOpt.name] : [],
+    segmentoGids: segOpt ? [segOpt.gid] : [],
+    tema:null, moldes:null, pilotos:null, statusGid:null, statusName:null,
+    notes:"", permalink:"#", sectionName:null, local:true
+  };
+  state.tasks.push(piece);
+  state.localTasks.push(piece);
+  lsSet("localTasks", state.localTasks);
+  const snap = getSnapshot(colecaoName);
+  if(snap){ snap.baseline[tempId] = null; lsSet("snapshot_"+colecaoName, snap); }
+
+  (async ()=>{
+    let sectionGid = null;
+    try{ sectionGid = await getOrCreateSectionForCollection(colecaoName); }catch(e){}
+    const body = {
+      name,
+      projects: [PROJECT_GID],
+      custom_fields: {}
+    };
+    body.custom_fields[state.fieldsMeta["Coleção"].gid] = colecaoGid;
+    if(segOpt) body.custom_fields[state.fieldsMeta["Segmento"].gid] = [segOpt.gid];
+    if(sectionGid) body.memberships = [{project: PROJECT_GID, section: sectionGid}];
+    enqueue({kind:"create_task", tempId, body, commentText: obs || null});
+  })();
+
+  nameEl.value=""; obsEl.value="";
+  toast("Peça adicionada");
+  render();
+};
+
+window.toggleAddForm = function(blockKey){
+  state._addOpen = state._addOpen || {};
+  state._addOpen[blockKey] = !state._addOpen[blockKey];
+  render();
+};
+
+window.toggleCollapse = function(colecaoName, blockNum){
+  const c = state.collapsed[colecaoName] || {};
+  c[blockNum] = !c[blockNum];
+  state.collapsed[colecaoName] = c;
+  lsSet("collapsed", state.collapsed);
+  render();
+};
+
+window.selectCollection = function(name){
+  state.activeCollection = name;
+  lsSet("activeCollection", name);
+  render();
+};
+
+window.newMeeting = function(){
+  const name = state.activeCollection;
+  if(!name) return;
+  if(!confirm) {}
+  const pieces = state.tasks.filter(p=>p.colecaoName===name);
+  resetSnapshot(name, pieces);
+  toast("Nova reunião iniciada para "+name);
+  render();
+};
+
+window.startNewCollection = function(){
+  state._addingCollection = true;
+  render();
+  setTimeout(()=>{ const el=document.getElementById("newCollectionInput"); if(el) el.focus(); }, 30);
+};
+window.cancelNewCollection = function(){
+  state._addingCollection = false;
+  render();
+};
+window.confirmNewCollection = async function(){
+  const el = document.getElementById("newCollectionInput");
+  const name = el.value.trim();
+  if(!name){ return; }
+  const colF = state.fieldsMeta["Coleção"];
+  const btn = document.getElementById("btnConfirmNewCollection");
+  btn.disabled = true; btn.textContent = "Criando...";
+  try{
+    const color = NEW_OPTION_COLORS[colF.options.length % NEW_OPTION_COLORS.length];
+    const json = await asanaFetch("/custom_fields/"+colF.gid+"/enum_options", {
+      method:"POST", body: JSON.stringify({data:{name, color}})
+    });
+    colF.options.push({gid: json.data.gid, name: json.data.name, enabled:true});
+    if(!state.extraCollections.includes(name)){
+      state.extraCollections.push(name);
+      lsSet("extraCollections", state.extraCollections);
+    }
+    try{ await getOrCreateSectionForCollection(name); }catch(e){}
+    state._addingCollection = false;
+    state.activeCollection = name;
+    lsSet("activeCollection", name);
+    toast("Coleção \""+name+"\" criada");
+    render();
+  }catch(e){
+    alert("Não foi possível criar a coleção no Asana: "+(e.message||e));
+    btn.disabled=false; btn.textContent="Adicionar";
+  }
+};
+
+/* ---------- export / print ---------- */
+window.exportPdf = function(){
+  const colecaoName = state.activeCollection;
+  if(!colecaoName) return;
+  const pieces = state.tasks.filter(p=>p.colecaoName===colecaoName);
+  const bySeg = {};
+  pieces.forEach(p=>{
+    const seg = p.segmentoNames[0] || "Sem Segmento";
+    (bySeg[seg]=bySeg[seg]||[]).push(p);
+  });
+  const segNames = sortSegments(Object.keys(bySeg));
+  const statusLabel = k => k==="aprovado"?"Aprovado":k==="reprovado"?"Reprovado":k==="ajuste"?"Ajuste Solicitado":"Sem decisão (pendente)";
+
+  let rows = "";
+  segNames.forEach(seg=>{
+    rows += `<h3>${esc(seg)}</h3><table><thead><tr><th>Peça</th><th>Status</th><th>Observação</th></tr></thead><tbody>`;
+    bySeg[seg].forEach(p=>{
+      const key = currentDecisionKey(p);
+      rows += `<tr><td>${esc(p.name)}</td><td>${statusLabel(key)}</td><td>${esc(currentNote(p))}</td></tr>`;
+    });
+    rows += `</tbody></table>`;
+  });
+
+  let pendRows = "";
+  segNames.forEach(seg=>{
+    const items = bySeg[seg].filter(p=>currentDecisionKey(p)==="ajuste");
+    if(!items.length) return;
+    pendRows += `<h4>${esc(seg)}</h4><ul>`;
+    items.forEach(p=>{ pendRows += `<li><strong>${esc(p.name)}</strong> — ${esc(currentNote(p))}</li>`; });
+    pendRows += `</ul>`;
+  });
+  if(!pendRows) pendRows = "<p>Nenhuma pendência nesta coleção.</p>";
+
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Reunião ${esc(colecaoName)}</title>
+  <style>
+    @page{size:A4;margin:18mm}
+    body{font-family:Arial,Helvetica,sans-serif;color:#111;font-size:12px}
+    h1{font-size:18px;margin-bottom:2px} h2{font-size:14px;color:#555;margin-top:0}
+    h3{font-size:13px;margin:16px 0 4px;border-bottom:1px solid #ccc;padding-bottom:2px}
+    h4{font-size:12.5px;margin:10px 0 2px}
+    table{width:100%;border-collapse:collapse;margin-bottom:8px}
+    th,td{border:1px solid #ddd;padding:5px 7px;text-align:left;font-size:11.5px}
+    th{background:#f2f2f2}
+    .pendencias{margin-top:26px;padding-top:10px;border-top:2px solid #333}
+    .pendencias h2{color:#a13a3a}
+    ul{margin:4px 0;padding-left:18px}
+  </style></head><body>
+  <h1>Reunião de Aprovação — Mix de Produtos</h1>
+  <h2>Coleção: ${esc(colecaoName)} · ${nowStr()}</h2>
+  ${rows}
+  <div class="pendencias">
+    <h2>PENDÊNCIAS PARA O ATELIÊ / MODELISTA</h2>
+    ${pendRows}
+  </div>
+  </body></html>`;
+
+  const w = window.open("", "_blank");
+  if(!w){ alert("O navegador bloqueou a janela de impressão. Permita pop-ups para este arquivo e tente novamente."); return; }
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+  setTimeout(()=>w.print(), 300);
+};
+
+/* ---------- render ---------- */
+function renderSyncBanner(){
+  const b = document.getElementById("syncBanner");
+  if(state.queue.length===0){ b.classList.add("hidden"); return; }
+  b.classList.remove("hidden");
+  b.textContent = "Sincronização pendente (" + state.queue.length + " item"+(state.queue.length>1?"s":"")+") — tentando novamente em segundo plano...";
+}
+
+function renderSetupBanner(){
+  const b = document.getElementById("setupBanner");
+  if(!state.decisionOptions || state.decisionOptions.missing.length===0){ b.classList.add("hidden"); return; }
+  b.classList.remove("hidden");
+  b.innerHTML = "Configuração pendente no Asana: adicione estas opções ao campo <strong>Status de Desenvolvimento</strong> "+
+    "(no campo personalizado do projeto): <strong>"+state.decisionOptions.missing.join(", ")+"</strong>. "+
+    "Até lá, aprovar/reprovar/ajustar fica desabilitado. "+
+    '<button id="btnRecheck" style="margin-left:8px">Verificar novamente</button>';
+  document.getElementById("btnRecheck").onclick = recheckDecisionOptions;
+}
+
+async function recheckDecisionOptions(){
+  try{
+    state.fieldsMeta = await loadFieldsMeta();
+    state.decisionOptions = resolveDecisionOptions(state.fieldsMeta);
+    lsSet("cachedFieldsMeta", state.fieldsMeta);
+    renderSetupBanner();
+    render();
+  }catch(e){}
+}
+
+function renderTabs(){
+  const collections = new Set(state.tasks.map(p=>p.colecaoName));
+  state.extraCollections.forEach(c=>collections.add(c));
+  const names = sortCollections(Array.from(collections));
+  if(!state.activeCollection && names.length) state.activeCollection = names[0];
+  const tabsEl = document.getElementById("tabs");
+  let html = "";
+  names.forEach(n=>{
+    html += `<div class="tab ${n===state.activeCollection?"active":""}" onclick="selectCollection('${esc(n)}')">${esc(n)}</div>`;
+  });
+  if(state._addingCollection){
+    html += `<input id="newCollectionInput" type="text" placeholder="Nome da coleção" style="width:120px">
+      <button id="btnConfirmNewCollection" onclick="confirmNewCollection()">Adicionar</button>
+      <button class="ghost" onclick="cancelNewCollection()">Cancelar</button>`;
+  } else {
+    html += `<div class="tab addtab" onclick="startNewCollection()">+ nova coleção</div>`;
+  }
+  tabsEl.innerHTML = html;
+}
+
+function renderProgress(){
+  const wrap = document.getElementById("progressWrap");
+  const name = state.activeCollection;
+  if(!name){ wrap.innerHTML=""; return; }
+  const pieces = state.tasks.filter(p=>p.colecaoName===name);
+  const total = pieces.length;
+  const decided = pieces.filter(p=>currentDecisionKey(p)!==null).length;
+  const pct = total ? Math.round(decided/total*100) : 0;
+  wrap.innerHTML = `<div class="progress-label"><span>${decided} de ${total} peças decididas nesta coleção</span><span>${pct}%</span></div>
+    <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>`;
+}
+
+function decisionIcon(key){
+  if(key==="aprovado") return `<span class="decided-badge aprovado">✓ Aprovado</span>`;
+  if(key==="reprovado") return `<span class="decided-badge reprovado">✗ Reprovado</span>`;
+  if(key==="ajuste") return `<span class="decided-badge ajuste">✎ Ajuste</span>`;
+  return "";
+}
+
+function renderCard(p, blockKey){
+  const key = currentDecisionKey(p);
+  const note = currentNote(p);
+  const seg = p.segmentoNames[0] || "Sem Segmento";
+  const col = segmentColor(seg);
+  const disabled = state.decisionOptions && state.decisionOptions.missing.length>0;
+  const pending = state.queue.some(q => q.taskGid===p.gid || q.tempId===p.gid);
+  const adjustOpen = state._adjustOpen && state._adjustOpen[p.gid];
+
+  let chips = `<span class="chip seg" style="background:${col.bg};border-color:${col.border};color:${col.text}">${esc(seg)}</span>`;
+  if(p.tema) chips += `<span class="chip">${esc(p.tema)}</span>`;
+  if(p.moldes!=null) chips += `<span class="chip">Moldes: ${esc(p.moldes)}</span>`;
+  if(p.pilotos!=null) chips += `<span class="chip">Pilotos: ${esc(p.pilotos)}</span>`;
+
+  let actionsHtml;
+  if(adjustOpen){
+    actionsHtml = `<div class="adjust-form">
+      <textarea id="adjtext_${p.gid}" placeholder="Anote o pedido do cliente...">${esc(note)}</textarea>
+      <div class="row">
+        <button class="primary" onclick="confirmAdjust('${p.gid}')">Confirmar</button>
+        <button class="ghost" onclick="cancelAdjust('${p.gid}')">Cancelar</button>
+      </div>
+    </div>`;
+  } else {
+    actionsHtml = `<div class="actions">
+      <button class="actbtn ok" title="Aprovar" ${disabled?"disabled":""} onclick="approvePiece('${p.gid}')">✓</button>
+      <button class="actbtn no" title="Reprovar" ${disabled?"disabled":""} onclick="rejectPiece('${p.gid}')">✗</button>
+      <button class="actbtn" title="Pedir ajuste" ${disabled?"disabled":""} onclick="openAdjust('${p.gid}')">✎</button>
+      ${decisionIcon(key)}
+      ${pending?'<span class="pending-flag">sync pendente</span>':""}
+    </div>`;
+  }
+
+  return `<div class="card">
+    <div class="name">${esc(p.name)}</div>
+    <div class="chips">${chips}</div>
+    ${actionsHtml}
+    ${(key==="ajuste" && note && !adjustOpen) ? `<div class="adjust-note">"${esc(note)}"</div>` : ""}
+  </div>`;
+}
+
+function renderAddForm(blockKey, colecaoName, colecaoGid, defaultSegment){
+  const open = state._addOpen && state._addOpen[blockKey];
+  const segF = state.fieldsMeta["Segmento"];
+  const segOptions = segF ? sortSegments(segF.options.map(o=>o.name)) : [];
+  if(!open){
+    return `<button class="addrow-btn" onclick="toggleAddForm('${blockKey}')">+ Adicionar peça</button>`;
+  }
+  return `<div class="addform">
+    <input type="text" id="newname_${blockKey}" placeholder="Nome da peça">
+    <select id="newseg_${blockKey}">
+      ${segOptions.map(s=>`<option value="${esc(s)}" ${s===defaultSegment?"selected":""}>${esc(s)}</option>`).join("")}
+    </select>
+    <textarea id="newobs_${blockKey}" placeholder="Observação (opcional)"></textarea>
+    <button class="primary" onclick="addPiece('${esc(colecaoName)}','${colecaoGid}', document.getElementById('newseg_${blockKey}').value, '${blockKey}')">Adicionar</button>
+    <button class="ghost" onclick="toggleAddForm('${blockKey}')">Fechar</button>
+  </div>`;
+}
+
+function renderBlock(blockNum, title, pieces, colecaoName, colecaoGid){
+  const bySeg = {};
+  pieces.forEach(p=>{
+    const seg = p.segmentoNames[0] || "Sem Segmento";
+    (bySeg[seg]=bySeg[seg]||[]).push(p);
+  });
+  const segNames = sortSegments(Object.keys(bySeg));
+  const collapsedMap = state.collapsed[colecaoName] || {};
+  const isOpen = !collapsedMap[blockNum];
+
+  let body = "";
+  body += renderAddForm("blk"+blockNum, colecaoName, colecaoGid, segNames[0]||"");
+  if(segNames.length===0){
+    body += `<div class="empty-msg">Nenhuma peça neste bloco.</div>`;
+  }
+  segNames.forEach(seg=>{
+    const col = segmentColor(seg);
+    const segKey = "blk"+blockNum+"_"+seg.replace(/\W+/g,"");
+    body += `<div class="segment">
+      <div class="segment-header"><span class="segment-dot" style="background:${col.text}"></span>${esc(seg)} <span class="block-count">(${bySeg[seg].length})</span>
+        <button class="addrow-btn" onclick="toggleAddForm('${segKey}')">+ Adicionar peça</button>
+      </div>
+      ${(state._addOpen && state._addOpen[segKey]) ? renderAddForm(segKey, colecaoName, colecaoGid, seg) : ""}
+      <div class="cards">${bySeg[seg].map(p=>renderCard(p, segKey)).join("")}</div>
+    </div>`;
+  });
+
+  return `<details class="block" ${isOpen?"open":""}>
+    <summary onclick="event.preventDefault(); toggleCollapse('${esc(colecaoName)}', ${blockNum})">
+      ${title} <span class="block-count">(${pieces.length})</span>
+    </summary>
+    <div class="block-body">${body}</div>
+  </details>`;
+}
+
+function render(){
+  renderTabs();
+  renderProgress();
+  renderSetupBanner();
+  renderSyncBanner();
+
+  const name = state.activeCollection;
+  const blocksEl = document.getElementById("blocks");
+  if(!name){ blocksEl.innerHTML = `<div class="empty-msg">Nenhuma coleção com peças ainda. Use "+ nova coleção" para começar.</div>`; return; }
+
+  const pieces = state.tasks.filter(p=>p.colecaoName===name);
+  const colecaoGid = pieces.length ? pieces[0].colecaoGid : (state.fieldsMeta["Coleção"].options.find(o=>o.name===name)||{}).gid;
+  const snap = ensureSnapshot(name, pieces);
+
+  const b1=[], b2=[], b3=[];
+  pieces.forEach(p=>{
+    const bucket = classifyBucket(p, snap);
+    if(bucket===1) b1.push(p); else if(bucket===2) b2.push(p); else b3.push(p);
+  });
+
+  blocksEl.innerHTML =
+    renderBlock(1, "✅ Já Fechado", b1, name, colecaoGid) +
+    renderBlock(2, "🛠 Pendências da Reunião Passada", b2, name, colecaoGid) +
+    renderBlock(3, "🗳 Para Decidir Hoje", b3, name, colecaoGid);
+}
+
+/* ---------- boot / connect ---------- */
+async function fullLoad(showLoading){
+  document.getElementById("errBanner").classList.add("hidden");
+  try{
+    const [fieldsMeta, sections] = await Promise.all([loadFieldsMeta(), loadSections()]);
+    const rawTasks = await loadAllTasks();
+    state.fieldsMeta = fieldsMeta;
+    state.sections = sections;
+    state.decisionOptions = resolveDecisionOptions(fieldsMeta);
+    state.tasks = buildModel(rawTasks, fieldsMeta);
+    state.lastSync = Date.now();
+    lsSet("cachedFieldsMeta", fieldsMeta);
+    lsSet("cachedSections", sections);
+    lsSet("cachedTasks", rawTasks);
+    lsSet("lastSync", state.lastSync);
+    document.getElementById("syncMeta").textContent = "Última sincronização: "+nowStr();
+    render();
+    processQueue();
+  }catch(e){
+    const b = document.getElementById("errBanner");
+    b.classList.remove("hidden");
+    b.textContent = "Não foi possível carregar do Asana agora (" + (e.message||e) + "). ";
+    if(state.cachedTasks && state.cachedFieldsMeta){
+      b.textContent += "Mostrando os últimos dados salvos localmente.";
+      state.fieldsMeta = state.cachedFieldsMeta;
+      state.sections = state.cachedSections||[];
+      state.decisionOptions = resolveDecisionOptions(state.fieldsMeta);
+      state.tasks = buildModel(state.cachedTasks, state.fieldsMeta);
+      render();
+    } else {
+      b.textContent += "Tente novamente com o botão Recarregar.";
+    }
+  }
+}
+
+document.getElementById("btnConnect").onclick = async ()=>{
+  const val = document.getElementById("tokenInput").value.trim();
+  if(!val) return;
+  state.token = val;
+  const errEl = document.getElementById("connectError");
+  errEl.classList.add("hidden");
+  try{
+    await asanaFetch("/users/me");
+    lsSet("token", state.token);
+    document.getElementById("connectScreen").classList.add("hidden");
+    document.getElementById("mainScreen").classList.remove("hidden");
+    fullLoad(true);
+  }catch(e){
+    errEl.classList.remove("hidden");
+    errEl.textContent = "Token inválido ou sem conexão: "+(e.message||e);
+  }
+};
+
+document.getElementById("btnReload").onclick = ()=>fullLoad(true);
+document.getElementById("btnForget").onclick = ()=>{
+  if(!confirm("Esquecer o token salvo neste navegador?")) return;
+  localStorage.removeItem(LS_PREFIX+"token");
+  location.reload();
+};
+document.getElementById("btnExport").onclick = ()=>exportPdf();
+document.getElementById("btnNewMeeting").onclick = ()=>window.newMeeting();
+
+(function boot(){
+  if(state.token){
+    document.getElementById("mainScreen").classList.remove("hidden");
+    fullLoad(true);
+  } else {
+    document.getElementById("connectScreen").classList.remove("hidden");
+  }
+})();
+
+})();
+</script>
+</body>
+</html>
