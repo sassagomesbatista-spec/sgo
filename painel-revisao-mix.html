@@ -195,7 +195,7 @@ async function asanaFetch(path, opts){
     const res = await fetch(API_BASE+path, Object.assign({}, opts, {
       signal: controller.signal,
       headers: Object.assign({
-        "Authorization": "Bearer "+state.token,
+        "Authorization": "Bearer "+String(state.token||"").replace(/[^\x21-\x7E]/g,"").trim(),
         "Content-Type": "application/json"
       }, opts.headers||{})
     }));
@@ -933,8 +933,14 @@ async function fullLoad(showLoading){
 }
 
 document.getElementById("btnConnect").onclick = async ()=>{
-  const val = document.getElementById("tokenInput").value.trim();
+  const raw = document.getElementById("tokenInput").value;
+  // strip stray non-ASCII / invisible characters that sometimes ride along on copy-paste
+  // (smart quotes, ellipsis "…", zero-width spaces, etc.) which break HTTP header encoding
+  const val = raw.replace(/[^\x21-\x7E]/g, "").trim();
   if(!val) return;
+  if(val !== raw.trim()){
+    console.warn("Token continha caracteres inválidos que foram removidos automaticamente.");
+  }
   state.token = val;
   const errEl = document.getElementById("connectError");
   errEl.classList.add("hidden");
