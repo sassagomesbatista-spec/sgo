@@ -44,6 +44,19 @@ export default function ContaPage() {
           Salvar Nova Senha
         </button>
       </form>
+
+      {isAdmin && (
+        <>
+          <h2>Backup dos Dados</h2>
+          <p className="subtitle">
+            Baixa uma cópia completa do banco de dados (pilotistas, clientes, lançamentos,
+            preços) pro seu computador. Recomendado fazer isso de vez em quando, por segurança.
+          </p>
+          <a href="/api/backup" className="btn" download>
+            Baixar Backup
+          </a>
+        </>
+      )}
     </div>
   );
 }
