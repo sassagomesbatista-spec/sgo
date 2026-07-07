@@ -2,6 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import db from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { atualizarLancamentoAction } from '@/app/actions';
+import SelectOrNew from '@/app/SelectOrNew';
 
 function currentMonth() {
   return new Date().toISOString().slice(0, 7);
@@ -19,6 +20,9 @@ export default function EditarLancamentoPage({ params }) {
 
   const tipos = db.prepare('SELECT * FROM tipos_peca ORDER BY nome').all();
   const pilotistas = db.prepare('SELECT * FROM pilotistas ORDER BY nome').all();
+  const clientes = db.prepare('SELECT nome FROM clientes ORDER BY nome').all().map((c) => c.nome);
+  const modelistas = db.prepare('SELECT nome FROM modelistas ORDER BY nome').all().map((m) => m.nome);
+  const tamanhos = db.prepare('SELECT nome FROM tamanhos ORDER BY nome').all().map((t) => t.nome);
 
   return (
     <div className="card">
@@ -35,7 +39,7 @@ export default function EditarLancamentoPage({ params }) {
         </label>
         <label>
           Cliente
-          <input name="cliente" defaultValue={row.cliente || ''} />
+          <SelectOrNew name="cliente" options={clientes} defaultValue={row.cliente || ''} />
         </label>
         <label>
           Descrição do Produto
@@ -56,7 +60,7 @@ export default function EditarLancamentoPage({ params }) {
         </label>
         <label>
           Tamanho
-          <input name="tamanho" defaultValue={row.tamanho || ''} />
+          <SelectOrNew name="tamanho" options={tamanhos} defaultValue={row.tamanho || ''} />
         </label>
         <label>
           Nível
@@ -71,7 +75,7 @@ export default function EditarLancamentoPage({ params }) {
         </label>
         <label>
           Nome da Modelista
-          <input name="nome_modelista" defaultValue={row.nome_modelista || ''} />
+          <SelectOrNew name="nome_modelista" options={modelistas} defaultValue={row.nome_modelista || ''} />
         </label>
         <label>
           Pilotista

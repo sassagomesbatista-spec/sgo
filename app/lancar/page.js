@@ -1,9 +1,13 @@
 import db from '@/lib/db';
 import { criarLancamentoAction } from '@/app/actions';
+import SelectOrNew from '@/app/SelectOrNew';
 
 export default function LancarPage() {
   const tipos = db.prepare('SELECT * FROM tipos_peca ORDER BY nome').all();
   const pilotistas = db.prepare('SELECT * FROM pilotistas WHERE ativo = 1 ORDER BY nome').all();
+  const clientes = db.prepare('SELECT nome FROM clientes ORDER BY nome').all().map((c) => c.nome);
+  const modelistas = db.prepare('SELECT nome FROM modelistas ORDER BY nome').all().map((m) => m.nome);
+  const tamanhos = db.prepare('SELECT nome FROM tamanhos ORDER BY nome').all().map((t) => t.nome);
   const hoje = new Date().toISOString().slice(0, 10);
 
   return (
@@ -21,7 +25,7 @@ export default function LancarPage() {
         </label>
         <label>
           Cliente
-          <input name="cliente" />
+          <SelectOrNew name="cliente" options={clientes} />
         </label>
         <label>
           Descrição do Produto
@@ -42,7 +46,7 @@ export default function LancarPage() {
         </label>
         <label>
           Tamanho
-          <input name="tamanho" placeholder="P / M / G ou número" />
+          <SelectOrNew name="tamanho" options={tamanhos} />
         </label>
         <label>
           Nível
@@ -57,7 +61,7 @@ export default function LancarPage() {
         </label>
         <label>
           Nome da Modelista
-          <input name="nome_modelista" />
+          <SelectOrNew name="nome_modelista" options={modelistas} />
         </label>
         <label>
           Pilotista

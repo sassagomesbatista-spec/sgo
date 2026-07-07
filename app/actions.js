@@ -129,6 +129,52 @@ export async function salvarTipoPecaAction(formData) {
   revalidatePath('/precos');
 }
 
+// ---------- CLIENTES / MODELISTAS / TAMANHOS ----------
+
+function syncLookup(table, nome) {
+  if (!nome) return;
+  db.prepare(`INSERT OR IGNORE INTO ${table} (nome) VALUES (?)`).run(nome);
+}
+
+export async function salvarClienteAction(formData) {
+  requireLogin();
+  const id = formData.get('id');
+  const nome = formData.get('nome')?.toString().trim();
+  if (!nome) return;
+  if (id) {
+    db.prepare('UPDATE clientes SET nome=? WHERE id=?').run(nome, id);
+  } else {
+    db.prepare('INSERT OR IGNORE INTO clientes (nome) VALUES (?)').run(nome);
+  }
+  revalidatePath('/clientes');
+}
+
+export async function salvarModelistaAction(formData) {
+  requireLogin();
+  const id = formData.get('id');
+  const nome = formData.get('nome')?.toString().trim();
+  if (!nome) return;
+  if (id) {
+    db.prepare('UPDATE modelistas SET nome=? WHERE id=?').run(nome, id);
+  } else {
+    db.prepare('INSERT OR IGNORE INTO modelistas (nome) VALUES (?)').run(nome);
+  }
+  revalidatePath('/modelistas');
+}
+
+export async function salvarTamanhoAction(formData) {
+  requireLogin();
+  const id = formData.get('id');
+  const nome = formData.get('nome')?.toString().trim();
+  if (!nome) return;
+  if (id) {
+    db.prepare('UPDATE tamanhos SET nome=? WHERE id=?').run(nome, id);
+  } else {
+    db.prepare('INSERT OR IGNORE INTO tamanhos (nome) VALUES (?)').run(nome);
+  }
+  revalidatePath('/tamanhos');
+}
+
 // ---------- LANÇAMENTOS ----------
 
 export async function criarLancamentoAction(formData) {
@@ -174,6 +220,10 @@ export async function criarLancamentoAction(formData) {
     valor,
     data.slice(0, 7)
   );
+
+  syncLookup('clientes', cliente);
+  syncLookup('tamanhos', tamanho);
+  syncLookup('modelistas', nome_modelista);
 
   revalidatePath('/lancamentos');
   redirect('/lancamentos');
@@ -232,6 +282,10 @@ export async function atualizarLancamentoAction(formData) {
     data.slice(0, 7),
     id
   );
+
+  syncLookup('clientes', cliente);
+  syncLookup('tamanhos', tamanho);
+  syncLookup('modelistas', nome_modelista);
 
   revalidatePath('/lancamentos');
   redirect('/lancamentos');

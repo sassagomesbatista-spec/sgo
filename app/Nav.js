@@ -18,6 +18,15 @@ export default function Nav({ session }) {
         <Link href="/lancamentos" prefetch={false}>
           Lançamentos
         </Link>
+        <Link href="/clientes" prefetch={false}>
+          Clientes
+        </Link>
+        <Link href="/modelistas" prefetch={false}>
+          Modelistas
+        </Link>
+        <Link href="/tamanhos" prefetch={false}>
+          Tamanhos
+        </Link>
         {isAdmin && (
           <Link href="/pilotistas" prefetch={false}>
             Pilotistas

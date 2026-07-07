@@ -128,6 +128,16 @@ textarea:focus {
   outline-offset: 1px;
 }
 
+.select-or-new {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.select-or-new input {
+  flex: 1;
+}
+
 .checkbox {
   flex-direction: row !important;
   align-items: center;
