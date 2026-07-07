@@ -1,9 +1,10 @@
 import { notFound, redirect } from 'next/navigation';
 import db from '@/lib/db';
 import { getSession } from '@/lib/auth';
-import { atualizarLancamentoAction } from '@/app/actions';
+import { atualizarLancamentoAction, excluirLancamentoAction } from '@/app/actions';
 import SelectOrNew from '@/app/SelectOrNew';
 import Icon from '@/app/icons';
+import ConfirmForm from '@/app/ConfirmForm';
 
 function currentMonth() {
   return new Date().toISOString().slice(0, 7);
@@ -126,6 +127,18 @@ export default function EditarLancamentoPage({ params }) {
           Salvar Alterações
         </button>
       </form>
+
+      <div className="danger-zone">
+        <ConfirmForm
+          action={excluirLancamentoAction}
+          confirmMessage="Tem certeza que quer excluir esse lançamento? Essa ação não pode ser desfeita."
+        >
+          <input type="hidden" name="id" value={row.id} />
+          <button className="btn-sm btn-danger" type="submit">
+            Excluir Peça
+          </button>
+        </ConfirmForm>
+      </div>
     </div>
   );
 }

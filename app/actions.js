@@ -290,3 +290,19 @@ export async function atualizarLancamentoAction(formData) {
   revalidatePath('/lancamentos');
   redirect('/lancamentos');
 }
+
+export async function excluirLancamentoAction(formData) {
+  const session = requireLogin();
+  const id = Number(formData.get('id'));
+  const existente = db.prepare('SELECT * FROM lancamentos WHERE id = ?').get(id);
+  if (!existente) return;
+
+  if (session.role !== 'admin' && existente.mes_ano !== currentMonth()) {
+    return;
+  }
+
+  db.prepare('DELETE FROM lancamentos WHERE id = ?').run(id);
+
+  revalidatePath('/lancamentos');
+  redirect('/lancamentos');
+}

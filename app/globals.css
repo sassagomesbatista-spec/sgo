@@ -411,6 +411,23 @@ textarea:focus {
   background: var(--accent-dark);
 }
 
+.btn-danger {
+  background: #fff;
+  color: #b3261e;
+  border: 1px solid #f0c6c3;
+}
+
+.btn-danger:hover {
+  background: #fdeceb;
+  color: #b3261e;
+}
+
+.danger-zone {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
 .btn-link {
   background: none;
   border: none;
