@@ -65,6 +65,13 @@
   .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
   .card{border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--bg)}
   .card .name{font-weight:600;font-size:13.5px;margin-bottom:4px}
+  .thumb{width:100%;aspect-ratio:4/3;border-radius:8px;border:1px dashed var(--border);background:var(--panel);
+    display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:8px;cursor:pointer}
+  .thumb:hover{border-color:var(--accent)}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .thumb-placeholder{font-size:11px;color:var(--muted)}
+  .thumb-disabled{cursor:default}
+  .thumb-disabled:hover{border-color:var(--border)}
   .chips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
   .chip{font-size:10.5px;padding:2px 7px;border-radius:999px;border:1px solid var(--border);color:var(--muted)}
   .chip.seg{font-weight:700}
@@ -130,6 +137,7 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<input type="file" id="imgUploadInput" accept="image/*" class="hidden">
 
 <script>
 (function(){
@@ -183,21 +191,22 @@ let state = {
   lastSync: lsGet("lastSync", null),
   cachedTasks: lsGet("cachedTasks", null),
   cachedFieldsMeta: lsGet("cachedFieldsMeta", null),
-  cachedSections: lsGet("cachedSections", null)
+  cachedSections: lsGet("cachedSections", null),
+  attachments: {}   // taskGid -> array of {gid,name,download_url,view_url} | "loading" | "error"
 };
 
 /* ---------- asana api ---------- */
 async function asanaFetch(path, opts){
   opts = opts || {};
   const controller = new AbortController();
-  const timeout = setTimeout(()=>controller.abort(), 12000);
+  const timeout = setTimeout(()=>controller.abort(), opts.timeoutMs || 12000);
+  const isFormData = (typeof FormData !== "undefined") && opts.body instanceof FormData;
   try{
+    const baseHeaders = { "Authorization": "Bearer "+String(state.token||"").replace(/[^\x21-\x7E]/g,"").trim() };
+    if(!isFormData) baseHeaders["Content-Type"] = "application/json";
     const res = await fetch(API_BASE+path, Object.assign({}, opts, {
       signal: controller.signal,
-      headers: Object.assign({
-        "Authorization": "Bearer "+String(state.token||"").replace(/[^\x21-\x7E]/g,"").trim(),
-        "Content-Type": "application/json"
-      }, opts.headers||{})
+      headers: Object.assign(baseHeaders, opts.headers||{})
     }));
     clearTimeout(timeout);
     if(!res.ok){
@@ -352,6 +361,64 @@ function buildModel(rawTasks, fieldsMeta){
     if(!rawTasks.some(t=>t.gid===lt.gid)) pieces.push(Object.assign({}, lt, {local:true}));
   });
   return pieces;
+}
+
+/* ---------- attachments / product images ---------- */
+const IMAGE_EXT_RE = /\.(png|jpe?g|gif|webp|heic|bmp)$/i;
+function isImageAttachment(att){
+  return (att.resource_subtype==="asana" || att.resource_subtype==null) && IMAGE_EXT_RE.test(att.name||"");
+}
+async function loadAttachments(taskGid){
+  try{
+    const json = await asanaFetch("/tasks/"+taskGid+"/attachments?opt_fields="+encodeURIComponent("name,resource_subtype,download_url,view_url,host"));
+    state.attachments[taskGid] = json.data || [];
+  }catch(e){
+    state.attachments[taskGid] = "error";
+  }
+  return state.attachments[taskGid];
+}
+function ensureAttachmentsLoaded(pieces){
+  let anyStarted = false;
+  pieces.forEach(p=>{
+    if(p.local) return; // no real gid yet, nothing to fetch
+    if(state.attachments[p.gid] === undefined){
+      anyStarted = true;
+      state.attachments[p.gid] = "loading";
+      loadAttachments(p.gid).then(()=>render());
+    }
+  });
+  return anyStarted;
+}
+function firstImageAttachment(taskGid){
+  const list = state.attachments[taskGid];
+  if(!Array.isArray(list)) return null;
+  return list.find(isImageAttachment) || null;
+}
+
+window.triggerImageUpload = function(gid){
+  const input = document.getElementById("imgUploadInput");
+  input.dataset.targetGid = gid;
+  input.value = "";
+  input.click();
+};
+
+async function handleImageUploadChange(ev){
+  const gid = ev.target.dataset.targetGid;
+  const file = ev.target.files && ev.target.files[0];
+  if(!gid || !file) return;
+  const fd = new FormData();
+  fd.append("file", file, file.name);
+  toast("Enviando imagem...");
+  try{
+    const json = await asanaFetch("/tasks/"+gid+"/attachments", { method:"POST", body: fd, timeoutMs: 30000 });
+    const list = Array.isArray(state.attachments[gid]) ? state.attachments[gid] : [];
+    list.unshift(json.data);
+    state.attachments[gid] = list;
+    toast("Imagem adicionada ✓");
+    render();
+  }catch(e){
+    alert("Não foi possível enviar a imagem: "+(e.message||e));
+  }
 }
 
 /* ---------- decision helpers ---------- */
@@ -786,6 +853,23 @@ function renderCard(p, blockKey){
   const pending = state.queue.some(q => q.taskGid===p.gid || q.tempId===p.gid);
   const adjustOpen = state._adjustOpen && state._adjustOpen[p.gid];
 
+  let thumbHtml;
+  if(p.local){
+    thumbHtml = `<div class="thumb thumb-disabled" title="Aguarde a peça sincronizar com o Asana para adicionar imagem"><span class="thumb-placeholder">sincronizando...</span></div>`;
+  } else {
+    const att = firstImageAttachment(p.gid);
+    const loadingAtt = state.attachments[p.gid] === "loading" || state.attachments[p.gid] === undefined;
+    if(att){
+      thumbHtml = `<div class="thumb" onclick="triggerImageUpload('${p.gid}')" title="Clique para trocar a imagem">
+        <img src="${esc(att.download_url||att.view_url)}" alt="">
+      </div>`;
+    } else {
+      thumbHtml = `<div class="thumb" onclick="triggerImageUpload('${p.gid}')" title="Clique para adicionar imagem">
+        <span class="thumb-placeholder">${loadingAtt?"carregando...":"+ imagem"}</span>
+      </div>`;
+    }
+  }
+
   let chips = `<span class="chip seg" style="background:${col.bg};border-color:${col.border};color:${col.text}">${esc(seg)}</span>`;
   if(p.tema) chips += `<span class="chip">${esc(p.tema)}</span>`;
   if(p.moldes!=null) chips += `<span class="chip">Moldes: ${esc(p.moldes)}</span>`;
@@ -811,6 +895,7 @@ function renderCard(p, blockKey){
   }
 
   return `<div class="card">
+    ${thumbHtml}
     <div class="name">${esc(p.name)}</div>
     <div class="chips">${chips}</div>
     ${actionsHtml}
@@ -884,6 +969,7 @@ function render(){
   const pieces = state.tasks.filter(p=>p.colecaoName===name);
   const colecaoGid = pieces.length ? pieces[0].colecaoGid : (state.fieldsMeta["Coleção"].options.find(o=>o.name===name)||{}).gid;
   const snap = ensureSnapshot(name, pieces);
+  ensureAttachmentsLoaded(pieces);
 
   const b1=[], b2=[], b3=[];
   pieces.forEach(p=>{
@@ -993,6 +1079,7 @@ function showFatalError(msg){
 }
 
 document.getElementById("btnReload").onclick = ()=>fullLoad(true);
+document.getElementById("imgUploadInput").addEventListener("change", handleImageUploadChange);
 document.getElementById("btnForget").onclick = ()=>{
   if(!confirm("Esquecer o token salvo neste navegador?")) return;
   localStorage.removeItem(LS_PREFIX+"token");
