@@ -932,15 +932,12 @@ async function fullLoad(showLoading){
   }
 }
 
-document.getElementById("btnConnect").onclick = async ()=>{
+async function attemptConnect(){
   const raw = document.getElementById("tokenInput").value;
   // strip stray non-ASCII / invisible characters that sometimes ride along on copy-paste
   // (smart quotes, ellipsis "…", zero-width spaces, etc.) which break HTTP header encoding
   const val = raw.replace(/[^\x21-\x7E]/g, "").trim();
   if(!val) return;
-  if(val !== raw.trim()){
-    console.warn("Token continha caracteres inválidos que foram removidos automaticamente.");
-  }
   state.token = val;
   const errEl = document.getElementById("connectError");
   const btn = document.getElementById("btnConnect");
@@ -955,12 +952,39 @@ document.getElementById("btnConnect").onclick = async ()=>{
     fullLoad(true);
   }catch(e){
     errEl.classList.remove("hidden");
-    errEl.textContent = "Token inválido ou sem conexão: "+(e.message||e);
+    const msg = String((e&&e.message)||e);
+    if(/Failed to fetch|NetworkError|Load failed/i.test(msg)){
+      errEl.innerHTML = "Não consegui me conectar ao Asana a partir deste arquivo aberto direto (file://). "+
+        "Isso normalmente é bloqueio de segurança do navegador para arquivos locais, não um problema do token. "+
+        "<br><br><strong>Solução:</strong> rode este comando na pasta onde está o arquivo e depois abra "+
+        "<code>http://localhost:3000/painelrevisaomix.html</code> no navegador (em vez de abrir o arquivo direto):"+
+        "<br><code>npx serve .</code><br><br>Erro técnico original: "+esc(msg);
+    } else {
+      errEl.textContent = "Token inválido ou sem conexão: "+msg;
+    }
   }finally{
     btn.disabled = false;
     btn.textContent = "Conectar";
   }
-};
+}
+document.getElementById("btnConnect").onclick = attemptConnect;
+document.getElementById("tokenInput").addEventListener("keydown", (ev)=>{
+  if(ev.key === "Enter") attemptConnect();
+});
+
+/* surface any otherwise-silent JS error directly on screen, no DevTools needed */
+window.addEventListener("error", (ev)=>{
+  showFatalError("Erro inesperado na página: "+(ev.message||ev));
+});
+window.addEventListener("unhandledrejection", (ev)=>{
+  showFatalError("Erro inesperado (promise): "+((ev.reason&&ev.reason.message)||ev.reason));
+});
+function showFatalError(msg){
+  const connectVisible = !document.getElementById("connectScreen").classList.contains("hidden");
+  const target = document.getElementById(connectVisible ? "connectError" : "errBanner");
+  target.classList.remove("hidden");
+  target.textContent = msg;
+}
 
 document.getElementById("btnReload").onclick = ()=>fullLoad(true);
 document.getElementById("btnForget").onclick = ()=>{
