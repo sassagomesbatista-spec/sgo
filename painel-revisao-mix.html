@@ -937,10 +937,16 @@ async function attemptConnect(){
   // strip stray non-ASCII / invisible characters that sometimes ride along on copy-paste
   // (smart quotes, ellipsis "…", zero-width spaces, etc.) which break HTTP header encoding
   const val = raw.replace(/[^\x21-\x7E]/g, "").trim();
-  if(!val) return;
-  state.token = val;
   const errEl = document.getElementById("connectError");
   const btn = document.getElementById("btnConnect");
+  if(!val){
+    errEl.classList.remove("hidden");
+    errEl.textContent = raw.length
+      ? "O texto colado não parece um token válido (ficou vazio depois de limpar caracteres inválidos). Copie o token de novo no Asana e cole aqui."
+      : "Cole o token no campo acima antes de clicar em Conectar — o campo está vazio.";
+    return;
+  }
+  state.token = val;
   errEl.classList.add("hidden");
   btn.disabled = true;
   btn.textContent = "Conectando...";
