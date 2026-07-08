@@ -37,12 +37,17 @@
     .banner.err{background:#3a1c1c;color:#e18787;border-color:#5a2c2c}
   }
   .hidden{display:none !important}
-  #connectScreen{max-width:460px;margin:80px auto;padding:26px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
-  #connectScreen h2{margin-top:0;font-size:17px}
-  #connectScreen p{color:var(--muted);font-size:13px}
-  #connectScreen input{width:100%;margin:8px 0}
-  #connectScreen .row{display:flex;gap:8px}
-  #connectScreen .row button{flex:1}
+  #connectScreen, #projectScreen{max-width:460px;margin:80px auto;padding:26px;background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+  #connectScreen h2, #projectScreen h2{margin-top:0;font-size:17px}
+  #connectScreen p, #projectScreen p{color:var(--muted);font-size:13px}
+  #connectScreen input, #projectScreen input{width:100%;margin:8px 0}
+  #connectScreen .row, #projectScreen .row{display:flex;gap:8px}
+  #connectScreen .row button, #projectScreen .row button{flex:1}
+  .project-item{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border:1px solid var(--border);
+    border-radius:8px;margin-bottom:6px;cursor:pointer;background:var(--bg)}
+  .project-item:hover{border-color:var(--accent)}
+  .project-item .pname{font-weight:600;font-size:13px}
+  .project-item .pgid{font-size:11px;color:var(--muted)}
   .tabs{display:flex;gap:6px;padding:12px 18px 0;flex-wrap:wrap;align-items:center}
   .tab{padding:7px 14px;border-radius:999px;border:1px solid var(--border);background:var(--panel);cursor:pointer;font-weight:600;font-size:13px}
   .tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
@@ -102,9 +107,11 @@
 <body>
 
 <header class="topbar">
-  <h1>STORM · Revisão de Mix</h1>
+  <h1>Revisão de Mix</h1>
+  <span class="meta" id="projectNameLabel"></span>
   <div class="spacer"></div>
   <span class="meta" id="syncMeta"></span>
+  <button class="ghost hidden" id="btnSwitchProject" title="Trocar de cliente/projeto">⇄ Trocar cliente</button>
   <button class="ghost" id="btnReload" title="Recarregar dados do Asana">↻ Recarregar</button>
   <button class="ghost" id="btnForget" title="Esquecer token deste navegador">Desconectar</button>
 </header>
@@ -126,6 +133,19 @@
      pasta com um servidor local simples (ex: <code>npx serve</code>) e abra via http://localhost.</small></p>
 </div>
 
+<div id="projectScreen" class="hidden">
+  <h2>Qual cliente/projeto?</h2>
+  <p>Cada cliente é um projeto separado no Asana. O histórico da reunião (peças já decididas, pendências, etc.) fica
+     guardado por projeto — trocar de cliente aqui não apaga nada dos outros.</p>
+  <div id="recentProjectsList"></div>
+  <p><strong>Novo cliente / outro projeto:</strong></p>
+  <input type="text" id="projectInput" placeholder="Cole o link do projeto no Asana ou o ID dele">
+  <div class="row">
+    <button class="primary" id="btnUseProject">Usar este projeto</button>
+  </div>
+  <p id="projectError" class="hidden" style="color:var(--bad)"></p>
+</div>
+
 <div id="mainScreen" class="hidden">
   <nav class="tabs" id="tabs"></nav>
   <div class="progress-wrap" id="progressWrap"></div>
@@ -144,7 +164,9 @@
 "use strict";
 
 /* ---------- constants ---------- */
-const PROJECT_GID = "1213087540730907";
+let PROJECT_GID = null;           // set once the user picks a client/project
+let PROJECT_NAME = null;
+const LEGACY_PROJECT_GID = "1213087540730907"; // the original hardcoded Storm project, for one-time migration
 const API_BASE = "https://app.asana.com/api/1.0";
 const LS_PREFIX = "painelRevisao.";
 const REQUIRED_FIELDS = ["Segmento","Coleção","Tema","Pacote Moldes Contratado","Pacote Pilotos Contratado","Status de Desenvolvimento"];
@@ -170,28 +192,79 @@ function norm(s){ return (s||"").toString().normalize("NFD").replace(/[̀-ͯ]/g,
 function esc(s){ return (s==null?"":String(s)).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function uid(){ return "tmp_"+Date.now()+"_"+Math.random().toString(36).slice(2,8); }
 function nowStr(){ const d=new Date(); return d.toLocaleDateString("pt-BR")+" "+d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}); }
-function lsGet(key, fallback){ try{ const v=localStorage.getItem(LS_PREFIX+key); return v==null?fallback:JSON.parse(v); }catch(e){ return fallback; } }
-function lsSet(key, val){ try{ localStorage.setItem(LS_PREFIX+key, JSON.stringify(val)); }catch(e){} }
+const GLOBAL_LS_KEYS = new Set(["token","recentProjects","lastProjectGid"]);
+function scopedKey(key){ return GLOBAL_LS_KEYS.has(key) ? key : ("proj_"+(PROJECT_GID||"none")+"."+key); }
+function lsGet(key, fallback){ try{ const v=localStorage.getItem(LS_PREFIX+scopedKey(key)); return v==null?fallback:JSON.parse(v); }catch(e){ return fallback; } }
+function lsSet(key, val){ try{ localStorage.setItem(LS_PREFIX+scopedKey(key), JSON.stringify(val)); }catch(e){} }
 function toast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1400); }
 
-/* ---------- state ---------- */
+/* one-time migration: the tool used to be hardcoded to a single Storm project with unscoped
+   localStorage keys. Copy that old data under the legacy project's own scope so switching
+   between clients later doesn't wipe or mix up what was already decided in meetings. */
+function migrateLegacyDataIfNeeded(){
+  if(localStorage.getItem(LS_PREFIX+"lastProjectGid") != null) return;
+  const legacyShortKeys = ["overrides","localTasks","queue","extraCollections","activeCollection","collapsed","lastSync","cachedTasks","cachedFieldsMeta","cachedSections"];
+  const keysToCopy = [];
+  for(let i=0;i<localStorage.length;i++){
+    const fullKey = localStorage.key(i);
+    if(!fullKey || fullKey.indexOf(LS_PREFIX)!==0) continue;
+    const shortKey = fullKey.slice(LS_PREFIX.length);
+    if(legacyShortKeys.includes(shortKey) || shortKey.indexOf("snapshot_")===0) keysToCopy.push(shortKey);
+  }
+  if(keysToCopy.length===0) return;
+  keysToCopy.forEach(shortKey=>{
+    const val = localStorage.getItem(LS_PREFIX+shortKey);
+    localStorage.setItem(LS_PREFIX+"proj_"+LEGACY_PROJECT_GID+"."+shortKey, val);
+  });
+  localStorage.setItem(LS_PREFIX+"lastProjectGid", JSON.stringify(LEGACY_PROJECT_GID));
+  localStorage.setItem(LS_PREFIX+"recentProjects", JSON.stringify([{gid:LEGACY_PROJECT_GID, name:"[Storm] Mix de Produtos"}]));
+}
+
+function getRecentProjects(){ return lsGet("recentProjects", []); }
+function saveRecentProject(gid, name){
+  const list = getRecentProjects().filter(p=>p.gid!==gid);
+  list.unshift({gid, name});
+  lsSet("recentProjects", list.slice(0,20));
+}
+function loadProjectScopedState(){
+  state.overrides = lsGet("overrides", {});
+  state.localTasks = lsGet("localTasks", []);
+  state.queue = lsGet("queue", []);
+  state.extraCollections = lsGet("extraCollections", []);
+  state.activeCollection = lsGet("activeCollection", null);
+  state.collapsed = lsGet("collapsed", {});
+  state.lastSync = lsGet("lastSync", null);
+  state.cachedTasks = lsGet("cachedTasks", null);
+  state.cachedFieldsMeta = lsGet("cachedFieldsMeta", null);
+  state.cachedSections = lsGet("cachedSections", null);
+  state.attachments = {};
+  state.segmentColors = {};
+  state.tasks = [];
+  state.fieldsMeta = null;
+  state.sections = [];
+  state.decisionOptions = null;
+}
+
+/* ---------- state ----------
+   Everything below except `token` is project-scoped and gets (re)populated by
+   loadProjectScopedState() once a client/project is chosen. */
 let state = {
   token: lsGet("token", null),
   tasks: [],
   fieldsMeta: null,
   sections: [],
   decisionOptions: null,
-  overrides: lsGet("overrides", {}),          // taskGid -> {statusName, note, decidedAt}
-  localTasks: lsGet("localTasks", []),        // client-created tasks not yet confirmed
-  queue: lsGet("queue", []),
-  extraCollections: lsGet("extraCollections", []),
-  activeCollection: lsGet("activeCollection", null),
-  collapsed: lsGet("collapsed", {}),          // colecao -> {bloco1: bool}
+  overrides: {},          // taskGid -> {statusName, note, decidedAt}
+  localTasks: [],         // client-created tasks not yet confirmed
+  queue: [],
+  extraCollections: [],
+  activeCollection: null,
+  collapsed: {},          // colecao -> {bloco1: bool}
   segmentColors: {},
-  lastSync: lsGet("lastSync", null),
-  cachedTasks: lsGet("cachedTasks", null),
-  cachedFieldsMeta: lsGet("cachedFieldsMeta", null),
-  cachedSections: lsGet("cachedSections", null),
+  lastSync: null,
+  cachedTasks: null,
+  cachedFieldsMeta: null,
+  cachedSections: null,
   attachments: {}   // taskGid -> array of {gid,name,download_url,view_url} | "loading" | "error"
 };
 
@@ -1040,8 +1113,7 @@ async function attemptConnect(){
     await asanaFetch("/users/me");
     lsSet("token", state.token);
     document.getElementById("connectScreen").classList.add("hidden");
-    document.getElementById("mainScreen").classList.remove("hidden");
-    fullLoad(true);
+    await goToProjectStep();
   }catch(e){
     errEl.classList.remove("hidden");
     const msg = String((e&&e.message)||e);
@@ -1072,8 +1144,10 @@ window.addEventListener("unhandledrejection", (ev)=>{
   showFatalError("Erro inesperado (promise): "+((ev.reason&&ev.reason.message)||ev.reason));
 });
 function showFatalError(msg){
-  const connectVisible = !document.getElementById("connectScreen").classList.contains("hidden");
-  const target = document.getElementById(connectVisible ? "connectError" : "errBanner");
+  const screenId = !document.getElementById("connectScreen").classList.contains("hidden") ? "connectError"
+    : !document.getElementById("projectScreen").classList.contains("hidden") ? "projectError"
+    : "errBanner";
+  const target = document.getElementById(screenId);
   target.classList.remove("hidden");
   target.textContent = msg;
 }
@@ -1081,17 +1155,103 @@ function showFatalError(msg){
 document.getElementById("btnReload").onclick = ()=>fullLoad(true);
 document.getElementById("imgUploadInput").addEventListener("change", handleImageUploadChange);
 document.getElementById("btnForget").onclick = ()=>{
-  if(!confirm("Esquecer o token salvo neste navegador?")) return;
+  if(!confirm("Esquecer o token salvo neste navegador? (o histórico de reunião dos clientes continua salvo)")) return;
   localStorage.removeItem(LS_PREFIX+"token");
   location.reload();
 };
 document.getElementById("btnExport").onclick = ()=>exportPdf();
 document.getElementById("btnNewMeeting").onclick = ()=>window.newMeeting();
 
-(function boot(){
-  if(state.token){
+/* ---------- client / project switching ---------- */
+function extractProjectGid(input){
+  input = (input||"").trim();
+  if(!input) return null;
+  let m = input.match(/\/project\/(\d+)/);
+  if(m) return m[1];
+  if(/^\d{5,}$/.test(input)) return input;
+  m = input.match(/(\d{10,})/);
+  return m ? m[1] : null;
+}
+
+function renderRecentProjectsList(){
+  const list = getRecentProjects();
+  window._recentProjectsCache = list;
+  const el = document.getElementById("recentProjectsList");
+  if(list.length===0){ el.innerHTML = ""; return; }
+  el.innerHTML = "<p><strong>Clientes recentes:</strong></p>" + list.map((p,i)=>
+    `<div class="project-item" onclick="selectProjectByIndex(${i})">
+       <span class="pname">${esc(p.name)}</span><span class="pgid">${esc(p.gid)}</span>
+     </div>`).join("");
+}
+window.selectProjectByIndex = function(i){
+  const p = (window._recentProjectsCache||[])[i];
+  if(p) selectProject(p.gid, p.name);
+};
+
+async function selectProject(gid, knownName){
+  const errEl = document.getElementById("projectError");
+  const btn = document.getElementById("btnUseProject");
+  errEl.classList.add("hidden");
+  if(btn){ btn.disabled = true; btn.textContent = "Verificando..."; }
+  try{
+    let name = knownName;
+    if(!name){
+      const json = await asanaFetch("/projects/"+gid+"?opt_fields=name");
+      name = json.data.name;
+    }
+    PROJECT_GID = gid;
+    PROJECT_NAME = name;
+    loadProjectScopedState();
+    saveRecentProject(gid, name);
+    lsSet("lastProjectGid", gid);
+    document.getElementById("projectScreen").classList.add("hidden");
     document.getElementById("mainScreen").classList.remove("hidden");
+    document.getElementById("btnSwitchProject").classList.remove("hidden");
+    document.getElementById("projectNameLabel").textContent = "· "+name;
     fullLoad(true);
+  }catch(e){
+    errEl.classList.remove("hidden");
+    errEl.textContent = "Não consegui acessar esse projeto (confira o link/ID e se seu token tem acesso a ele): "+(e.message||e);
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent="Usar este projeto"; }
+  }
+}
+
+async function goToProjectStep(){
+  const lastGid = lsGet("lastProjectGid", null);
+  if(lastGid){
+    const recent = getRecentProjects().find(p=>p.gid===lastGid);
+    await selectProject(lastGid, recent ? recent.name : null);
+  } else {
+    renderRecentProjectsList();
+    document.getElementById("projectScreen").classList.remove("hidden");
+  }
+}
+
+document.getElementById("btnUseProject").onclick = ()=>{
+  const raw = document.getElementById("projectInput").value;
+  const gid = extractProjectGid(raw);
+  const errEl = document.getElementById("projectError");
+  if(!gid){
+    errEl.classList.remove("hidden");
+    errEl.textContent = "Não consegui identificar um ID de projeto nesse texto. Cole o link completo do projeto no Asana ou só o número do ID.";
+    return;
+  }
+  selectProject(gid, null);
+};
+document.getElementById("projectInput").addEventListener("keydown", (ev)=>{
+  if(ev.key === "Enter") document.getElementById("btnUseProject").click();
+});
+document.getElementById("btnSwitchProject").onclick = ()=>{
+  document.getElementById("mainScreen").classList.add("hidden");
+  renderRecentProjectsList();
+  document.getElementById("projectScreen").classList.remove("hidden");
+};
+
+(function boot(){
+  migrateLegacyDataIfNeeded();
+  if(state.token){
+    goToProjectStep();
   } else {
     document.getElementById("connectScreen").classList.remove("hidden");
   }
