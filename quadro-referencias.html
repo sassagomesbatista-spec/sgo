@@ -51,6 +51,9 @@
   .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px}
   .category-group{grid-column:1/-1;background:var(--surface);border-radius:var(--radius);padding:20px 22px;
     box-shadow:var(--shadow-card)}
+  .delivered-badge{background:var(--good-bg);color:var(--good);font-size:12.5px;font-weight:700;
+    padding:9px 14px;border-radius:var(--radius-sm);margin-bottom:14px}
+  .col.delivered, .category-group.delivered{box-shadow:var(--shadow-card),inset 3px 0 0 var(--good)}
   .cat-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 20px;
     padding-bottom:14px;margin-bottom:16px;border-bottom:1px solid var(--line)}
   .cat-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -222,17 +225,17 @@ const IMAGES = [
 // Asana, tag MLD). Categorias com mais de 1 molde viram v\u00e1rios cart\u00f5es (um por molde) dentro do mesmo
 // grupo; categorias com 1 molde continuam sendo um cart\u00e3o s\u00f3, como sempre foram.
 const CATEGORIES = [
-  {id:"ss_perf_macaquinho", label:"SS26/27 \u00b7 Performance \u00b7 Macaquinho/Macac\u00e3o", moldes:1},
+  {id:"ss_perf_macaquinho", label:"SS26/27 \u00b7 Performance \u00b7 Macaquinho/Macac\u00e3o", moldes:1, delivered:true},
   {id:"ss_perf_top", label:"SS26/27 \u00b7 Performance \u00b7 Top com bojo", moldes:3},
-  {id:"ss_perf_legging", label:"SS26/27 \u00b7 Performance \u00b7 Legging", moldes:1},
-  {id:"ss_perf_short", label:"SS26/27 \u00b7 Performance \u00b7 Short/Bermuda", moldes:2},
-  {id:"ss_perf_blusa", label:"SS26/27 \u00b7 Performance \u00b7 Blusa", moldes:4},
+  {id:"ss_perf_legging", label:"SS26/27 \u00b7 Performance \u00b7 Legging", moldes:1, delivered:true},
+  {id:"ss_perf_short", label:"SS26/27 \u00b7 Performance \u00b7 Short/Bermuda", moldes:2, delivered:true},
+  {id:"ss_perf_blusa", label:"SS26/27 \u00b7 Performance \u00b7 Blusa", moldes:4, delivered:true},
   {id:"ss_perf_cropped", label:"SS26/27 \u00b7 Performance \u00b7 Cropped", moldes:1},
-  {id:"ss_perf_calca", label:"SS26/27 \u00b7 Performance \u00b7 Cal\u00e7a", moldes:1},
-  {id:"ss_perf_casaco", label:"SS26/27 \u00b7 Performance \u00b7 Casaco", moldes:3},
+  {id:"ss_perf_calca", label:"SS26/27 \u00b7 Performance \u00b7 Cal\u00e7a", moldes:1, delivered:true},
+  {id:"ss_perf_casaco", label:"SS26/27 \u00b7 Performance \u00b7 Casaco", moldes:3, delivered:true},
   {id:"ss_perf_polo", label:"SS26/27 \u00b7 Performance \u00b7 Blusa Gola Polo Masculina", moldes:2},
-  {id:"ss_ath_macaquinho", label:"SS26/27 \u00b7 Athleisure \u00b7 Macaquinho/Macac\u00e3o", moldes:1},
-  {id:"ss_ath_short", label:"SS26/27 \u00b7 Athleisure \u00b7 Short/Bermuda", moldes:2},
+  {id:"ss_ath_macaquinho", label:"SS26/27 \u00b7 Athleisure \u00b7 Macaquinho/Macac\u00e3o", moldes:1, delivered:true},
+  {id:"ss_ath_short", label:"SS26/27 \u00b7 Athleisure \u00b7 Short/Bermuda", moldes:2, delivered:true},
   {id:"ss_ath_blusa", label:"SS26/27 \u00b7 Athleisure \u00b7 Blusa", moldes:5},
   {id:"ss_ath_polo", label:"SS26/27 \u00b7 Athleisure \u00b7 Blusa Gola Polo Masculina", moldes:3},
   {id:"ss_ath_cropped", label:"SS26/27 \u00b7 Athleisure \u00b7 Cropped", moldes:1},
@@ -266,11 +269,11 @@ const CATEGORIES = [
   {id:"fw_prem_short", label:"FW27 \u00b7 Premium \u00b7 Short/Bermuda", moldes:1},
 
   // FW26 j\u00e1 foi entregue (OS 128) \u2014 s\u00f3 Performance, sem pilotagem contratada.
-  {id:"fw26_perf_macaquinho", label:"FW26 \u00b7 Performance \u00b7 Macaquinho/Macac\u00e3o", moldes:2},
-  {id:"fw26_perf_top", label:"FW26 \u00b7 Performance \u00b7 Top com bojo", moldes:6},
-  {id:"fw26_perf_legging", label:"FW26 \u00b7 Performance \u00b7 Legging", moldes:2},
-  {id:"fw26_perf_short", label:"FW26 \u00b7 Performance \u00b7 Short/Bermuda", moldes:3},
-  {id:"fw26_perf_blusa", label:"FW26 \u00b7 Performance \u00b7 Blusa", moldes:1}
+  {id:"fw26_perf_macaquinho", label:"FW26 \u00b7 Performance \u00b7 Macaquinho/Macac\u00e3o", moldes:2, delivered:true},
+  {id:"fw26_perf_top", label:"FW26 \u00b7 Performance \u00b7 Top com bojo", moldes:6, delivered:true},
+  {id:"fw26_perf_legging", label:"FW26 \u00b7 Performance \u00b7 Legging", moldes:2, delivered:true},
+  {id:"fw26_perf_short", label:"FW26 \u00b7 Performance \u00b7 Short/Bermuda", moldes:3, delivered:true},
+  {id:"fw26_perf_blusa", label:"FW26 \u00b7 Performance \u00b7 Blusa", moldes:1, delivered:true}
 ];
 
 function buildBins(categories){
@@ -536,7 +539,9 @@ function updatePilotoPill(binId){
 }
 
 function categoriesInActiveCollection(){
-  return CATEGORIES.filter(cat => cat.id.split("_")[0] === activeCollection);
+  const list = CATEGORIES.filter(cat => cat.id.split("_")[0] === activeCollection);
+  // Já entregue/feito sobe pro topo da aba, separado do que ainda está pendente.
+  return list.slice().sort((a, b) => (b.delivered ? 1 : 0) - (a.delivered ? 1 : 0));
 }
 
 function renderPilotosSummary(){
@@ -545,7 +550,9 @@ function renderPilotosSummary(){
   categoriesInActiveCollection().forEach(cat => {
     const {feito, contratado} = pilotoInfo(cat.id);
     totalContratado += contratado;
-    totalFeito += feito;
+    // Categorias "já entregue" contam como pilotos concluídos no resumo, mesmo sem o
+    // campo editável de "feito" visível no card (o contrato/contratado não muda).
+    totalFeito += cat.delivered ? contratado : feito;
   });
   const totalRestante = Math.max(0, totalContratado - totalFeito);
   const collLabel = COLLECTION_LABELS[activeCollection] || activeCollection;
@@ -567,7 +574,9 @@ function render(){
   boardEl.innerHTML = "";
   categoriesInActiveCollection().forEach(cat => {
     const catBins = BINS.filter(b => b.categoryId === cat.id);
-    const pilotosRowHtml = `
+    const deliveredBadgeHtml = cat.delivered
+      ? `<div class="delivered-badge">✅ Já entregue ao cliente — imagem de referência é opcional</div>` : "";
+    const pilotosRowHtml = cat.delivered ? "" : `
       <div class="pilotos-row">
         <span class="plabel">Pilotos feitos</span>
         <input type="number" min="0" class="piloto-feito" data-bin="${cat.id}" value="${pilotoInfo(cat.id).feito}">
@@ -579,15 +588,15 @@ function render(){
     if(cat.moldes <= 1){
       const bin = catBins[0];
       const col = document.createElement("div");
-      col.className = "col";
+      col.className = "col" + (cat.delivered ? " delivered" : "");
       const count = images.filter(im => assignment[im.id] === bin.id).length;
-      col.innerHTML = `${catTitleHtml(bin.label, count)}
+      col.innerHTML = `${deliveredBadgeHtml}${catTitleHtml(bin.label, count)}
         ${pilotosRowHtml}
         <div class="dropzone tiles" data-bin="${bin.id}"></div>`;
       boardEl.appendChild(col);
     }else{
       const group = document.createElement("div");
-      group.className = "category-group";
+      group.className = "category-group" + (cat.delivered ? " delivered" : "");
       const totalCount = images.filter(im => catBins.some(b => b.id === assignment[im.id])).length;
       const moldesHtml = catBins.map(b => {
         const mcount = images.filter(im => assignment[im.id] === b.id).length;
@@ -597,6 +606,7 @@ function render(){
         </div>`;
       }).join("");
       group.innerHTML = `
+        ${deliveredBadgeHtml}
         <div class="cat-header">
           ${catTitleHtml(cat.label, totalCount + " no total")}
           ${pilotosRowHtml}
