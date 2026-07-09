@@ -80,7 +80,8 @@
     border-radius:var(--radius);padding:12px 14px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 16px rgba(0,0,0,.05)}
   .importbar input{flex:1;min-width:180px;font:inherit;padding:8px 10px;border-radius:8px;border:1px solid var(--line);
     background:var(--paper);color:var(--ink)}
-  .importbar button{background:var(--indigo);color:#fff;border-color:var(--indigo)}
+  .importbar button{background:var(--indigo);color:#fff;border-color:var(--indigo);white-space:nowrap}
+  .importbar .or-sep{font-size:11.5px;color:var(--ink-3)}
   .importbar .imsg{font-size:11.5px;color:var(--ink-3)}
   .importbar .imsg.err{color:var(--accent)}
   .tile .del{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,.55);
@@ -131,6 +132,9 @@
   <div class="importbar">
     <input type="text" id="importUrl" placeholder="Cole aqui o link de um Pin do Pinterest ou o link direto de uma imagem...">
     <button id="btnImport">+ Importar imagem</button>
+    <span class="or-sep">ou</span>
+    <button id="btnImportFile">📁 Enviar arquivo do computador</button>
+    <input type="file" id="importFileInput" accept="image/*" multiple style="display:none">
     <span class="imsg" id="importMsg"></span>
   </div>
 
@@ -635,6 +639,38 @@ document.getElementById("btnReset").onclick = () => {
 document.getElementById("btnImport").onclick = () => importFromUrl(document.getElementById("importUrl").value);
 document.getElementById("importUrl").addEventListener("keydown", ev => {
   if(ev.key === "Enter") importFromUrl(ev.target.value);
+});
+
+function importFromFile(file){
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const id = "imp_" + Date.now() + "_" + Math.random().toString(36).slice(2,7);
+      imported.push({id, src: reader.result, imported:true});
+      assignment[id] = "extras";
+      resolve();
+    };
+    reader.onerror = () => resolve();
+    reader.readAsDataURL(file);
+  });
+}
+
+document.getElementById("btnImportFile").onclick = () => document.getElementById("importFileInput").click();
+
+document.getElementById("importFileInput").addEventListener("change", async ev => {
+  const files = Array.from(ev.target.files || []);
+  ev.target.value = "";
+  if(!files.length) return;
+  setImportMsg("Enviando " + files.length + " imagem(ns)...");
+  for(const file of files){
+    await importFromFile(file);
+  }
+  saveImported(imported);
+  saveAssignment(assignment);
+  render();
+  setImportMsg(files.length > 1
+    ? files.length + " imagens adicionadas em \"Sem categoria\"."
+    : "Imagem adicionada em \"Sem categoria\".");
 });
 
 function setBackupMsg(text, isErr){
