@@ -195,9 +195,17 @@ const IMAGES = [
 // Asana, tag MLD). Categorias com mais de 1 molde viram v\u00e1rios cart\u00f5es (um por molde) dentro do mesmo
 // grupo; categorias com 1 molde continuam sendo um cart\u00e3o s\u00f3, como sempre foram.
 const CATEGORIES = [
+  {id:"ss_perf_macaquinho", label:"SS26/27 \u00b7 Performance \u00b7 Macaquinho/Macac\u00e3o", moldes:1},
   {id:"ss_perf_top", label:"SS26/27 \u00b7 Performance \u00b7 Top com bojo", moldes:3},
+  {id:"ss_perf_legging", label:"SS26/27 \u00b7 Performance \u00b7 Legging", moldes:1},
+  {id:"ss_perf_short", label:"SS26/27 \u00b7 Performance \u00b7 Short/Bermuda", moldes:2},
+  {id:"ss_perf_blusa", label:"SS26/27 \u00b7 Performance \u00b7 Blusa", moldes:4},
   {id:"ss_perf_cropped", label:"SS26/27 \u00b7 Performance \u00b7 Cropped", moldes:1},
+  {id:"ss_perf_calca", label:"SS26/27 \u00b7 Performance \u00b7 Cal\u00e7a", moldes:1},
+  {id:"ss_perf_casaco", label:"SS26/27 \u00b7 Performance \u00b7 Casaco", moldes:3},
   {id:"ss_perf_polo", label:"SS26/27 \u00b7 Performance \u00b7 Blusa Gola Polo Masculina", moldes:2},
+  {id:"ss_ath_macaquinho", label:"SS26/27 \u00b7 Athleisure \u00b7 Macaquinho/Macac\u00e3o", moldes:1},
+  {id:"ss_ath_short", label:"SS26/27 \u00b7 Athleisure \u00b7 Short/Bermuda", moldes:2},
   {id:"ss_ath_blusa", label:"SS26/27 \u00b7 Athleisure \u00b7 Blusa", moldes:5},
   {id:"ss_ath_polo", label:"SS26/27 \u00b7 Athleisure \u00b7 Blusa Gola Polo Masculina", moldes:3},
   {id:"ss_ath_cropped", label:"SS26/27 \u00b7 Athleisure \u00b7 Cropped", moldes:1},
@@ -207,15 +215,15 @@ const CATEGORIES = [
   {id:"ss_prem_calca", label:"SS26/27 \u00b7 Premium \u00b7 Cal\u00e7a", moldes:2},
   {id:"ss_prem_casaco", label:"SS26/27 \u00b7 Premium \u00b7 Casaco", moldes:2},
   {id:"ss_prem_polo", label:"SS26/27 \u00b7 Premium \u00b7 Blusa Gola Polo Masculina", moldes:1},
-  {id:"fw_perf_macaquinho", label:"FW27 \u00b7 Performance \u00b7 Macaquinho/Macac\u00e3o", moldes:1},
+  {id:"fw_perf_macaquinho", label:"FW27 \u00b7 Performance \u00b7 Macaquinho/Macac\u00e3o", moldes:2},
   {id:"fw_perf_top", label:"FW27 \u00b7 Performance \u00b7 Top com bojo", moldes:4},
   {id:"fw_perf_legging", label:"FW27 \u00b7 Performance \u00b7 Legging", moldes:1},
   {id:"fw_perf_short", label:"FW27 \u00b7 Performance \u00b7 Short/Bermuda", moldes:5},
-  {id:"fw_perf_blusa", label:"FW27 \u00b7 Performance \u00b7 Blusa", moldes:1},
-  {id:"fw_perf_casaco", label:"FW27 \u00b7 Performance \u00b7 Casaco", moldes:1},
-  {id:"fw_perf_polo", label:"FW27 \u00b7 Performance \u00b7 Blusa Gola Polo Masculina", moldes:1},
+  {id:"fw_perf_blusa", label:"FW27 \u00b7 Performance \u00b7 Blusa", moldes:5},
+  {id:"fw_perf_casaco", label:"FW27 \u00b7 Performance \u00b7 Casaco", moldes:4},
+  {id:"fw_perf_polo", label:"FW27 \u00b7 Performance \u00b7 Blusa Gola Polo Masculina", moldes:3},
   {id:"fw_perf_cropped", label:"FW27 \u00b7 Performance \u00b7 Cropped", moldes:1},
-  {id:"fw_perf_calca", label:"FW27 \u00b7 Performance \u00b7 Cal\u00e7a", moldes:1},
+  {id:"fw_perf_calca", label:"FW27 \u00b7 Performance \u00b7 Cal\u00e7a", moldes:3},
   {id:"fw_ath_macaquinho", label:"FW27 \u00b7 Athleisure \u00b7 Macaquinho/Macac\u00e3o", moldes:1},
   {id:"fw_ath_short", label:"FW27 \u00b7 Athleisure \u00b7 Short/Bermuda", moldes:2},
   {id:"fw_ath_blusa", label:"FW27 \u00b7 Athleisure \u00b7 Blusa", moldes:6},
@@ -269,7 +277,12 @@ const SPLIT_MIGRATION = {
   fw_prem_blusa: "fw_prem_blusa_m1",
   fw_prem_calca: "fw_prem_calca_m1",
   fw_prem_casaco: "fw_prem_casaco_m1",
-  fw_prem_polo: "fw_prem_polo_m1"
+  fw_prem_polo: "fw_prem_polo_m1",
+  fw_perf_macaquinho: "fw_perf_macaquinho_m1",
+  fw_perf_blusa: "fw_perf_blusa_m1",
+  fw_perf_casaco: "fw_perf_casaco_m1",
+  fw_perf_polo: "fw_perf_polo_m1",
+  fw_perf_calca: "fw_perf_calca_m1"
 };
 const DEFAULT_ASSIGNMENT = {
   img1: "fw_perf_casaco",
@@ -307,9 +320,17 @@ const DEFAULT_ASSIGNMENT = {
 // "feito" fica 0 aqui de propósito — ninguém sabia quantos já tinham sido feitos a partir
 // dessa tela; isso a Sassa vai preenchendo conforme os pilotos físicos forem ficando prontos.
 const DEFAULT_PILOTOS = {
+  ss_perf_macaquinho: {feito:0, contratado:2},
   ss_perf_top:    {feito:0, contratado:6},
+  ss_perf_legging:{feito:0, contratado:2},
+  ss_perf_short:  {feito:0, contratado:4},
+  ss_perf_blusa:  {feito:0, contratado:8},
   ss_perf_cropped:{feito:0, contratado:2},
+  ss_perf_calca:  {feito:0, contratado:2},
+  ss_perf_casaco: {feito:0, contratado:6},
   ss_perf_polo:   {feito:0, contratado:4},
+  ss_ath_macaquinho: {feito:0, contratado:2},
+  ss_ath_short:   {feito:0, contratado:4},
   ss_ath_blusa:   {feito:0, contratado:10},
   ss_ath_polo:    {feito:0, contratado:6},
   ss_ath_cropped: {feito:0, contratado:2},
