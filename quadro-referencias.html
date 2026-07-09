@@ -123,6 +123,7 @@
       <button id="btnBackupRestore" title="Restaura um arquivo de backup baixado antes">⇧ Restaurar backup</button>
       <input type="file" id="backupFileInput" accept="application/json" style="display:none">
       <button id="btnReset">↺ Resetar sugestão original</button>
+      <button id="btnSyncPilotos" title="Traz de volta os números de pilotos contratados do Asana, sem mexer no que você já preencheu em 'feitos'">🔄 Sincronizar contratados</button>
     </div>
   </header>
   <p id="backupMsg" class="sub" style="display:none"></p>
@@ -633,6 +634,16 @@ document.getElementById("btnReset").onclick = () => {
   hidden = new Set();
   saveHidden(hidden);
   saveAssignment(assignment);
+  render();
+};
+
+document.getElementById("btnSyncPilotos").onclick = () => {
+  if(!confirm("Trazer de volta os números de \"Pilotos contratados\" oficiais do Asana? Isso NÃO mexe no que você já preencheu em \"Pilotos feitos\".")) return;
+  Object.keys(DEFAULT_PILOTOS).forEach(binId => {
+    if(!pilotos[binId]) pilotos[binId] = {feito:0, contratado:0};
+    pilotos[binId].contratado = DEFAULT_PILOTOS[binId].contratado;
+  });
+  savePilotos(pilotos);
   render();
 };
 
