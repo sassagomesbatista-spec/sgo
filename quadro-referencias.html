@@ -673,6 +673,28 @@ document.getElementById("importFileInput").addEventListener("change", async ev =
     : "Imagem adicionada em \"Sem categoria\".");
 });
 
+document.addEventListener("paste", ev => {
+  const items = (ev.clipboardData && ev.clipboardData.items) || [];
+  const imageFiles = Array.from(items)
+    .filter(it => it.type && it.type.startsWith("image/"))
+    .map(it => it.getAsFile())
+    .filter(Boolean);
+  if(!imageFiles.length) return;
+  ev.preventDefault();
+  (async () => {
+    setImportMsg("Colando " + imageFiles.length + " imagem(ns)...");
+    for(const file of imageFiles){
+      await importFromFile(file);
+    }
+    saveImported(imported);
+    saveAssignment(assignment);
+    render();
+    setImportMsg(imageFiles.length > 1
+      ? imageFiles.length + " imagens coladas em \"Sem categoria\"."
+      : "Imagem colada em \"Sem categoria\".");
+  })();
+});
+
 function setBackupMsg(text, isErr){
   const el = document.getElementById("backupMsg");
   el.textContent = text;
