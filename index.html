@@ -28,12 +28,12 @@
   header.topbar h1{font-size:17px;margin:0;font-weight:700;letter-spacing:-.01em}
   header.topbar .spacer{flex:1}
   header.topbar .meta{font-size:12.5px;color:var(--ink-3)}
-  button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid transparent;
+  button,a.ghost{font:inherit;cursor:pointer;border-radius:10px;border:1px solid transparent;
     background:transparent;color:var(--ink-2);padding:8px 14px;transition:background .15s,color .15s,border-color .15s}
-  button:hover{background:var(--ring)}
+  button:hover,a.ghost:hover{background:var(--ring)}
   button.primary{background:var(--ink);border-color:var(--ink);color:var(--surface);font-weight:600}
   button.primary:hover{filter:brightness(1.15)}
-  button.ghost{color:var(--ink-3);font-size:12.5px;padding:6px 10px}
+  button.ghost,a.ghost{color:var(--ink-3);font-size:12.5px;padding:6px 10px;text-decoration:none;display:inline-flex;align-items:center;white-space:nowrap}
   button:disabled{opacity:.35;cursor:not-allowed;background:transparent}
   input[type=text],input[type=password],textarea,select{
     font:inherit;padding:9px 12px;border-radius:10px;border:1px solid var(--hairline);background:var(--surface);color:var(--ink)}
@@ -158,6 +158,7 @@
   <span class="meta" id="projectNameLabel"></span>
   <div class="spacer"></div>
   <span class="meta" id="syncMeta"></span>
+  <a class="ghost" id="linkQuadroReferencias" href="quadro-referencias.html" target="_blank" rel="noopener" title="Abrir o quadro editável de referências">🖼 Quadro de referências</a>
   <button class="ghost hidden" id="btnSwitchProject" title="Trocar de cliente/projeto">⇄ Trocar cliente</button>
   <button class="ghost" id="btnReload" title="Recarregar dados do Asana">↻ Recarregar</button>
   <button class="ghost" id="btnForget" title="Esquecer token deste navegador">Desconectar</button>

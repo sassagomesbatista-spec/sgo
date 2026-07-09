@@ -23,10 +23,10 @@
   .eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--indigo)}
   h1{font-family:Georgia,serif;font-size:25px;margin:6px 0 4px;letter-spacing:-.01em}
   .sub{color:var(--ink-2);font-size:13px;max-width:60ch}
-  .actions{display:flex;gap:8px;flex-shrink:0}
-  button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--surface);
-    color:var(--ink-2);padding:8px 14px;font-size:12.5px;font-weight:600}
-  button:hover{border-color:var(--ink)}
+  .actions{display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
+  button,a.ghost{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--surface);
+    color:var(--ink-2);padding:8px 14px;font-size:12.5px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center}
+  button:hover,a.ghost:hover{border-color:var(--ink)}
 
   #extras-wrap{margin-bottom:28px}
   #extras-wrap h2{font-family:Georgia,serif;font-size:16px;margin:0 0 4px}
@@ -76,9 +76,14 @@
          automaticamente (não precisa clicar em nada pra salvar).</p>
     </div>
     <div class="actions">
+      <a class="ghost" href="painel-revisao-mix.html">← Painel de revisão</a>
+      <button id="btnBackupDownload" title="Baixa um arquivo com todo o arranjo atual">⇓ Baixar backup</button>
+      <button id="btnBackupRestore" title="Restaura um arquivo de backup baixado antes">⇧ Restaurar backup</button>
+      <input type="file" id="backupFileInput" accept="application/json" style="display:none">
       <button id="btnReset">↺ Resetar sugestão original</button>
     </div>
   </header>
+  <p id="backupMsg" class="sub" style="display:none"></p>
 
   <div class="importbar">
     <input type="text" id="importUrl" placeholder="Cole aqui o link de um Pin do Pinterest ou o link direto de uma imagem...">
@@ -361,6 +366,65 @@ document.getElementById("btnReset").onclick = () => {
 document.getElementById("btnImport").onclick = () => importFromUrl(document.getElementById("importUrl").value);
 document.getElementById("importUrl").addEventListener("keydown", ev => {
   if(ev.key === "Enter") importFromUrl(ev.target.value);
+});
+
+function setBackupMsg(text, isErr){
+  const el = document.getElementById("backupMsg");
+  el.textContent = text;
+  el.style.display = text ? "block" : "none";
+  el.style.color = isErr ? "var(--accent)" : "";
+}
+
+document.getElementById("btnBackupDownload").onclick = () => {
+  const payload = {
+    tipo: "quadroEditavel.backup",
+    versao: 1,
+    salvoEm: new Date().toISOString(),
+    assignment,
+    imported
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type: "application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const stamp = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `quadro-referencias-backup-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  setBackupMsg("Backup baixado. Guarde esse arquivo em um lugar seguro (ex: Google Drive) — ele restaura tudo, mesmo em outro computador.");
+};
+
+document.getElementById("btnBackupRestore").onclick = () => document.getElementById("backupFileInput").click();
+
+document.getElementById("backupFileInput").addEventListener("change", ev => {
+  const file = ev.target.files[0];
+  ev.target.value = "";
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    let data;
+    try{
+      data = JSON.parse(reader.result);
+    }catch(e){
+      setBackupMsg("Esse arquivo não é um backup válido (não consegui ler como JSON).", true);
+      return;
+    }
+    if(!data || typeof data.assignment !== "object" || !Array.isArray(data.imported)){
+      setBackupMsg("Esse arquivo não parece ser um backup deste quadro.", true);
+      return;
+    }
+    if(!confirm("Restaurar esse backup vai substituir o arranjo atual (as posições e as imagens importadas por link). Continuar?")) return;
+    assignment = data.assignment;
+    imported = data.imported;
+    saveAssignment(assignment);
+    saveImported(imported);
+    render();
+    setBackupMsg("Backup restaurado com sucesso.");
+  };
+  reader.onerror = () => setBackupMsg("Não consegui ler esse arquivo.", true);
+  reader.readAsText(file);
 });
 
 render();
