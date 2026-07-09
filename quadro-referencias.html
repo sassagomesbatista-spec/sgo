@@ -297,16 +297,22 @@ async function importFromUrl(rawUrl){
 
   const isPinPage = /pinterest\.[a-z.]+\/pin\//i.test(url);
   if(isPinPage){
+    let thumb = null;
     try{
       const oembedUrl = "https://www.pinterest.com/oembed.json?url=" + encodeURIComponent(url);
       const res = await fetch(oembedUrl);
       if(res.ok){
         const data = await res.json();
-        if(data && data.thumbnail_url) src = data.thumbnail_url;
+        if(data && data.thumbnail_url) thumb = data.thumbnail_url;
       }
     }catch(e){
-      // CORS ou rede bloqueou o oEmbed — segue com a URL colada mesmo (pode não ser uma imagem direta)
+      // CORS ou rede bloqueou o oEmbed
     }
+    if(!thumb){
+      setImportMsg("Não consegui puxar a miniatura desse link de Pin automaticamente. No Pinterest, clique com o botão direito em cima da imagem (não no link da página) → \"Copiar endereço da imagem\" → cole esse link aqui.", true);
+      return;
+    }
+    src = thumb;
   }
 
   imported.push({id, src, imported:true});
@@ -314,9 +320,7 @@ async function importFromUrl(rawUrl){
   saveImported(imported);
   saveAssignment(assignment);
   render();
-  setImportMsg(isPinPage
-    ? "Imagem adicionada em \"Sem categoria\". Se não aparecer, cole o link direto da imagem em vez do link do Pin."
-    : "Imagem adicionada em \"Sem categoria\".");
+  setImportMsg("Imagem adicionada em \"Sem categoria\".");
   document.getElementById("importUrl").value = "";
 }
 
