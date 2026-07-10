@@ -74,17 +74,11 @@
   .seg-badge.seg-performance{background:var(--indigo-bg);color:var(--indigo)}
   .seg-badge.seg-athleisure{background:var(--accent-bg);color:var(--accent)}
   .seg-badge.seg-premium{background:var(--premium-bg);color:var(--premium)}
-  .moldes-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
-  .molde-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px}
+  .moldes-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px}
+  .molde-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-sm);padding:14px}
   .molde-card.molde-done{border-color:var(--good);box-shadow:inset 0 0 0 1px var(--good)}
-  .molde-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
-  .molde-card h4{font-size:10px;font-weight:700;color:var(--ink-3);margin:0;
+  .molde-card h4{font-size:10px;font-weight:700;color:var(--ink-3);margin:0 0 10px;
     text-transform:uppercase;letter-spacing:.06em}
-  .molde-finalize-toggle{flex-shrink:0;width:22px;height:22px;border-radius:50%;border:1px solid var(--line);
-    background:var(--surface);color:var(--ink-3);cursor:pointer;font-size:11px;padding:0;
-    display:flex;align-items:center;justify-content:center}
-  .molde-finalize-toggle:hover{border-color:var(--good)}
-  .molde-finalize-toggle.on{background:var(--good);border-color:var(--good)}
   .col{background:var(--surface);border-radius:var(--radius);padding:18px 20px;
     box-shadow:var(--shadow-card);display:flex;flex-direction:column}
   .col .cat-title{margin-bottom:12px}
@@ -515,18 +509,55 @@ function loadImported(){
 function saveImported(list){
   safeLSSet(LS_IMPORTED_KEY, JSON.stringify(list));
 }
+// O contrato só nos dá o total de pilotos por CATEGORIA (ex: 6 pra "Top com bojo" com 3 moldes).
+// A observação da OS 126 confirma "2 peças pilotos de cada modelo" — dividindo o total pelo
+// número de moldes chega exatamente nesse valor, então é uma divisão real, não um chute.
+function defaultPilotosForBin(binId){
+  const bin = BINS.find(b => b.id === binId);
+  if(!bin) return {feito:0, contratado:0};
+  const cat = CATEGORIES.find(c => c.id === bin.categoryId);
+  const catDefault = DEFAULT_PILOTOS[bin.categoryId] || {feito:0, contratado:0};
+  if(!cat || cat.moldes <= 1) return Object.assign({feito:0, contratado:0}, catDefault);
+  const perMolde = Math.round((catDefault.contratado || 0) / cat.moldes);
+  return {feito:0, contratado: perMolde};
+}
+
 function loadPilotos(){
   let stored = {};
   try{
     const raw = localStorage.getItem(LS_PILOTOS_KEY);
     if(raw) stored = JSON.parse(raw);
   }catch(e){}
+
   const merged = {};
-  Object.keys(DEFAULT_PILOTOS).forEach(binId => {
-    merged[binId] = Object.assign({feito:0, contratado:0}, DEFAULT_PILOTOS[binId], stored[binId] || {});
+  CATEGORIES.forEach(cat => {
+    const catBins = BINS.filter(b => b.categoryId === cat.id);
+    if(cat.moldes <= 1){
+      const def = defaultPilotosForBin(cat.id);
+      merged[cat.id] = Object.assign({feito:0, contratado:0}, def, stored[cat.id] || {});
+      return;
+    }
+    // Migração: se existir um valor antigo (de quando o contador era só por categoria) e
+    // os moldes individuais ainda não tiverem sido migrados, distribui o "feito" antigo
+    // sequencialmente entre os moldes, preenchendo a cota de cada um antes de passar pro próximo.
+    const oldCatEntry = stored[cat.id];
+    const anyMoldeAlreadyMigrated = catBins.some(b => stored[b.id]);
+    let remainingFeito = (oldCatEntry && !anyMoldeAlreadyMigrated) ? (oldCatEntry.feito || 0) : null;
+    catBins.forEach(b => {
+      const def = defaultPilotosForBin(b.id);
+      if(stored[b.id]){
+        merged[b.id] = Object.assign({feito:0, contratado:0}, def, stored[b.id]);
+      }else if(remainingFeito !== null){
+        const moldeFeito = Math.min(remainingFeito, def.contratado);
+        merged[b.id] = {feito: moldeFeito, contratado: def.contratado};
+        remainingFeito -= moldeFeito;
+      }else{
+        merged[b.id] = def;
+      }
+    });
   });
-  Object.keys(stored).forEach(binId => {
-    if(!merged[binId]) merged[binId] = stored[binId];
+  Object.keys(stored).forEach(id => {
+    if(!merged[id]) merged[id] = stored[id];
   });
   return merged;
 }
@@ -558,11 +589,18 @@ function saveHidden(set){
 // A partir daqui quem controla o que está finalizado é a Sassa, pelo botão em cada card.
 const DEFAULT_FINALIZADO_IDS = ["ss_perf_macaquinho", "ss_perf_legging", "ss_perf_short", "ss_perf_blusa", "ss_perf_calca", "ss_perf_casaco", "ss_ath_macaquinho", "ss_ath_short", "fw26_perf_macaquinho", "fw26_perf_top", "fw26_perf_legging", "fw26_perf_short", "fw26_perf_blusa"];
 function loadFinalizado(){
+  let set;
   try{
     const raw = localStorage.getItem(LS_FINALIZADO_KEY);
-    if(raw) return new Set(JSON.parse(raw));
-  }catch(e){}
-  return new Set(DEFAULT_FINALIZADO_IDS);
+    set = raw ? new Set(JSON.parse(raw)) : new Set(DEFAULT_FINALIZADO_IDS);
+  }catch(e){
+    set = new Set(DEFAULT_FINALIZADO_IDS);
+  }
+  // Categoria marcada como finalizada (do esquema antigo) passa esse status pra cada molde dela.
+  CATEGORIES.filter(cat => cat.moldes > 1 && set.has(cat.id)).forEach(cat => {
+    BINS.filter(b => b.categoryId === cat.id).forEach(b => set.add(b.id));
+  });
+  return set;
 }
 function saveFinalizado(set){
   safeLSSet(LS_FINALIZADO_KEY, JSON.stringify([...set]));
@@ -682,9 +720,12 @@ function renderPilotosSummary(){
   const el = document.getElementById("pilotosSummary");
   let totalContratado = 0, totalFeito = 0;
   categoriesInActiveCollection().forEach(cat => {
-    const {feito, contratado} = pilotoInfo(cat.id);
-    totalContratado += contratado;
-    totalFeito += feito;
+    const catBins = cat.moldes <= 1 ? [{id: cat.id}] : BINS.filter(b => b.categoryId === cat.id);
+    catBins.forEach(b => {
+      const {feito, contratado} = pilotoInfo(b.id);
+      totalContratado += contratado;
+      totalFeito += feito;
+    });
   });
   const totalRestante = Math.max(0, totalContratado - totalFeito);
   const collLabel = COLLECTION_LABELS[activeCollection] || activeCollection;
@@ -703,48 +744,51 @@ function render(){
 
   renderCollectionTabs();
 
+  function pilotosRowHtml(binId){
+    const isFinal = finalizado.has(binId);
+    return `
+      <div class="pilotos-row">
+        <span class="plabel">Pilotos entregues</span>
+        <input type="number" min="0" class="piloto-feito" data-bin="${binId}" value="${pilotoInfo(binId).feito}">
+        <span class="plabel">de</span>
+        <input type="number" min="0" class="piloto-contratado" data-bin="${binId}" value="${pilotoInfo(binId).contratado}">
+        ${pilotoPillHtml(binId)}
+        <button class="finalize-toggle${isFinal?' on':''}" data-finalize="${binId}">
+          ${isFinal ? "✅ Finalizado" : "☐ Marcar como finalizado"}</button>
+      </div>`;
+  }
+
   boardEl.innerHTML = "";
   categoriesInActiveCollection().forEach(cat => {
     const catBins = BINS.filter(b => b.categoryId === cat.id);
-    const isFinal = finalizado.has(cat.id);
-    const deliveredBadgeHtml = isFinal
-      ? `<div class="delivered-badge">✅ Finalizado / entregue ao cliente</div>` : "";
-    const finalizeBtnHtml = `<button class="finalize-toggle${isFinal?' on':''}" data-finalize="${cat.id}">
-      ${isFinal ? "✅ Finalizado" : "☐ Marcar como finalizado"}</button>`;
-    const pilotosRowHtml = `
-      <div class="pilotos-row">
-        <span class="plabel">Pilotos entregues</span>
-        <input type="number" min="0" class="piloto-feito" data-bin="${cat.id}" value="${pilotoInfo(cat.id).feito}">
-        <span class="plabel">de</span>
-        <input type="number" min="0" class="piloto-contratado" data-bin="${cat.id}" value="${pilotoInfo(cat.id).contratado}">
-        ${pilotoPillHtml(cat.id)}
-        ${finalizeBtnHtml}
-      </div>`;
 
     if(cat.moldes <= 1){
       const bin = catBins[0];
+      const isFinal = finalizado.has(bin.id);
+      const deliveredBadgeHtml = isFinal
+        ? `<div class="delivered-badge">✅ Finalizado / entregue ao cliente</div>` : "";
       const col = document.createElement("div");
       col.className = "col" + (isFinal ? " delivered" : "");
       col.dataset.catId = cat.id;
       const count = images.filter(im => assignment[im.id] === bin.id).length;
       col.innerHTML = `${deliveredBadgeHtml}${catTitleHtml(bin.label, count, bin.id, false)}
-        ${pilotosRowHtml}
+        ${pilotosRowHtml(bin.id)}
         <div class="dropzone tiles" data-bin="${bin.id}"></div>`;
       boardEl.appendChild(col);
     }else{
+      const allMoldesFinal = catBins.every(b => finalizado.has(b.id));
       const group = document.createElement("div");
-      group.className = "category-group" + (isFinal ? " delivered" : "");
+      group.className = "category-group" + (allMoldesFinal ? " delivered" : "");
       group.dataset.catId = cat.id;
       const totalCount = images.filter(im => catBins.some(b => b.id === assignment[im.id])).length;
+      const deliveredBadgeHtml = allMoldesFinal
+        ? `<div class="delivered-badge">✅ Todos os moldes finalizados / entregues ao cliente</div>` : "";
       const moldesHtml = catBins.map(b => {
         const mcount = images.filter(im => assignment[im.id] === b.id).length;
         const moldeFinal = finalizado.has(b.id);
         return `<div class="molde-card${moldeFinal ? ' molde-done' : ''}">
-          <div class="molde-head">
-            <h4>Molde ${b.moldeIndex} de ${b.moldes} <span class="count" data-count-for="${b.id}">(${mcount})</span></h4>
-            <button class="molde-finalize-toggle${moldeFinal ? ' on' : ''}" data-finalize="${b.id}" title="Marcar esse molde como concluído">
-              ${moldeFinal ? "✅" : "☐"}</button>
-          </div>
+          <h4>Molde ${b.moldeIndex} de ${b.moldes} <span class="count" data-count-for="${b.id}">(${mcount})</span></h4>
+          ${pilotosRowHtml(b.id)}
           <div class="dropzone tiles" data-bin="${b.id}"></div>
         </div>`;
       }).join("");
@@ -752,7 +796,6 @@ function render(){
         ${deliveredBadgeHtml}
         <div class="cat-header">
           ${catTitleHtml(cat.label, totalCount + " no total", cat.id, true)}
-          ${pilotosRowHtml}
         </div>
         <div class="moldes-row">${moldesHtml}</div>`;
       boardEl.appendChild(group);
@@ -827,39 +870,28 @@ function render(){
   });
 
   document.querySelectorAll(".finalize-toggle").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const catId = btn.dataset.finalize;
-      if(finalizado.has(catId)){
-        finalizado.delete(catId);
+    btn.addEventListener("click", ev => {
+      ev.stopPropagation();
+      const binId = btn.dataset.finalize;
+      if(finalizado.has(binId)){
+        finalizado.delete(binId);
       }else{
-        finalizado.add(catId);
-        // Marcar como finalizado assume que os pilotos contratados dessa categoria já
+        finalizado.add(binId);
+        // Marcar como finalizado assume que os pilotos contratados desse molde/categoria já
         // foram todos entregues (não dá pra estar finalizado com piloto faltando).
-        if(!pilotos[catId]) pilotos[catId] = {feito:0, contratado:0};
-        pilotos[catId].feito = pilotos[catId].contratado;
+        if(!pilotos[binId]) pilotos[binId] = {feito:0, contratado:0};
+        pilotos[binId].feito = pilotos[binId].contratado;
         savePilotos(pilotos);
       }
       saveFinalizado(finalizado);
       render();
       // O card não muda de lugar — só pisca rapidinho no mesmo lugar pra confirmar o clique.
-      const moved = document.querySelector(`[data-cat-id="${catId}"]`);
+      const moved = document.querySelector(`[data-cat-id="${binId}"]`) ||
+        [...document.querySelectorAll(".molde-card")].find(c => c.querySelector(`[data-finalize="${binId}"]`));
       if(moved){
         moved.classList.add("just-moved");
         setTimeout(() => moved.classList.remove("just-moved"), 900);
       }
-    });
-  });
-
-  document.querySelectorAll(".molde-finalize-toggle").forEach(btn => {
-    btn.addEventListener("click", ev => {
-      ev.stopPropagation();
-      const binId = btn.dataset.finalize;
-      if(finalizado.has(binId)) finalizado.delete(binId);
-      else finalizado.add(binId);
-      saveFinalizado(finalizado);
-      btn.closest(".molde-card").classList.toggle("molde-done", finalizado.has(binId));
-      btn.classList.toggle("on", finalizado.has(binId));
-      btn.textContent = finalizado.has(binId) ? "✅" : "☐";
     });
   });
 
@@ -969,9 +1001,9 @@ document.getElementById("btnReset").onclick = () => {
 
 document.getElementById("btnSyncPilotos").onclick = () => {
   if(!confirm("Trazer de volta os números de \"Pilotos contratados\" oficiais do Asana? Isso NÃO mexe no que você já preencheu em \"Pilotos feitos\".")) return;
-  Object.keys(DEFAULT_PILOTOS).forEach(binId => {
-    if(!pilotos[binId]) pilotos[binId] = {feito:0, contratado:0};
-    pilotos[binId].contratado = DEFAULT_PILOTOS[binId].contratado;
+  BINS.forEach(b => {
+    if(!pilotos[b.id]) pilotos[b.id] = {feito:0, contratado:0};
+    pilotos[b.id].contratado = defaultPilotosForBin(b.id).contratado;
   });
   savePilotos(pilotos);
   render();
