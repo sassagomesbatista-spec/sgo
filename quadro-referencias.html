@@ -586,10 +586,28 @@ function parseCategoryLabel(label){
 function segClass(segment){
   return (segment || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
-function catTitleHtml(label, countText){
+function catTitleHtml(label, countText, countForId, isTotal){
   const {segment, piece} = parseCategoryLabel(label);
+  const cls = "count" + (isTotal ? " count-total" : "");
   return `<div class="cat-title"><span class="seg-badge seg-${segClass(segment)}">${segment}</span>
-    <h3>${piece} <span class="count">(${countText})</span></h3></div>`;
+    <h3>${piece} <span class="${cls}" data-count-for="${countForId}">(${countText})</span></h3></div>`;
+}
+
+function computeCount(id){
+  const images = allImages();
+  const cat = CATEGORIES.find(c => c.id === id);
+  if(cat && cat.moldes > 1){
+    const catBins = BINS.filter(b => b.categoryId === id);
+    return images.filter(im => catBins.some(b => b.id === assignment[im.id])).length;
+  }
+  return images.filter(im => assignment[im.id] === id).length;
+}
+
+function updateCountBadge(id){
+  document.querySelectorAll(`[data-count-for="${id}"]`).forEach(span => {
+    const n = computeCount(id);
+    span.textContent = span.classList.contains("count-total") ? `(${n} no total)` : `(${n})`;
+  });
 }
 
 function pilotoInfo(binId){
@@ -669,7 +687,7 @@ function render(){
       col.className = "col" + (isFinal ? " delivered" : "");
       col.dataset.catId = cat.id;
       const count = images.filter(im => assignment[im.id] === bin.id).length;
-      col.innerHTML = `${deliveredBadgeHtml}${catTitleHtml(bin.label, count)}
+      col.innerHTML = `${deliveredBadgeHtml}${catTitleHtml(bin.label, count, bin.id, false)}
         ${pilotosRowHtml}
         <div class="dropzone tiles" data-bin="${bin.id}"></div>`;
       boardEl.appendChild(col);
@@ -681,14 +699,14 @@ function render(){
       const moldesHtml = catBins.map(b => {
         const mcount = images.filter(im => assignment[im.id] === b.id).length;
         return `<div class="molde-card">
-          <h4>Molde ${b.moldeIndex} de ${b.moldes} <span class="count">(${mcount})</span></h4>
+          <h4>Molde ${b.moldeIndex} de ${b.moldes} <span class="count" data-count-for="${b.id}">(${mcount})</span></h4>
           <div class="dropzone tiles" data-bin="${b.id}"></div>
         </div>`;
       }).join("");
       group.innerHTML = `
         ${deliveredBadgeHtml}
         <div class="cat-header">
-          ${catTitleHtml(cat.label, totalCount + " no total")}
+          ${catTitleHtml(cat.label, totalCount + " no total", cat.id, true)}
           ${pilotosRowHtml}
         </div>
         <div class="moldes-row">${moldesHtml}</div>`;
@@ -833,6 +851,25 @@ async function importFromUrl(rawUrl){
   document.getElementById("importUrl").value = "";
 }
 
+function moveTileInPlace(imgId, oldBin, newBin){
+  const tile = document.querySelector(`.tile[data-img-id="${imgId}"]`);
+  const newZone = document.querySelector(`.dropzone[data-bin="${newBin}"]`);
+  const oldZone = document.querySelector(`.dropzone[data-bin="${oldBin}"]`);
+  if(tile && newZone){
+    newZone.appendChild(tile);
+  }
+  [oldZone, newZone].forEach(zone => {
+    if(zone && zone.dataset.bin !== "extras"){
+      zone.classList.toggle("empty", zone.children.length === 0);
+    }
+  });
+  [oldBin, newBin].forEach(binId => {
+    updateCountBadge(binId);
+    const parentCat = BINS.find(b => b.id === binId);
+    if(parentCat) updateCountBadge(parentCat.categoryId);
+  });
+}
+
 function wireDragEvents(){
   document.querySelectorAll(".tile").forEach(tile => {
     tile.addEventListener("dragstart", ev => {
@@ -852,9 +889,12 @@ function wireDragEvents(){
       zone.classList.remove("dragover");
       const imgId = ev.dataTransfer.getData("text/plain");
       if(!imgId) return;
-      assignment[imgId] = zone.dataset.bin;
+      const oldBin = assignment[imgId] || "extras";
+      const newBin = zone.dataset.bin;
+      if(oldBin === newBin) return;
+      assignment[imgId] = newBin;
       saveAssignment(assignment);
-      render();
+      moveTileInPlace(imgId, oldBin, newBin);
     });
   });
 }
