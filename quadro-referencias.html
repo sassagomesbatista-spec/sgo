@@ -615,9 +615,9 @@ function updatePilotoPill(binId){
 }
 
 function categoriesInActiveCollection(){
-  const list = CATEGORIES.filter(cat => cat.id.split("_")[0] === activeCollection);
-  // Finalizado sobe pro topo da aba, separado do que ainda está pendente.
-  return list.slice().sort((a, b) => (finalizado.has(b.id) ? 1 : 0) - (finalizado.has(a.id) ? 1 : 0));
+  // Ordem fixa (a mesma sempre) — marcar como finalizado só muda a cor/selo do card,
+  // ele nunca troca de lugar na tela.
+  return CATEGORIES.filter(cat => cat.id.split("_")[0] === activeCollection);
 }
 
 function renderPilotosSummary(){
@@ -778,13 +778,11 @@ function render(){
       }
       saveFinalizado(finalizado);
       render();
-      // O card muda de posição (finalizado sobe pro topo da aba) — rola até ele e pisca
-      // rapidinho, pra não parecer que ele sumiu.
+      // O card não muda de lugar — só pisca rapidinho no mesmo lugar pra confirmar o clique.
       const moved = document.querySelector(`[data-cat-id="${catId}"]`);
       if(moved){
-        moved.scrollIntoView({behavior:"smooth", block:"center"});
         moved.classList.add("just-moved");
-        setTimeout(() => moved.classList.remove("just-moved"), 1200);
+        setTimeout(() => moved.classList.remove("just-moved"), 900);
       }
     });
   });
