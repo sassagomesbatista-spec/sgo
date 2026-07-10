@@ -436,10 +436,16 @@ function loadAssignment(){
   let a;
   try{
     const raw = localStorage.getItem(LS_KEY);
-    a = raw ? JSON.parse(raw) : Object.assign({}, DEFAULT_ASSIGNMENT);
+    a = raw ? JSON.parse(raw) : {};
   }catch(e){
-    a = Object.assign({}, DEFAULT_ASSIGNMENT);
+    a = {};
   }
+  // Imagens novas (adicionadas depois que alguém já salvou um arranjo neste navegador) não
+  // tinham posição nesse mapa salvo — completa com a sugestão original só pra essas, sem
+  // mexer em nenhuma posição que a pessoa já tenha ajustado.
+  Object.keys(DEFAULT_ASSIGNMENT).forEach(imgId => {
+    if(!(imgId in a)) a[imgId] = DEFAULT_ASSIGNMENT[imgId];
+  });
   normalizeAssignment(a);
   return a;
 }
