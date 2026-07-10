@@ -53,6 +53,11 @@
     box-shadow:var(--shadow-card)}
   .delivered-badge{background:var(--good-bg);color:var(--good);font-size:12.5px;font-weight:700;
     padding:9px 14px;border-radius:var(--radius-sm);margin-bottom:14px}
+  .storage-warning{background:var(--bad-bg,#fbe7e6);color:var(--bad,#a13a3a);font-size:13.5px;font-weight:700;
+    padding:14px 18px;border-radius:var(--radius);margin-bottom:18px;box-shadow:var(--shadow-card)}
+  .storage-warning.hidden{display:none}
+  .storage-warning .btn-download-now{margin-left:10px;font-weight:700;background:var(--bad,#a13a3a);
+    color:#fff;border:none;border-radius:8px;padding:7px 14px;cursor:pointer;font-size:12.5px}
   .col.delivered, .category-group.delivered{box-shadow:var(--shadow-card),inset 3px 0 0 var(--good)}
   .just-moved{animation:justMovedFlash 1.2s ease-out}
   @keyframes justMovedFlash{
@@ -163,6 +168,7 @@
     </div>
   </header>
   <p id="backupMsg" class="sub" style="display:none"></p>
+  <div id="storageWarning" class="storage-warning hidden"></div>
 
   <nav class="collection-tabs" id="collectionTabs"></nav>
 
@@ -428,6 +434,33 @@ const DEFAULT_PILOTOS = {
 <script>
 (function(){
 "use strict";
+
+function showStorageWarning(){
+  const el = document.getElementById("storageWarning");
+  if(!el) return;
+  el.classList.remove("hidden");
+  el.innerHTML = '⚠️ A última alteração NÃO foi salva — o navegador está sem espaço de armazenamento ' +
+    '(provavelmente por causa das imagens importadas). Baixe um backup agora pra não perder nada, ' +
+    'e depois apague algumas imagens importadas que você não precisa mais.' +
+    '<button class="btn-download-now" id="btnStorageWarnBackup">⇓ Baixar backup agora</button>';
+  const btn = document.getElementById("btnStorageWarnBackup");
+  if(btn) btn.onclick = () => document.getElementById("btnBackupDownload").click();
+}
+function hideStorageWarning(){
+  const el = document.getElementById("storageWarning");
+  if(el) el.classList.add("hidden");
+}
+function safeLSSet(key, value){
+  try{
+    localStorage.setItem(key, value);
+    hideStorageWarning();
+    return true;
+  }catch(e){
+    showStorageWarning();
+    return false;
+  }
+}
+
 const LS_KEY = "quadroEditavel.assignment.v1";
 const LS_IMPORTED_KEY = "quadroEditavel.imported.v1";
 const LS_PILOTOS_KEY = "quadroEditavel.pilotos.v1";
@@ -463,7 +496,7 @@ function loadAssignment(){
   return a;
 }
 function saveAssignment(a){
-  try{ localStorage.setItem(LS_KEY, JSON.stringify(a)); }catch(e){}
+  safeLSSet(LS_KEY, JSON.stringify(a));
 }
 function loadImported(){
   try{
@@ -473,7 +506,7 @@ function loadImported(){
   return [];
 }
 function saveImported(list){
-  try{ localStorage.setItem(LS_IMPORTED_KEY, JSON.stringify(list)); }catch(e){}
+  safeLSSet(LS_IMPORTED_KEY, JSON.stringify(list));
 }
 function loadPilotos(){
   let stored = {};
@@ -491,7 +524,7 @@ function loadPilotos(){
   return merged;
 }
 function savePilotos(p){
-  try{ localStorage.setItem(LS_PILOTOS_KEY, JSON.stringify(p)); }catch(e){}
+  safeLSSet(LS_PILOTOS_KEY, JSON.stringify(p));
 }
 function loadApproved(){
   try{
@@ -501,7 +534,7 @@ function loadApproved(){
   return new Set();
 }
 function saveApproved(set){
-  try{ localStorage.setItem(LS_APPROVED_KEY, JSON.stringify([...set])); }catch(e){}
+  safeLSSet(LS_APPROVED_KEY, JSON.stringify([...set]));
 }
 function loadHidden(){
   try{
@@ -511,7 +544,7 @@ function loadHidden(){
   return new Set();
 }
 function saveHidden(set){
-  try{ localStorage.setItem(LS_HIDDEN_KEY, JSON.stringify([...set])); }catch(e){}
+  safeLSSet(LS_HIDDEN_KEY, JSON.stringify([...set]));
 }
 
 // Ponto de partida: essas categorias já foram confirmadas como entregues/feitas (Asana + OS 128).
@@ -525,7 +558,7 @@ function loadFinalizado(){
   return new Set(DEFAULT_FINALIZADO_IDS);
 }
 function saveFinalizado(set){
-  try{ localStorage.setItem(LS_FINALIZADO_KEY, JSON.stringify([...set])); }catch(e){}
+  safeLSSet(LS_FINALIZADO_KEY, JSON.stringify([...set]));
 }
 
 let assignment = loadAssignment();
@@ -560,7 +593,7 @@ function loadActiveCollection(){
   return COLLECTION_KEYS.includes(key) ? key : COLLECTION_KEYS[0];
 }
 function saveActiveCollection(key){
-  try{ localStorage.setItem(LS_ACTIVE_COLLECTION_KEY, key); }catch(e){}
+  safeLSSet(LS_ACTIVE_COLLECTION_KEY, key);
 }
 let activeCollection = loadActiveCollection();
 
@@ -924,12 +957,36 @@ document.getElementById("importUrl").addEventListener("keydown", ev => {
   if(ev.key === "Enter") importFromUrl(ev.target.value);
 });
 
+function compressImageDataUrl(dataUrl, maxDim, quality){
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      let {width, height} = img;
+      if(width > maxDim || height > maxDim){
+        const scale = maxDim / Math.max(width, height);
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
 function importFromFile(file){
   return new Promise(resolve => {
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       const id = "imp_" + Date.now() + "_" + Math.random().toString(36).slice(2,7);
-      imported.push({id, src: reader.result, imported:true});
+      // Fotos de celular/print vêm enormes (às vezes vários MB) — comprime antes de guardar,
+      // senão o navegador estoura o limite de armazenamento depois de poucas imagens.
+      const compressed = await compressImageDataUrl(reader.result, 1000, 0.82);
+      imported.push({id, src: compressed, imported:true});
       assignment[id] = "extras";
       resolve();
     };
