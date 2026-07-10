@@ -54,6 +54,11 @@
   .delivered-badge{background:var(--good-bg);color:var(--good);font-size:12.5px;font-weight:700;
     padding:9px 14px;border-radius:var(--radius-sm);margin-bottom:14px}
   .col.delivered, .category-group.delivered{box-shadow:var(--shadow-card),inset 3px 0 0 var(--good)}
+  .just-moved{animation:justMovedFlash 1.2s ease-out}
+  @keyframes justMovedFlash{
+    0%{outline:3px solid var(--indigo); outline-offset:2px}
+    100%{outline:3px solid transparent; outline-offset:2px}
+  }
   .cat-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 20px;
     padding-bottom:14px;margin-bottom:16px;border-bottom:1px solid var(--line)}
   .cat-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -662,6 +667,7 @@ function render(){
       const bin = catBins[0];
       const col = document.createElement("div");
       col.className = "col" + (isFinal ? " delivered" : "");
+      col.dataset.catId = cat.id;
       const count = images.filter(im => assignment[im.id] === bin.id).length;
       col.innerHTML = `${deliveredBadgeHtml}${catTitleHtml(bin.label, count)}
         ${pilotosRowHtml}
@@ -670,6 +676,7 @@ function render(){
     }else{
       const group = document.createElement("div");
       group.className = "category-group" + (isFinal ? " delivered" : "");
+      group.dataset.catId = cat.id;
       const totalCount = images.filter(im => catBins.some(b => b.id === assignment[im.id])).length;
       const moldesHtml = catBins.map(b => {
         const mcount = images.filter(im => assignment[im.id] === b.id).length;
@@ -771,6 +778,14 @@ function render(){
       }
       saveFinalizado(finalizado);
       render();
+      // O card muda de posição (finalizado sobe pro topo da aba) — rola até ele e pisca
+      // rapidinho, pra não parecer que ele sumiu.
+      const moved = document.querySelector(`[data-cat-id="${catId}"]`);
+      if(moved){
+        moved.scrollIntoView({behavior:"smooth", block:"center"});
+        moved.classList.add("just-moved");
+        setTimeout(() => moved.classList.remove("just-moved"), 1200);
+      }
     });
   });
 
