@@ -76,8 +76,15 @@
   .seg-badge.seg-premium{background:var(--premium-bg);color:var(--premium)}
   .moldes-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
   .molde-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px}
-  .molde-card h4{font-size:10px;font-weight:700;color:var(--ink-3);margin:0 0 8px;
+  .molde-card.molde-done{border-color:var(--good);box-shadow:inset 0 0 0 1px var(--good)}
+  .molde-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+  .molde-card h4{font-size:10px;font-weight:700;color:var(--ink-3);margin:0;
     text-transform:uppercase;letter-spacing:.06em}
+  .molde-finalize-toggle{flex-shrink:0;width:22px;height:22px;border-radius:50%;border:1px solid var(--line);
+    background:var(--surface);color:var(--ink-3);cursor:pointer;font-size:11px;padding:0;
+    display:flex;align-items:center;justify-content:center}
+  .molde-finalize-toggle:hover{border-color:var(--good)}
+  .molde-finalize-toggle.on{background:var(--good);border-color:var(--good)}
   .col{background:var(--surface);border-radius:var(--radius);padding:18px 20px;
     box-shadow:var(--shadow-card);display:flex;flex-direction:column}
   .col .cat-title{margin-bottom:12px}
@@ -731,8 +738,13 @@ function render(){
       const totalCount = images.filter(im => catBins.some(b => b.id === assignment[im.id])).length;
       const moldesHtml = catBins.map(b => {
         const mcount = images.filter(im => assignment[im.id] === b.id).length;
-        return `<div class="molde-card">
-          <h4>Molde ${b.moldeIndex} de ${b.moldes} <span class="count" data-count-for="${b.id}">(${mcount})</span></h4>
+        const moldeFinal = finalizado.has(b.id);
+        return `<div class="molde-card${moldeFinal ? ' molde-done' : ''}">
+          <div class="molde-head">
+            <h4>Molde ${b.moldeIndex} de ${b.moldes} <span class="count" data-count-for="${b.id}">(${mcount})</span></h4>
+            <button class="molde-finalize-toggle${moldeFinal ? ' on' : ''}" data-finalize="${b.id}" title="Marcar esse molde como concluído">
+              ${moldeFinal ? "✅" : "☐"}</button>
+          </div>
           <div class="dropzone tiles" data-bin="${b.id}"></div>
         </div>`;
       }).join("");
@@ -835,6 +847,19 @@ function render(){
         moved.classList.add("just-moved");
         setTimeout(() => moved.classList.remove("just-moved"), 900);
       }
+    });
+  });
+
+  document.querySelectorAll(".molde-finalize-toggle").forEach(btn => {
+    btn.addEventListener("click", ev => {
+      ev.stopPropagation();
+      const binId = btn.dataset.finalize;
+      if(finalizado.has(binId)) finalizado.delete(binId);
+      else finalizado.add(binId);
+      saveFinalizado(finalizado);
+      btn.closest(".molde-card").classList.toggle("molde-done", finalizado.has(binId));
+      btn.classList.toggle("on", finalizado.has(binId));
+      btn.textContent = finalizado.has(binId) ? "✅" : "☐";
     });
   });
 
