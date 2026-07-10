@@ -624,6 +624,26 @@ let approved = loadApproved();
 let hidden = loadHidden();
 let finalizado = loadFinalizado();
 
+// Se o painel estiver aberto em mais de uma aba/janela ao mesmo tempo (ex: uma aba com o
+// painel e outra com o site de referência pra copiar imagem), cada aba só carrega o estado
+// do localStorage uma vez, ao abrir. Sem isso, uma ação numa aba (colar uma imagem) fica só
+// na memória da OUTRA aba até ela salvar de novo qualquer coisa — e aí ela sobrescreve o
+// localStorage com a versão antiga, apagando em silêncio o que a primeira aba tinha colado.
+// Esse listener mantém todas as abas sincronizadas com o que foi salvo por último.
+window.addEventListener("storage", ev => {
+  if(!ev.key) return;
+  switch(ev.key){
+    case LS_KEY: assignment = loadAssignment(); break;
+    case LS_IMPORTED_KEY: imported = loadImported(); break;
+    case LS_PILOTOS_KEY: pilotos = loadPilotos(); break;
+    case LS_APPROVED_KEY: approved = loadApproved(); break;
+    case LS_HIDDEN_KEY: hidden = loadHidden(); break;
+    case LS_FINALIZADO_KEY: finalizado = loadFinalizado(); break;
+    default: return;
+  }
+  render();
+});
+
 // Toda categoria marcada como finalizada tem que estar com pilotos entregues = contratado,
 // mesmo as que vieram pré-marcadas (não só as que foram clicadas nesta sessão).
 finalizado.forEach(catId => {
