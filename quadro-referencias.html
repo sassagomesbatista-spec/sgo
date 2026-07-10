@@ -104,7 +104,7 @@
   .tile{width:150px;height:188px;border-radius:10px;overflow:hidden;cursor:grab;box-shadow:0 2px 6px rgba(0,0,0,.16);
     position:relative;background:var(--paper);transition:transform .12s,box-shadow .12s}
   .tile:hover{transform:translateY(-2px);box-shadow:0 6px 14px rgba(0,0,0,.20)}
-  .tile img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+  .tile img{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none}
   .tile.dragging{opacity:.35}
   #extras-bin .tiles{gap:12px}
   #extras-bin .tile{width:165px;height:206px}
@@ -279,10 +279,10 @@ const CATEGORIES = [
   {id:"ss_ath_cropped", label:"SS26/27 \u00b7 Athleisure \u00b7 Cropped", moldes:1},
   {id:"ss_ath_casaco", label:"SS26/27 \u00b7 Athleisure \u00b7 Casaco", moldes:3},
   {id:"ss_ath_calca", label:"SS26/27 \u00b7 Athleisure \u00b7 Cal\u00e7a", moldes:2},
-  {id:"ss_prem_blusa", label:"SS26/27 \u00b7 Premium \u00b7 Blusa", moldes:3},
-  {id:"ss_prem_calca", label:"SS26/27 \u00b7 Premium \u00b7 Cal\u00e7a", moldes:2},
-  {id:"ss_prem_casaco", label:"SS26/27 \u00b7 Premium \u00b7 Casaco", moldes:2},
-  {id:"ss_prem_polo", label:"SS26/27 \u00b7 Premium \u00b7 Blusa Gola Polo Masculina", moldes:1},
+  {id:"ss_prem_blusa", label:"SS26/27 \u00b7 Premium-Seamless \u00b7 Blusa", moldes:3},
+  {id:"ss_prem_calca", label:"SS26/27 \u00b7 Premium-Seamless \u00b7 Cal\u00e7a", moldes:2},
+  {id:"ss_prem_casaco", label:"SS26/27 \u00b7 Premium-Seamless \u00b7 Casaco", moldes:2},
+  {id:"ss_prem_polo", label:"SS26/27 \u00b7 Premium-Seamless \u00b7 Blusa Gola Polo Masculina", moldes:1},
   {id:"fw_perf_macaquinho", label:"FW27 \u00b7 Performance \u00b7 Macaquinho/Macac\u00e3o", moldes:2},
   {id:"fw_perf_top", label:"FW27 \u00b7 Performance \u00b7 Top com bojo", moldes:4},
   {id:"fw_perf_legging", label:"FW27 \u00b7 Performance \u00b7 Legging", moldes:1},
@@ -299,12 +299,12 @@ const CATEGORIES = [
   {id:"fw_ath_cropped", label:"FW27 \u00b7 Athleisure \u00b7 Cropped", moldes:1},
   {id:"fw_ath_casaco", label:"FW27 \u00b7 Athleisure \u00b7 Casaco", moldes:3},
   {id:"fw_ath_calca", label:"FW27 \u00b7 Athleisure \u00b7 Cal\u00e7a", moldes:2},
-  {id:"fw_prem_blusa", label:"FW27 \u00b7 Premium \u00b7 Blusa", moldes:3},
-  {id:"fw_prem_calca", label:"FW27 \u00b7 Premium \u00b7 Cal\u00e7a", moldes:3},
-  {id:"fw_prem_casaco", label:"FW27 \u00b7 Premium \u00b7 Casaco", moldes:2},
-  {id:"fw_prem_polo", label:"FW27 \u00b7 Premium \u00b7 Blusa Gola Polo Masculina", moldes:2},
-  {id:"fw_prem_macaquinho", label:"FW27 \u00b7 Premium \u00b7 Macaquinho/Macac\u00e3o", moldes:1},
-  {id:"fw_prem_short", label:"FW27 \u00b7 Premium \u00b7 Short/Bermuda", moldes:1},
+  {id:"fw_prem_blusa", label:"FW27 \u00b7 Premium-Seamless \u00b7 Blusa", moldes:3},
+  {id:"fw_prem_calca", label:"FW27 \u00b7 Premium-Seamless \u00b7 Cal\u00e7a", moldes:3},
+  {id:"fw_prem_casaco", label:"FW27 \u00b7 Premium-Seamless \u00b7 Casaco", moldes:2},
+  {id:"fw_prem_polo", label:"FW27 \u00b7 Premium-Seamless \u00b7 Blusa Gola Polo Masculina", moldes:2},
+  {id:"fw_prem_macaquinho", label:"FW27 \u00b7 Premium-Seamless \u00b7 Macaquinho/Macac\u00e3o", moldes:1},
+  {id:"fw_prem_short", label:"FW27 \u00b7 Premium-Seamless \u00b7 Short/Bermuda", moldes:1},
 
   // FW26 j\u00e1 foi entregue (OS 128) \u2014 s\u00f3 Performance, sem pilotagem contratada.
   {id:"fw26_perf_macaquinho", label:"FW26 \u00b7 Performance \u00b7 Macaquinho/Macac\u00e3o", moldes:2},
@@ -1061,9 +1061,11 @@ document.getElementById("importFileInput").addEventListener("change", async ev =
   setImportMsg("Enviando " + files.length + " imagem(ns)...");
   for(const file of files){
     await importFromFile(file);
+    // Salva a cada imagem, não só no final do lote — se a página for recarregada no meio
+    // do processo, o que já foi processado não se perde.
+    saveImported(imported);
+    saveAssignment(assignment);
   }
-  saveImported(imported);
-  saveAssignment(assignment);
   render();
   setImportMsg(files.length > 1
     ? files.length + " imagens adicionadas em \"Sem categoria\"."
@@ -1082,9 +1084,11 @@ document.addEventListener("paste", ev => {
     setImportMsg("Colando " + imageFiles.length + " imagem(ns)...");
     for(const file of imageFiles){
       await importFromFile(file);
+      // Salva a cada imagem, não só no final do lote — se a página for recarregada no meio
+      // do processo, o que já foi processado não se perde.
+      saveImported(imported);
+      saveAssignment(assignment);
     }
-    saveImported(imported);
-    saveAssignment(assignment);
     render();
     setImportMsg(imageFiles.length > 1
       ? imageFiles.length + " imagens coladas em \"Sem categoria\"."
