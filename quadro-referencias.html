@@ -440,6 +440,7 @@ function showStorageWarning(){
   const el = document.getElementById("storageWarning");
   if(!el) return;
   el.classList.remove("hidden");
+  el.dataset.warnType = "quota";
   el.innerHTML = '⚠️ A última alteração NÃO foi salva — o navegador está sem espaço de armazenamento ' +
     '(provavelmente por causa das imagens importadas). Baixe um backup agora pra não perder nada, ' +
     'e depois apague algumas imagens importadas que você não precisa mais.' +
@@ -449,7 +450,9 @@ function showStorageWarning(){
 }
 function hideStorageWarning(){
   const el = document.getElementById("storageWarning");
-  if(el) el.classList.add("hidden");
+  // Um aviso de corrupção não pode ser escondido só porque outra chave, sem relação, salvou
+  // com sucesso logo em seguida — só desaparece quando ela mesma for corrigida/dispensada.
+  if(el && el.dataset.warnType !== "corruption") el.classList.add("hidden");
 }
 function safeLSSet(key, value){
   try{
@@ -459,6 +462,36 @@ function safeLSSet(key, value){
   }catch(e){
     showStorageWarning();
     return false;
+  }
+}
+
+function showCorruptionWarning(key){
+  const el = document.getElementById("storageWarning");
+  if(!el) return;
+  el.classList.remove("hidden");
+  el.dataset.warnType = "corruption";
+  el.innerHTML = '⚠️ Encontrei dados corrompidos no seu navegador (provavelmente de uma falha de salvamento ' +
+    'antiga) — isso pode ter apagado imagens ou posições que já estavam salvas. Se você tiver um backup ' +
+    'baixado de antes, restaure ele agora pra recuperar.' +
+    '<button class="btn-download-now" id="btnStorageWarnRestore">⇧ Restaurar backup</button>' +
+    '<button class="btn-download-now" id="btnStorageWarnDismiss" style="background:transparent;color:inherit;border:1px solid currentColor">✕ Já resolvi, dispensar</button>';
+  const btn = document.getElementById("btnStorageWarnRestore");
+  if(btn) btn.onclick = () => document.getElementById("btnBackupRestore").click();
+  const dismissBtn = document.getElementById("btnStorageWarnDismiss");
+  if(dismissBtn) dismissBtn.onclick = () => { el.dataset.warnType = ""; el.classList.add("hidden"); };
+}
+
+// Lê e faz o parse de uma chave do localStorage com segurança. Se o JSON estiver corrompido
+// (sobra de uma falha de salvamento anterior), avisa na tela em vez de resetar em silêncio.
+function safeLSGetParsed(key){
+  let raw = null;
+  try{ raw = localStorage.getItem(key); }catch(e){ return {ok:true, value:null}; }
+  if(!raw) return {ok:true, value:null};
+  try{
+    return {ok:true, value: JSON.parse(raw)};
+  }catch(e){
+    showCorruptionWarning(key);
+    return {ok:false, value:null};
   }
 }
 
@@ -480,13 +513,8 @@ function normalizeAssignment(a){
 }
 
 function loadAssignment(){
-  let a;
-  try{
-    const raw = localStorage.getItem(LS_KEY);
-    a = raw ? JSON.parse(raw) : {};
-  }catch(e){
-    a = {};
-  }
+  const parsed = safeLSGetParsed(LS_KEY);
+  let a = parsed.value || {};
   // Imagens novas (adicionadas depois que alguém já salvou um arranjo neste navegador) não
   // tinham posição nesse mapa salvo — completa com a sugestão original só pra essas, sem
   // mexer em nenhuma posição que a pessoa já tenha ajustado.
@@ -500,11 +528,8 @@ function saveAssignment(a){
   safeLSSet(LS_KEY, JSON.stringify(a));
 }
 function loadImported(){
-  try{
-    const raw = localStorage.getItem(LS_IMPORTED_KEY);
-    if(raw) return JSON.parse(raw);
-  }catch(e){}
-  return [];
+  const parsed = safeLSGetParsed(LS_IMPORTED_KEY);
+  return Array.isArray(parsed.value) ? parsed.value : [];
 }
 function saveImported(list){
   safeLSSet(LS_IMPORTED_KEY, JSON.stringify(list));
@@ -523,11 +548,8 @@ function defaultPilotosForBin(binId){
 }
 
 function loadPilotos(){
-  let stored = {};
-  try{
-    const raw = localStorage.getItem(LS_PILOTOS_KEY);
-    if(raw) stored = JSON.parse(raw);
-  }catch(e){}
+  const parsed = safeLSGetParsed(LS_PILOTOS_KEY);
+  const stored = parsed.value || {};
 
   const merged = {};
   CATEGORIES.forEach(cat => {
@@ -565,21 +587,15 @@ function savePilotos(p){
   safeLSSet(LS_PILOTOS_KEY, JSON.stringify(p));
 }
 function loadApproved(){
-  try{
-    const raw = localStorage.getItem(LS_APPROVED_KEY);
-    if(raw) return new Set(JSON.parse(raw));
-  }catch(e){}
-  return new Set();
+  const parsed = safeLSGetParsed(LS_APPROVED_KEY);
+  return new Set(Array.isArray(parsed.value) ? parsed.value : []);
 }
 function saveApproved(set){
   safeLSSet(LS_APPROVED_KEY, JSON.stringify([...set]));
 }
 function loadHidden(){
-  try{
-    const raw = localStorage.getItem(LS_HIDDEN_KEY);
-    if(raw) return new Set(JSON.parse(raw));
-  }catch(e){}
-  return new Set();
+  const parsed = safeLSGetParsed(LS_HIDDEN_KEY);
+  return new Set(Array.isArray(parsed.value) ? parsed.value : []);
 }
 function saveHidden(set){
   safeLSSet(LS_HIDDEN_KEY, JSON.stringify([...set]));
@@ -589,13 +605,8 @@ function saveHidden(set){
 // A partir daqui quem controla o que está finalizado é a Sassa, pelo botão em cada card.
 const DEFAULT_FINALIZADO_IDS = ["ss_perf_macaquinho", "ss_perf_legging", "ss_perf_short", "ss_perf_blusa", "ss_perf_calca", "ss_perf_casaco", "ss_ath_macaquinho", "ss_ath_short", "fw26_perf_macaquinho", "fw26_perf_top", "fw26_perf_legging", "fw26_perf_short", "fw26_perf_blusa"];
 function loadFinalizado(){
-  let set;
-  try{
-    const raw = localStorage.getItem(LS_FINALIZADO_KEY);
-    set = raw ? new Set(JSON.parse(raw)) : new Set(DEFAULT_FINALIZADO_IDS);
-  }catch(e){
-    set = new Set(DEFAULT_FINALIZADO_IDS);
-  }
+  const parsed = safeLSGetParsed(LS_FINALIZADO_KEY);
+  const set = Array.isArray(parsed.value) ? new Set(parsed.value) : new Set(DEFAULT_FINALIZADO_IDS);
   // Categoria marcada como finalizada (do esquema antigo) passa esse status pra cada molde dela.
   CATEGORIES.filter(cat => cat.moldes > 1 && set.has(cat.id)).forEach(cat => {
     BINS.filter(b => b.categoryId === cat.id).forEach(b => set.add(b.id));
