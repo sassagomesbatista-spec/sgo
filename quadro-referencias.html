@@ -81,6 +81,10 @@
   .piloto-pill{font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--line);color:var(--ink-3)}
   .piloto-pill.good{background:var(--good-bg);color:var(--good)}
   .piloto-pill.warn{background:var(--warn-bg);color:var(--warn)}
+  .finalize-toggle{font-size:10.5px;font-weight:700;padding:5px 11px;border-radius:999px;
+    border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer;white-space:nowrap}
+  .finalize-toggle:hover{border-color:var(--good)}
+  .finalize-toggle.on{background:var(--good);border-color:var(--good);color:#fff}
   .dropzone{min-height:78px;flex:1;border-radius:var(--radius-sm);transition:background .15s;padding:2px}
   .dropzone.dragover{background:var(--indigo-bg)}
   .dropzone.empty::after{content:"arraste uma imagem aqui";display:block;font-size:11.5px;color:var(--ink-3);
@@ -182,8 +186,11 @@
     desktop (mouse); em celular/tablet pode não funcionar tão bem, use um navegador de computador se possível.
     Cada categoria vazia mostra "arraste uma imagem aqui". O botão "Resetar sugestão original" volta tudo para o
     pareamento que eu tinha sugerido no relatório.<br><br>
-    <strong>Pilotos:</strong> em cada categoria/modelo, preencha "Pilotos feitos" e o total contratado — o selo ao
+    <strong>Pilotos:</strong> em cada categoria/modelo, preencha "Pilotos entregues" e o total contratado — o selo ao
     lado mostra quantos ainda faltam (ou "✓ completo"). O resumo no topo soma tudo.<br>
+    <strong>Finalizado:</strong> clique em "☐ Marcar como finalizado" quando a categoria inteira já foi entregue —
+    ela ganha um selo verde, sobe pro topo da aba, e "Pilotos entregues" preenche sozinho com o total contratado.
+    Clique de novo pra desmarcar.<br>
     <strong>Aprovação do cliente:</strong> clique no ✓ no canto superior esquerdo de uma imagem para marcá-la como a
     favorita do cliente — ela ganha uma borda verde e a etiqueta "aprovado pelo cliente". Clique de novo para desmarcar.
   </div>
@@ -244,17 +251,17 @@ const FW26_IMAGES = [
 // Asana, tag MLD). Categorias com mais de 1 molde viram v\u00e1rios cart\u00f5es (um por molde) dentro do mesmo
 // grupo; categorias com 1 molde continuam sendo um cart\u00e3o s\u00f3, como sempre foram.
 const CATEGORIES = [
-  {id:"ss_perf_macaquinho", label:"SS26/27 \u00b7 Performance \u00b7 Macaquinho/Macac\u00e3o", moldes:1, delivered:true},
+  {id:"ss_perf_macaquinho", label:"SS26/27 \u00b7 Performance \u00b7 Macaquinho/Macac\u00e3o", moldes:1},
   {id:"ss_perf_top", label:"SS26/27 \u00b7 Performance \u00b7 Top com bojo", moldes:3},
-  {id:"ss_perf_legging", label:"SS26/27 \u00b7 Performance \u00b7 Legging", moldes:1, delivered:true},
-  {id:"ss_perf_short", label:"SS26/27 \u00b7 Performance \u00b7 Short/Bermuda", moldes:2, delivered:true},
-  {id:"ss_perf_blusa", label:"SS26/27 \u00b7 Performance \u00b7 Blusa", moldes:4, delivered:true},
+  {id:"ss_perf_legging", label:"SS26/27 \u00b7 Performance \u00b7 Legging", moldes:1},
+  {id:"ss_perf_short", label:"SS26/27 \u00b7 Performance \u00b7 Short/Bermuda", moldes:2},
+  {id:"ss_perf_blusa", label:"SS26/27 \u00b7 Performance \u00b7 Blusa", moldes:4},
   {id:"ss_perf_cropped", label:"SS26/27 \u00b7 Performance \u00b7 Cropped", moldes:1},
-  {id:"ss_perf_calca", label:"SS26/27 \u00b7 Performance \u00b7 Cal\u00e7a", moldes:1, delivered:true},
-  {id:"ss_perf_casaco", label:"SS26/27 \u00b7 Performance \u00b7 Casaco", moldes:3, delivered:true},
+  {id:"ss_perf_calca", label:"SS26/27 \u00b7 Performance \u00b7 Cal\u00e7a", moldes:1},
+  {id:"ss_perf_casaco", label:"SS26/27 \u00b7 Performance \u00b7 Casaco", moldes:3},
   {id:"ss_perf_polo", label:"SS26/27 \u00b7 Performance \u00b7 Blusa Gola Polo Masculina", moldes:2},
-  {id:"ss_ath_macaquinho", label:"SS26/27 \u00b7 Athleisure \u00b7 Macaquinho/Macac\u00e3o", moldes:1, delivered:true},
-  {id:"ss_ath_short", label:"SS26/27 \u00b7 Athleisure \u00b7 Short/Bermuda", moldes:2, delivered:true},
+  {id:"ss_ath_macaquinho", label:"SS26/27 \u00b7 Athleisure \u00b7 Macaquinho/Macac\u00e3o", moldes:1},
+  {id:"ss_ath_short", label:"SS26/27 \u00b7 Athleisure \u00b7 Short/Bermuda", moldes:2},
   {id:"ss_ath_blusa", label:"SS26/27 \u00b7 Athleisure \u00b7 Blusa", moldes:5},
   {id:"ss_ath_polo", label:"SS26/27 \u00b7 Athleisure \u00b7 Blusa Gola Polo Masculina", moldes:3},
   {id:"ss_ath_cropped", label:"SS26/27 \u00b7 Athleisure \u00b7 Cropped", moldes:1},
@@ -288,11 +295,11 @@ const CATEGORIES = [
   {id:"fw_prem_short", label:"FW27 \u00b7 Premium \u00b7 Short/Bermuda", moldes:1},
 
   // FW26 j\u00e1 foi entregue (OS 128) \u2014 s\u00f3 Performance, sem pilotagem contratada.
-  {id:"fw26_perf_macaquinho", label:"FW26 \u00b7 Performance \u00b7 Macaquinho/Macac\u00e3o", moldes:2, delivered:true},
-  {id:"fw26_perf_top", label:"FW26 \u00b7 Performance \u00b7 Top com bojo", moldes:6, delivered:true},
-  {id:"fw26_perf_legging", label:"FW26 \u00b7 Performance \u00b7 Legging", moldes:2, delivered:true},
-  {id:"fw26_perf_short", label:"FW26 \u00b7 Performance \u00b7 Short/Bermuda", moldes:3, delivered:true},
-  {id:"fw26_perf_blusa", label:"FW26 \u00b7 Performance \u00b7 Blusa", moldes:1, delivered:true}
+  {id:"fw26_perf_macaquinho", label:"FW26 \u00b7 Performance \u00b7 Macaquinho/Macac\u00e3o", moldes:2},
+  {id:"fw26_perf_top", label:"FW26 \u00b7 Performance \u00b7 Top com bojo", moldes:6},
+  {id:"fw26_perf_legging", label:"FW26 \u00b7 Performance \u00b7 Legging", moldes:2},
+  {id:"fw26_perf_short", label:"FW26 \u00b7 Performance \u00b7 Short/Bermuda", moldes:3},
+  {id:"fw26_perf_blusa", label:"FW26 \u00b7 Performance \u00b7 Blusa", moldes:1}
 ];
 
 function buildBins(categories){
@@ -421,6 +428,7 @@ const LS_IMPORTED_KEY = "quadroEditavel.imported.v1";
 const LS_PILOTOS_KEY = "quadroEditavel.pilotos.v1";
 const LS_APPROVED_KEY = "quadroEditavel.approved.v1";
 const LS_HIDDEN_KEY = "quadroEditavel.hidden.v1";
+const LS_FINALIZADO_KEY = "quadroEditavel.finalizado.v1";
 
 function normalizeAssignment(a){
   const validBins = new Set(BINS.map(b => b.id));
@@ -501,11 +509,35 @@ function saveHidden(set){
   try{ localStorage.setItem(LS_HIDDEN_KEY, JSON.stringify([...set])); }catch(e){}
 }
 
+// Ponto de partida: essas categorias já foram confirmadas como entregues/feitas (Asana + OS 128).
+// A partir daqui quem controla o que está finalizado é a Sassa, pelo botão em cada card.
+const DEFAULT_FINALIZADO_IDS = ["ss_perf_macaquinho", "ss_perf_legging", "ss_perf_short", "ss_perf_blusa", "ss_perf_calca", "ss_perf_casaco", "ss_ath_macaquinho", "ss_ath_short", "fw26_perf_macaquinho", "fw26_perf_top", "fw26_perf_legging", "fw26_perf_short", "fw26_perf_blusa"];
+function loadFinalizado(){
+  try{
+    const raw = localStorage.getItem(LS_FINALIZADO_KEY);
+    if(raw) return new Set(JSON.parse(raw));
+  }catch(e){}
+  return new Set(DEFAULT_FINALIZADO_IDS);
+}
+function saveFinalizado(set){
+  try{ localStorage.setItem(LS_FINALIZADO_KEY, JSON.stringify([...set])); }catch(e){}
+}
+
 let assignment = loadAssignment();
 let imported = loadImported();
 let pilotos = loadPilotos();
 let approved = loadApproved();
 let hidden = loadHidden();
+let finalizado = loadFinalizado();
+
+// Toda categoria marcada como finalizada tem que estar com pilotos entregues = contratado,
+// mesmo as que vieram pré-marcadas (não só as que foram clicadas nesta sessão).
+finalizado.forEach(catId => {
+  if(!pilotos[catId]) pilotos[catId] = {feito:0, contratado:0};
+  const info = pilotoInfo(catId);
+  if(info.feito !== info.contratado) pilotos[catId].feito = info.contratado;
+});
+savePilotos(pilotos);
 
 // As 29 imagens originais são uma const fixa — "excluir" uma delas não apaga o dado, só marca
 // como oculta pra sempre sumir da tela (reversível só pelo botão "Resetar sugestão original").
@@ -579,8 +611,8 @@ function updatePilotoPill(binId){
 
 function categoriesInActiveCollection(){
   const list = CATEGORIES.filter(cat => cat.id.split("_")[0] === activeCollection);
-  // Já entregue/feito sobe pro topo da aba, separado do que ainda está pendente.
-  return list.slice().sort((a, b) => (b.delivered ? 1 : 0) - (a.delivered ? 1 : 0));
+  // Finalizado sobe pro topo da aba, separado do que ainda está pendente.
+  return list.slice().sort((a, b) => (finalizado.has(b.id) ? 1 : 0) - (finalizado.has(a.id) ? 1 : 0));
 }
 
 function renderPilotosSummary(){
@@ -589,9 +621,7 @@ function renderPilotosSummary(){
   categoriesInActiveCollection().forEach(cat => {
     const {feito, contratado} = pilotoInfo(cat.id);
     totalContratado += contratado;
-    // Categorias "já entregue" contam como pilotos concluídos no resumo, mesmo sem o
-    // campo editável de "feito" visível no card (o contrato/contratado não muda).
-    totalFeito += cat.delivered ? contratado : feito;
+    totalFeito += feito;
   });
   const totalRestante = Math.max(0, totalContratado - totalFeito);
   const collLabel = COLLECTION_LABELS[activeCollection] || activeCollection;
@@ -613,21 +643,25 @@ function render(){
   boardEl.innerHTML = "";
   categoriesInActiveCollection().forEach(cat => {
     const catBins = BINS.filter(b => b.categoryId === cat.id);
-    const deliveredBadgeHtml = cat.delivered
-      ? `<div class="delivered-badge">✅ Já entregue ao cliente — imagem de referência é opcional</div>` : "";
-    const pilotosRowHtml = cat.delivered ? "" : `
+    const isFinal = finalizado.has(cat.id);
+    const deliveredBadgeHtml = isFinal
+      ? `<div class="delivered-badge">✅ Finalizado / entregue ao cliente</div>` : "";
+    const finalizeBtnHtml = `<button class="finalize-toggle${isFinal?' on':''}" data-finalize="${cat.id}">
+      ${isFinal ? "✅ Finalizado" : "☐ Marcar como finalizado"}</button>`;
+    const pilotosRowHtml = `
       <div class="pilotos-row">
-        <span class="plabel">Pilotos feitos</span>
+        <span class="plabel">Pilotos entregues</span>
         <input type="number" min="0" class="piloto-feito" data-bin="${cat.id}" value="${pilotoInfo(cat.id).feito}">
         <span class="plabel">de</span>
         <input type="number" min="0" class="piloto-contratado" data-bin="${cat.id}" value="${pilotoInfo(cat.id).contratado}">
         ${pilotoPillHtml(cat.id)}
+        ${finalizeBtnHtml}
       </div>`;
 
     if(cat.moldes <= 1){
       const bin = catBins[0];
       const col = document.createElement("div");
-      col.className = "col" + (cat.delivered ? " delivered" : "");
+      col.className = "col" + (isFinal ? " delivered" : "");
       const count = images.filter(im => assignment[im.id] === bin.id).length;
       col.innerHTML = `${deliveredBadgeHtml}${catTitleHtml(bin.label, count)}
         ${pilotosRowHtml}
@@ -635,7 +669,7 @@ function render(){
       boardEl.appendChild(col);
     }else{
       const group = document.createElement("div");
-      group.className = "category-group" + (cat.delivered ? " delivered" : "");
+      group.className = "category-group" + (isFinal ? " delivered" : "");
       const totalCount = images.filter(im => catBins.some(b => b.id === assignment[im.id])).length;
       const moldesHtml = catBins.map(b => {
         const mcount = images.filter(im => assignment[im.id] === b.id).length;
@@ -718,6 +752,25 @@ function render(){
       else pilotos[binId].contratado = val;
       savePilotos(pilotos);
       updatePilotoPill(binId);
+      renderPilotosSummary();
+    });
+  });
+
+  document.querySelectorAll(".finalize-toggle").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const catId = btn.dataset.finalize;
+      if(finalizado.has(catId)){
+        finalizado.delete(catId);
+      }else{
+        finalizado.add(catId);
+        // Marcar como finalizado assume que os pilotos contratados dessa categoria já
+        // foram todos entregues (não dá pra estar finalizado com piloto faltando).
+        if(!pilotos[catId]) pilotos[catId] = {feito:0, contratado:0};
+        pilotos[catId].feito = pilotos[catId].contratado;
+        savePilotos(pilotos);
+      }
+      saveFinalizado(finalizado);
+      render();
     });
   });
 
@@ -882,13 +935,14 @@ function setBackupMsg(text, isErr){
 document.getElementById("btnBackupDownload").onclick = () => {
   const payload = {
     tipo: "quadroEditavel.backup",
-    versao: 2,
+    versao: 3,
     salvoEm: new Date().toISOString(),
     assignment,
     imported,
     pilotos,
     approved: [...approved],
-    hidden: [...hidden]
+    hidden: [...hidden],
+    finalizado: [...finalizado]
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type: "application/json"});
   const url = URL.createObjectURL(blob);
@@ -928,11 +982,13 @@ document.getElementById("backupFileInput").addEventListener("change", ev => {
     pilotos = data.pilotos && typeof data.pilotos === "object" ? data.pilotos : {};
     approved = new Set(Array.isArray(data.approved) ? data.approved : []);
     hidden = new Set(Array.isArray(data.hidden) ? data.hidden : []);
+    finalizado = new Set(Array.isArray(data.finalizado) ? data.finalizado : DEFAULT_FINALIZADO_IDS);
     saveAssignment(assignment);
     saveImported(imported);
     savePilotos(pilotos);
     saveApproved(approved);
     saveHidden(hidden);
+    saveFinalizado(finalizado);
     render();
     setBackupMsg("Backup restaurado com sucesso.");
   };
