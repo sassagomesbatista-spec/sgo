@@ -180,12 +180,20 @@
     .wrap > *{display:none}
     .wrap > #printView{display:block;background:#f4f1eb;font-size:11px;color:#1c1b19;
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+    .print-cover{margin-bottom:20px}
+    .print-cover-eyebrow{font-size:10px;font-weight:700;text-transform:uppercase;
+      letter-spacing:.08em;color:#2d3b66}
+    .print-cover-title{font-family:Georgia,serif;font-size:25px;margin:5px 0 4px}
+    .print-cover-date{font-size:10.5px;color:#8a8579}
     .print-collection{page-break-before:always;padding:10px 6px}
-    .print-collection:first-child{page-break-before:auto}
+    .print-collection.print-collection-first{page-break-before:auto}
     .print-coll-title{font-family:Georgia,serif;font-size:19px;border-bottom:2px solid #1c1b19;
-      padding-bottom:8px;margin:0 0 16px}
+      padding-bottom:8px;margin:0 0 14px}
+    .print-seg-header{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+      color:#2d3b66;margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid #ddd7c9}
+    .print-seg-header:first-child{margin-top:0}
     .print-cat{background:#ffffff;border:1px solid #e5e0d8;border-radius:8px;padding:14px 16px;
-      margin-bottom:14px;page-break-inside:avoid}
+      margin-bottom:14px}
     .print-cat-header{display:flex;align-items:baseline;gap:8px;margin-bottom:11px}
     .print-seg{display:inline-block;font-size:9px;font-weight:700;text-transform:uppercase;
       letter-spacing:.04em;background:#e8eaf6;color:#2d3b66;border-radius:5px;padding:3px 8px;flex-shrink:0}
@@ -193,7 +201,7 @@
     .print-cat-count{font-size:10.5px;color:#8a8579;font-weight:400}
     .print-moldes-row{display:flex;flex-wrap:wrap;gap:10px}
     .print-molde-col{background:#f9f8f6;border:1px solid #e5e5e5;border-radius:7px;
-      padding:10px 11px;flex:1 1 152px;min-width:152px}
+      padding:10px 11px;flex:1 1 152px;min-width:152px;page-break-inside:avoid}
     .print-molde-head{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
       color:#8a8579;margin-bottom:7px}
     .print-status-row{display:flex;align-items:center;justify-content:space-between;gap:6px;
@@ -1280,14 +1288,27 @@ function buildPrintHtml(){
   // molde tipo Kanban, com status de pilotos e finalização por molde). Os números vêm sempre
   // do estado real do painel (mesma fonte que os cards na tela) — nunca de valor fixo.
   const images = allImages();
-  return COLLECTION_KEYS.map(collKey => {
+  const today = new Date().toLocaleDateString("pt-BR");
+  const coverHtml = `<div class="print-cover">
+    <div class="print-cover-eyebrow">Storm · Referências × Modelos</div>
+    <h1 class="print-cover-title">Acompanhamento de Modelagem</h1>
+    <div class="print-cover-date">Gerado em ${today}</div>
+  </div>`;
+  let firstCollectionUsed = false;
+  const collectionsHtml = COLLECTION_KEYS.map(collKey => {
     const label = COLLECTION_LABELS[collKey] || collKey;
     const cats = CATEGORIES.filter(cat => cat.id.split("_")[0] === collKey);
+    let lastSegment = null;
     const catsHtml = cats.map(cat => {
       const catBins = BINS.filter(b => b.categoryId === cat.id);
       const totalImgs = images.filter(im => catBins.some(b => b.id === assignment[im.id])).length;
       if(!totalImgs) return "";
       const {segment, piece} = parseCategoryLabel(cat.label);
+      let segHeaderHtml = "";
+      if(segment !== lastSegment){
+        segHeaderHtml = `<div class="print-seg-header">${segment}</div>`;
+        lastSegment = segment;
+      }
       const moldesHtml = catBins.map(bin => {
         const imgs = images.filter(im => assignment[im.id] === bin.id);
         const {feito, contratado, restante} = pilotoInfo(bin.id);
@@ -1308,7 +1329,7 @@ function buildPrintHtml(){
           <div class="print-img-grid">${tilesHtml}</div>
         </div>`;
       }).join("");
-      return `<div class="print-cat">
+      return `${segHeaderHtml}<div class="print-cat">
         <div class="print-cat-header">
           <span class="print-seg">${segment}</span>
           <span class="print-cat-title">${piece}</span>
@@ -1318,8 +1339,11 @@ function buildPrintHtml(){
       </div>`;
     }).join("");
     if(!catsHtml.trim()) return "";
-    return `<div class="print-collection"><h1 class="print-coll-title">${label}</h1>${catsHtml}</div>`;
+    const firstClass = firstCollectionUsed ? "" : " print-collection-first";
+    firstCollectionUsed = true;
+    return `<div class="print-collection${firstClass}"><h1 class="print-coll-title">${label}</h1>${catsHtml}</div>`;
   }).join("");
+  return coverHtml + collectionsHtml;
 }
 document.getElementById("btnExportPdf").onclick = async () => {
   // Colocar as imagens no DOM não quer dizer que já estão decodificadas/prontas pra desenhar —
