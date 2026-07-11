@@ -1622,14 +1622,18 @@ document.getElementById("btnExportPdf").onclick = async () => {
 document.getElementById("btnBackupDownload").onclick = () => {
   const payload = {
     tipo: "quadroEditavel.backup",
-    versao: 3,
+    versao: 4,
     salvoEm: new Date().toISOString(),
     assignment,
     imported,
     pilotos,
+    modelagem,
     approved: [...approved],
     hidden: [...hidden],
-    finalizado: [...finalizado]
+    finalizado: [...finalizado],
+    reprovado: [...reprovado],
+    cancelado: [...cancelado],
+    reprovadoMotivo
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type: "application/json"});
   const url = URL.createObjectURL(blob);
@@ -1663,21 +1667,30 @@ document.getElementById("backupFileInput").addEventListener("change", ev => {
       setBackupMsg("Esse arquivo não parece ser um backup deste quadro.", true);
       return;
     }
-    if(!confirm("Restaurar esse backup vai substituir o arranjo atual (posições, imagens importadas, pilotos e aprovações). Continuar?")) return;
+    if(!confirm("Restaurar esse backup vai substituir o arranjo atual (posições, imagens importadas, pilotos, modelagem, status e aprovações). Continuar?")) return;
     assignment = normalizeAssignment(data.assignment);
     imported = data.imported;
     pilotos = data.pilotos && typeof data.pilotos === "object" ? data.pilotos : {};
+    modelagem = data.modelagem && typeof data.modelagem === "object" ? data.modelagem : {};
     approved = new Set(Array.isArray(data.approved) ? data.approved : []);
     hidden = new Set(Array.isArray(data.hidden) ? data.hidden : []);
     finalizado = new Set(Array.isArray(data.finalizado) ? data.finalizado : DEFAULT_FINALIZADO_IDS);
+    reprovado = new Set(Array.isArray(data.reprovado) ? data.reprovado : []);
+    cancelado = new Set(Array.isArray(data.cancelado) ? data.cancelado : []);
+    reprovadoMotivo = data.reprovadoMotivo && typeof data.reprovadoMotivo === "object" ? data.reprovadoMotivo : {};
     saveAssignment(assignment);
     saveImported(imported);
     savePilotos(pilotos);
+    saveModelagem(modelagem);
     saveApproved(approved);
     saveHidden(hidden);
     saveFinalizado(finalizado);
+    saveReprovado(reprovado);
+    saveCancelado(cancelado);
+    saveReprovadoMotivo(reprovadoMotivo);
     render();
-    setBackupMsg("Backup restaurado com sucesso.");
+    setBackupMsg(data.modelagem ? "Backup restaurado com sucesso." :
+      "Backup restaurado. Aviso: esse arquivo é de uma versão antiga e não tinha modelagem/status salvos nele — esses campos ficaram vazios.");
   };
   reader.onerror = () => setBackupMsg("Não consegui ler esse arquivo.", true);
   reader.readAsText(file);
