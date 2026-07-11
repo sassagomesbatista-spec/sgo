@@ -73,8 +73,17 @@
   .piloto-pill{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--line);color:var(--ink-3)}
   .piloto-pill.good{background:var(--good-bg);color:var(--good)}
   .piloto-pill.warn{background:var(--warn-bg);color:var(--warn)}
-  .finalize-toggle{font-size:11.5px;padding:5px 10px}
-  .finalize-toggle.on{background:var(--good-bg);color:var(--good);border-color:var(--good)}
+  .status-row{display:flex;gap:6px;flex-wrap:wrap}
+  .status-toggle{font-size:11.5px;padding:5px 10px}
+  .status-toggle.final.on{background:var(--good-bg);color:var(--good);border-color:var(--good)}
+  .status-toggle.reprovado.on{background:var(--warn-bg);color:var(--warn);border-color:var(--warn)}
+  .status-toggle.cancelado.on{background:var(--accent-bg);color:var(--accent);border-color:var(--accent)}
+  .molde-card.molde-reprovado{outline:2px solid var(--warn)}
+  .molde-card.molde-cancelado{outline:2px solid var(--accent)}
+  .col.reprovado{outline:2px solid var(--warn)}
+  .col.cancelado{outline:2px solid var(--accent)}
+  .reprovado-motivo{font:inherit;font-size:11.5px;padding:5px 8px;border-radius:8px;
+    border:1px solid var(--warn);background:var(--warn-bg);color:var(--ink)}
   .just-moved{animation:flash .9s ease}
   @keyframes flash{0%{box-shadow:0 0 0 3px var(--indigo)}100%{box-shadow:none}}
 
@@ -185,6 +194,8 @@
     .print-final-row{font-size:7.5px;margin-bottom:6px}
     .print-final-row.on{color:#0ca30c;font-weight:700}
     .print-final-row.off{color:#8a8579}
+    .print-final-row.reprovado{color:#c98500;font-weight:700}
+    .print-final-row.cancelado{color:#a13d2f;font-weight:700}
     .print-img-grid{display:flex;flex-wrap:wrap;gap:4px}
     .print-img-grid img{width:40px;height:50px;object-fit:cover;border-radius:4px;border:1px solid #e5e0d8}
     .print-img-empty{width:40px;height:50px;border:1.2px dashed #c9c3b6;border-radius:4px;
@@ -377,7 +388,7 @@ let fsFns = null, db = null, boardRef = null, metaRef = null, assignmentRef = nu
 let lastSyncedAssignment = {};
 let lastSyncedImagesIds = new Set();
 let lastSyncedPilotos = {};
-let lastSyncedSets = {approved: new Set(), hidden: new Set(), finalizado: new Set()};
+let lastSyncedSets = {approved: new Set(), hidden: new Set(), finalizado: new Set(), reprovado: new Set(), cancelado: new Set()};
 
 // -------- categorias (dinâmicas, por painel) --------
 let boardName = "";
@@ -428,24 +439,55 @@ function loadMeta(){
     pilotos: v.pilotos || {},
     approved: new Set(v.approved || []),
     hidden: new Set(v.hidden || []),
-    finalizado: new Set(v.finalizado || [])
+    finalizado: new Set(v.finalizado || []),
+    reprovado: new Set(v.reprovado || []),
+    cancelado: new Set(v.cancelado || []),
+    reprovadoMotivo: v.reprovadoMotivo || {}
   };
 }
+function metaSnapshotJson(){
+  return JSON.stringify({
+    pilotos, approved: [...approved], hidden: [...hidden],
+    finalizado: [...finalizado], reprovado: [...reprovado], cancelado: [...cancelado], reprovadoMotivo
+  });
+}
+let lastSyncedReprovadoMotivo = {};
+function fsSyncReprovadoMotivo(map){
+  if(!fsReady) return;
+  const updates = {};
+  Object.keys(map).forEach(binId => {
+    if(map[binId] !== lastSyncedReprovadoMotivo[binId]) updates["reprovadoMotivo." + binId] = map[binId];
+  });
+  lastSyncedReprovadoMotivo = Object.assign({}, map);
+  if(Object.keys(updates).length) fsWrite(fsFns.updateDoc(metaRef, updates));
+}
+function saveReprovadoMotivo(map){
+  safeLSSet(LS_META_KEY, metaSnapshotJson());
+  fsSyncReprovadoMotivo(map);
+}
 function savePilotos(p){
-  safeLSSet(LS_META_KEY, JSON.stringify({pilotos: p, approved: [...approved], hidden: [...hidden], finalizado: [...finalizado]}));
+  safeLSSet(LS_META_KEY, metaSnapshotJson());
   fsSyncPilotos(p);
 }
 function saveApproved(set){
-  safeLSSet(LS_META_KEY, JSON.stringify({pilotos, approved: [...set], hidden: [...hidden], finalizado: [...finalizado]}));
+  safeLSSet(LS_META_KEY, metaSnapshotJson());
   fsSyncSet("approved", set);
 }
 function saveHidden(set){
-  safeLSSet(LS_META_KEY, JSON.stringify({pilotos, approved: [...approved], hidden: [...set], finalizado: [...finalizado]}));
+  safeLSSet(LS_META_KEY, metaSnapshotJson());
   fsSyncSet("hidden", set);
 }
 function saveFinalizado(set){
-  safeLSSet(LS_META_KEY, JSON.stringify({pilotos, approved: [...approved], hidden: [...hidden], finalizado: [...set]}));
+  safeLSSet(LS_META_KEY, metaSnapshotJson());
   fsSyncSet("finalizado", set);
+}
+function saveReprovado(set){
+  safeLSSet(LS_META_KEY, metaSnapshotJson());
+  fsSyncSet("reprovado", set);
+}
+function saveCancelado(set){
+  safeLSSet(LS_META_KEY, metaSnapshotJson());
+  fsSyncSet("cancelado", set);
 }
 function saveCategoriesLocal(){
   safeLSSet(LS_CATS_KEY, JSON.stringify(CATEGORIES));
@@ -454,6 +496,9 @@ function saveCategoriesLocal(){
 let assignment = {};
 let images = [];
 let pilotos = {}, approved = new Set(), hidden = new Set(), finalizado = new Set();
+let reprovado = new Set(), cancelado = new Set();
+let reprovadoMotivo = {};
+const MOTIVOS_REPROVACAO = {criacao: "Criação", modelagem: "Modelagem", custo: "Custo"};
 let activeCollection = null;
 
 function loadActiveCollection(){
@@ -574,8 +619,28 @@ function render(){
 
   renderCollectionTabs();
 
-  function pilotosRowHtml(binId){
+  function statusRowHtml(binId){
     const isFinal = finalizado.has(binId);
+    const isReprovado = reprovado.has(binId);
+    const isCancelado = cancelado.has(binId);
+    const motivoSelectHtml = isReprovado ? `
+      <select class="reprovado-motivo" data-bin="${binId}">
+        <option value=""${!reprovadoMotivo[binId] ? ' selected' : ''}>Selecione o motivo...</option>
+        ${Object.entries(MOTIVOS_REPROVACAO).map(([key, label]) =>
+          `<option value="${key}"${reprovadoMotivo[binId] === key ? ' selected' : ''}>${label}</option>`).join("")}
+      </select>` : "";
+    return `
+      <div class="status-row">
+        <button class="status-toggle final${isFinal?' on':''}" data-status="finalizado" data-bin="${binId}">
+          ${isFinal ? "✅ Finalizado" : "☐ Finalizado"}</button>
+        <button class="status-toggle reprovado${isReprovado?' on':''}" data-status="reprovado" data-bin="${binId}">
+          ${isReprovado ? "🚫 Reprovado" : "☐ Reprovado"}</button>
+        <button class="status-toggle cancelado${isCancelado?' on':''}" data-status="cancelado" data-bin="${binId}">
+          ${isCancelado ? "❌ Cancelado" : "☐ Cancelado"}</button>
+        ${motivoSelectHtml}
+      </div>`;
+  }
+  function pilotosRowHtml(binId){
     return `
       <div class="pilotos-row">
         <span class="plabel">Pilotos entregues</span>
@@ -583,9 +648,8 @@ function render(){
         <span class="plabel">de</span>
         <input type="number" min="0" class="piloto-contratado" data-bin="${binId}" value="${pilotoInfo(binId).contratado}">
         ${pilotoPillHtml(binId)}
-        <button class="finalize-toggle${isFinal?' on':''}" data-finalize="${binId}">
-          ${isFinal ? "✅ Finalizado" : "☐ Marcar como finalizado"}</button>
-      </div>`;
+      </div>
+      ${statusRowHtml(binId)}`;
   }
 
   boardEl.innerHTML = "";
@@ -596,10 +660,12 @@ function render(){
     if(cat.moldes <= 1){
       const bin = catBins[0];
       const isFinal = finalizado.has(bin.id);
+      const isReprovado = reprovado.has(bin.id);
+      const isCancelado = cancelado.has(bin.id);
       const deliveredBadgeHtml = isFinal
         ? `<div class="delivered-badge">✅ Finalizado / entregue ao cliente</div>` : "";
       const col = document.createElement("div");
-      col.className = "col" + (isFinal ? " delivered" : "");
+      col.className = "col" + (isFinal ? " delivered" : "") + (isReprovado ? " reprovado" : "") + (isCancelado ? " cancelado" : "");
       col.dataset.catId = cat.id;
       const count = imgs.filter(im => assignment[im.id] === bin.id).length;
       col.innerHTML = `${deliveredBadgeHtml}${catTitleHtml(bin.label, count, bin.id, false)}
@@ -617,7 +683,10 @@ function render(){
       const moldesHtml = catBins.map(b => {
         const mcount = imgs.filter(im => assignment[im.id] === b.id).length;
         const moldeFinal = finalizado.has(b.id);
-        return `<div class="molde-card${moldeFinal ? ' molde-done' : ''}">
+        const moldeReprovado = reprovado.has(b.id);
+        const moldeCancelado = cancelado.has(b.id);
+        const moldeClass = (moldeFinal ? ' molde-done' : '') + (moldeReprovado ? ' molde-reprovado' : '') + (moldeCancelado ? ' molde-cancelado' : '');
+        return `<div class="molde-card${moldeClass}">
           <h4>Molde ${b.moldeIndex} de ${b.moldes} <span class="count" data-count-for="${b.id}">(${mcount})</span></h4>
           ${pilotosRowHtml(b.id)}
           <div class="dropzone tiles" data-bin="${b.id}"></div>
@@ -692,22 +761,41 @@ function render(){
     });
   });
 
-  document.querySelectorAll(".finalize-toggle").forEach(btn => {
+  document.querySelectorAll(".status-toggle").forEach(btn => {
     btn.addEventListener("click", ev => {
       ev.stopPropagation();
-      const binId = btn.dataset.finalize;
-      if(finalizado.has(binId)) finalizado.delete(binId);
+      const binId = btn.dataset.bin;
+      const status = btn.dataset.status;
+      // só um status vale por vez — ativar um desliga os outros dois desse molde/card.
+      const sets = {finalizado, reprovado, cancelado};
+      const wasOn = sets[status].has(binId);
+      Object.keys(sets).forEach(key => { if(key !== status) sets[key].delete(binId); });
+      if(wasOn) sets[status].delete(binId);
       else{
-        finalizado.add(binId);
-        if(!pilotos[binId]) pilotos[binId] = {feito:0, contratado:0};
-        pilotos[binId].feito = pilotos[binId].contratado;
-        savePilotos(pilotos);
+        sets[status].add(binId);
+        if(status === "finalizado"){
+          if(!pilotos[binId]) pilotos[binId] = {feito:0, contratado:0};
+          pilotos[binId].feito = pilotos[binId].contratado;
+          savePilotos(pilotos);
+        }
       }
+      if(status !== "reprovado" || wasOn){ delete reprovadoMotivo[binId]; saveReprovadoMotivo(reprovadoMotivo); }
       saveFinalizado(finalizado);
+      saveReprovado(reprovado);
+      saveCancelado(cancelado);
       render();
       const moved = document.querySelector(`[data-cat-id="${binId}"]`) ||
-        [...document.querySelectorAll(".molde-card")].find(c => c.querySelector(`[data-finalize="${binId}"]`));
+        [...document.querySelectorAll(".molde-card")].find(c => c.querySelector(`[data-status][data-bin="${binId}"]`));
       if(moved){ moved.classList.add("just-moved"); setTimeout(() => moved.classList.remove("just-moved"), 900); }
+    });
+  });
+
+  document.querySelectorAll(".reprovado-motivo").forEach(sel => {
+    sel.addEventListener("change", () => {
+      const binId = sel.dataset.bin;
+      if(sel.value) reprovadoMotivo[binId] = sel.value;
+      else delete reprovadoMotivo[binId];
+      saveReprovadoMotivo(reprovadoMotivo);
     });
   });
 
@@ -995,16 +1083,21 @@ function buildPrintHtml(){
         const binImgs = imgs.filter(im => assignment[im.id] === bin.id);
         const {feito, contratado, restante} = pilotoInfo(bin.id);
         const isFinal = finalizado.has(bin.id);
+        const isReprovado = reprovado.has(bin.id);
+        const isCancelado = cancelado.has(bin.id);
         const moldeHead = cat.moldes > 1 ? `Molde ${bin.moldeIndex} de ${bin.moldes}` : "Peça única";
         const badgeHtml = contratado === 0 ? `<span class="print-badge none">—</span>`
           : restante === 0 ? `<span class="print-badge good">✓ completo</span>`
           : `<span class="print-badge warn">faltam ${restante}</span>`;
         const tilesHtml = binImgs.length ? binImgs.map(im => `<img src="${im.src}" alt="">`).join("")
           : `<div class="print-img-empty">Sem imagem</div>`;
+        const statusLineHtml = isCancelado ? `<div class="print-final-row cancelado">❌ Cancelado</div>`
+          : isReprovado ? `<div class="print-final-row reprovado">🚫 Reprovado${reprovadoMotivo[bin.id] ? " — " + MOTIVOS_REPROVACAO[reprovadoMotivo[bin.id]] : ""}</div>`
+          : `<div class="print-final-row ${isFinal ? "on" : "off"}">${isFinal ? "☑ Finalizado" : "☐ Não finalizado"}</div>`;
         return `<div class="print-molde-col">
           <div class="print-molde-head">${moldeHead}</div>
           <div class="print-status-row"><span>Pilotos: ${feito} de ${contratado}</span>${badgeHtml}</div>
-          <div class="print-final-row ${isFinal ? "on" : "off"}">${isFinal ? "☑ Finalizado" : "☐ Não finalizado"}</div>
+          ${statusLineHtml}
           <div class="print-img-grid">${tilesHtml}</div>
         </div>`;
       }).join("");
@@ -1102,9 +1195,14 @@ function applyRemoteMeta(data){
   approved = new Set(data.approved || []);
   hidden = new Set(data.hidden || []);
   finalizado = new Set(data.finalizado || []);
+  reprovado = new Set(data.reprovado || []);
+  cancelado = new Set(data.cancelado || []);
+  reprovadoMotivo = data.reprovadoMotivo || {};
   lastSyncedPilotos = JSON.parse(JSON.stringify(pilotos));
-  lastSyncedSets = {approved: new Set(approved), hidden: new Set(hidden), finalizado: new Set(finalizado)};
-  safeLSSet(LS_META_KEY, JSON.stringify({pilotos, approved: [...approved], hidden: [...hidden], finalizado: [...finalizado]}));
+  lastSyncedSets = {approved: new Set(approved), hidden: new Set(hidden), finalizado: new Set(finalizado),
+    reprovado: new Set(reprovado), cancelado: new Set(cancelado)};
+  lastSyncedReprovadoMotivo = Object.assign({}, reprovadoMotivo);
+  safeLSSet(LS_META_KEY, metaSnapshotJson());
   render();
 }
 function applyRemoteAssignment(data){
@@ -1144,21 +1242,28 @@ async function bootstrapFirestore(){
 
   const metaSnap = await f.getDoc(metaRef);
   if(!metaSnap.exists()){
-    await f.setDoc(metaRef, {pilotos, approved:[...approved], hidden:[...hidden], finalizado:[...finalizado]});
+    await f.setDoc(metaRef, {pilotos, approved:[...approved], hidden:[...hidden], finalizado:[...finalizado],
+      reprovado:[...reprovado], cancelado:[...cancelado], reprovadoMotivo});
     lastSyncedPilotos = JSON.parse(JSON.stringify(pilotos));
-    lastSyncedSets = {approved: new Set(approved), hidden: new Set(hidden), finalizado: new Set(finalizado)};
+    lastSyncedSets = {approved: new Set(approved), hidden: new Set(hidden), finalizado: new Set(finalizado),
+      reprovado: new Set(reprovado), cancelado: new Set(cancelado)};
+    lastSyncedReprovadoMotivo = Object.assign({}, reprovadoMotivo);
   }else{
     const cloudMeta = metaSnap.data();
     const mergedApproved = mergeSetSafe([...approved], cloudMeta.approved);
     const mergedHidden = mergeSetSafe([...hidden], cloudMeta.hidden);
     const mergedFinalizado = mergeSetSafe([...finalizado], cloudMeta.finalizado);
+    const mergedReprovado = mergeSetSafe([...reprovado], cloudMeta.reprovado);
+    const mergedCancelado = mergeSetSafe([...cancelado], cloudMeta.cancelado);
+    const mergedReprovadoMotivo = Object.assign({}, reprovadoMotivo, cloudMeta.reprovadoMotivo || {});
     const mergedPilotos = Object.assign({}, cloudMeta.pilotos || {});
     Object.keys(pilotos).forEach(binId => {
       const l = pilotos[binId] || {feito:0, contratado:0};
       const c = mergedPilotos[binId] || {feito:0, contratado:0};
       mergedPilotos[binId] = {feito: Math.max(l.feito||0, c.feito||0), contratado: (c.contratado || l.contratado || 0)};
     });
-    const mergedMeta = {pilotos: mergedPilotos, approved: mergedApproved, hidden: mergedHidden, finalizado: mergedFinalizado};
+    const mergedMeta = {pilotos: mergedPilotos, approved: mergedApproved, hidden: mergedHidden,
+      finalizado: mergedFinalizado, reprovado: mergedReprovado, cancelado: mergedCancelado, reprovadoMotivo: mergedReprovadoMotivo};
     applyRemoteMeta(mergedMeta);
     await f.setDoc(metaRef, mergedMeta);
   }
