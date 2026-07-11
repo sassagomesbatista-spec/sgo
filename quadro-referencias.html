@@ -947,16 +947,22 @@ function updateCountBadge(id){
   });
 }
 
+// Cancelado/reprovado = não tem mais nada a entregar naquele molde — não pode contar
+// como pendência em lugar nenhum (relatório, pílula do card, PDF).
+function binQuitado(binId){
+  return cancelado.has(binId) || reprovado.has(binId);
+}
 function pilotoInfo(binId){
   const pv = pilotos[binId] || {};
   const feito = Math.max(0, parseInt(pv.feito,10) || 0);
   const contratado = Math.max(0, parseInt(pv.contratado,10) || 0);
-  const restante = Math.max(0, contratado - feito);
+  const restante = binQuitado(binId) ? 0 : Math.max(0, contratado - feito);
   return {feito, contratado, restante};
 }
 
 function pilotoPillHtml(binId){
   const {feito, contratado, restante} = pilotoInfo(binId);
+  if(binQuitado(binId)) return `<span class="piloto-pill" data-bin="${binId}">—</span>`;
   if(contratado === 0) return `<span class="piloto-pill" data-bin="${binId}">—</span>`;
   if(restante === 0) return `<span class="piloto-pill good" data-bin="${binId}">✓ completo</span>`;
   return `<span class="piloto-pill warn" data-bin="${binId}">faltam ${restante}</span>`;
@@ -973,11 +979,12 @@ function modelagemInfo(binId){
   const mv = modelagem[binId] || {};
   const feito = Math.max(0, parseInt(mv.feito,10) || 0);
   const contratado = Math.max(0, parseInt(mv.contratado,10) || 0);
-  const restante = Math.max(0, contratado - feito);
+  const restante = binQuitado(binId) ? 0 : Math.max(0, contratado - feito);
   return {feito, contratado, restante};
 }
 function modelagemPillHtml(binId){
   const {feito, contratado, restante} = modelagemInfo(binId);
+  if(binQuitado(binId)) return `<span class="piloto-pill modelagem-pill" data-bin="${binId}">—</span>`;
   if(contratado === 0) return `<span class="piloto-pill modelagem-pill" data-bin="${binId}">—</span>`;
   if(restante === 0) return `<span class="piloto-pill modelagem-pill good" data-bin="${binId}">✓ completo</span>`;
   return `<span class="piloto-pill modelagem-pill warn" data-bin="${binId}">faltam ${restante}</span>`;
@@ -1543,12 +1550,12 @@ function buildPrintHtml(){
         const isReprovado = reprovado.has(bin.id);
         const isCancelado = cancelado.has(bin.id);
         const moldeHead = cat.moldes > 1 ? `Molde ${bin.moldeIndex} de ${bin.moldes}` : "Peça única";
-        const badgeHtml = contratado === 0
+        const badgeHtml = (isCancelado || isReprovado) || contratado === 0
           ? `<span class="print-badge none">—</span>`
           : restante === 0
             ? `<span class="print-badge good">✓ completo</span>`
             : `<span class="print-badge warn">faltam ${restante}</span>`;
-        const modelBadgeHtml = modelInfo.contratado === 0
+        const modelBadgeHtml = (isCancelado || isReprovado) || modelInfo.contratado === 0
           ? `<span class="print-badge none">—</span>`
           : modelInfo.restante === 0
             ? `<span class="print-badge good">✓ completo</span>`
