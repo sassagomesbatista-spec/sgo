@@ -191,11 +191,12 @@
     .print-collection.print-collection-first{page-break-before:auto}
     .print-coll-title{font-family:Georgia,serif;font-size:16px;border-bottom:2px solid #1c1b19;
       padding-bottom:6px;margin:0 0 10px}
-    .print-seg-header{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+    .print-cats-grid{display:flex;flex-wrap:wrap;gap:9px;align-items:flex-start}
+    .print-seg-header{flex:1 1 100%;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
       color:#2d3b66;margin:12px 0 6px;padding-bottom:3px;border-bottom:1px solid #ddd7c9}
     .print-seg-header:first-child{margin-top:0}
     .print-cat{background:#ffffff;border:1px solid #e5e0d8;border-radius:7px;padding:10px 12px;
-      margin-bottom:9px;page-break-inside:avoid}
+      margin-bottom:0;page-break-inside:avoid;flex:1 1 300px;min-width:260px}
     .print-cat-header{display:flex;align-items:baseline;gap:7px;margin-bottom:8px}
     .print-seg{display:inline-block;font-size:7.5px;font-weight:700;text-transform:uppercase;
       letter-spacing:.04em;background:#e8eaf6;color:#2d3b66;border-radius:4px;padding:2px 6px;flex-shrink:0}
@@ -1309,7 +1310,8 @@ function buildPrintHtml(){
     if(!catsHtml.trim()) return "";
     const firstClass = firstCollectionUsed ? "" : " print-collection-first";
     firstCollectionUsed = true;
-    return `<div class="print-collection${firstClass}"><h1 class="print-coll-title">${label}</h1>${catsHtml}</div>`;
+    return `<div class="print-collection${firstClass}"><h1 class="print-coll-title">${label}</h1>
+      <div class="print-cats-grid">${catsHtml}</div></div>`;
   }).join("");
   return coverHtml + pendenciasHtml + collectionsHtml;
 }
