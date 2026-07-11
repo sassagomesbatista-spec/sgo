@@ -178,20 +178,38 @@
        alto (dezenas de cards), isso gerava várias páginas em branco só pra "cobrir" aquela altura
        invisível. display:none de verdade tira do fluxo, então só sai página com conteúdo real. */
     .wrap > *{display:none}
-    .wrap > #printView{display:block;color:#000;background:#fff;font-size:11px}
-    .print-collection{page-break-before:always;display:flex;flex-wrap:wrap;align-content:flex-start;gap:0 26px}
+    .wrap > #printView{display:block;background:#f4f1eb;font-size:11px;color:#1c1b19;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+    .print-collection{page-break-before:always;padding:10px 6px}
     .print-collection:first-child{page-break-before:auto}
-    .print-coll-title{width:100%;font-family:Georgia,serif;font-size:17px;border-bottom:2px solid #000;
-      padding-bottom:6px;margin:0 0 12px}
-    .print-cat{width:47%;margin-bottom:13px;break-inside:avoid}
-    .print-cat h2{font-size:12px;margin:0 0 5px;display:flex;align-items:center;gap:6px}
-    .print-seg{display:inline-block;font-size:8px;font-weight:700;text-transform:uppercase;
-      letter-spacing:.03em;background:#eee;border:1px solid #999;border-radius:3px;padding:1px 5px;flex-shrink:0}
-    .print-molde{margin-bottom:5px}
-    .print-molde-label{font-size:9px;color:#555;margin-right:4px}
-    .print-tiles{display:flex;flex-wrap:wrap;gap:4px}
-    .print-tiles img{width:58px;height:73px;object-fit:cover;border:1px solid #ccc}
-    .print-empty{font-size:9px;color:#999;font-style:italic}
+    .print-coll-title{font-family:Georgia,serif;font-size:19px;border-bottom:2px solid #1c1b19;
+      padding-bottom:8px;margin:0 0 16px}
+    .print-cat{background:#ffffff;border:1px solid #e5e0d8;border-radius:8px;padding:14px 16px;
+      margin-bottom:14px;page-break-inside:avoid}
+    .print-cat-header{display:flex;align-items:baseline;gap:8px;margin-bottom:11px}
+    .print-seg{display:inline-block;font-size:9px;font-weight:700;text-transform:uppercase;
+      letter-spacing:.04em;background:#e8eaf6;color:#2d3b66;border-radius:5px;padding:3px 8px;flex-shrink:0}
+    .print-cat-title{font-size:13.5px;font-weight:700}
+    .print-cat-count{font-size:10.5px;color:#8a8579;font-weight:400}
+    .print-moldes-row{display:flex;flex-wrap:wrap;gap:10px}
+    .print-molde-col{background:#f9f8f6;border:1px solid #e5e5e5;border-radius:7px;
+      padding:10px 11px;flex:1 1 152px;min-width:152px}
+    .print-molde-head{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+      color:#8a8579;margin-bottom:7px}
+    .print-status-row{display:flex;align-items:center;justify-content:space-between;gap:6px;
+      font-size:9.5px;margin-bottom:6px}
+    .print-badge{font-size:8.5px;font-weight:700;border-radius:10px;padding:2px 7px;white-space:nowrap}
+    .print-badge.good{background:#e6f6e3;color:#0ca30c}
+    .print-badge.warn{background:#fdf1de;color:#c98500}
+    .print-badge.none{background:#ececec;color:#999}
+    .print-final-row{font-size:9px;margin-bottom:9px}
+    .print-final-row.on{color:#0ca30c;font-weight:700}
+    .print-final-row.off{color:#8a8579}
+    .print-img-grid{display:flex;flex-wrap:wrap;gap:5px}
+    .print-img-grid img{width:52px;height:65px;object-fit:cover;border-radius:5px;border:1px solid #e5e0d8}
+    .print-img-empty{width:52px;height:65px;border:1.3px dashed #c9c3b6;border-radius:5px;
+      display:flex;align-items:center;justify-content:center;font-size:6.5px;color:#a39d8f;
+      text-align:center;padding:2px;line-height:1.2}
   }
 </style>
 
@@ -1258,29 +1276,45 @@ function setBackupMsg(text, isErr){
 // cliente — usa o "Imprimir > Salvar como PDF" do próprio navegador, sem depender de nenhum
 // serviço externo, então funciona até offline.
 function buildPrintHtml(){
-  // Documento pra mandar pro cliente: só entram categorias que já têm pelo menos uma imagem —
-  // uma lista cheia de "sem imagem ainda" não é algo que se manda pra fora. Layout em duas
-  // colunas e miniaturas pequenas pra caber bem mais coisa por página.
+  // Documento pra mandar pro cliente, no estilo painel de gerenciamento (cards + colunas de
+  // molde tipo Kanban, com status de pilotos e finalização por molde). Os números vêm sempre
+  // do estado real do painel (mesma fonte que os cards na tela) — nunca de valor fixo.
   const images = allImages();
   return COLLECTION_KEYS.map(collKey => {
     const label = COLLECTION_LABELS[collKey] || collKey;
     const cats = CATEGORIES.filter(cat => cat.id.split("_")[0] === collKey);
     const catsHtml = cats.map(cat => {
       const catBins = BINS.filter(b => b.categoryId === cat.id);
-      const binsWithImages = catBins.map(b => ({bin: b, imgs: images.filter(im => assignment[im.id] === b.id)}));
-      if(!binsWithImages.some(x => x.imgs.length)) return "";
+      const totalImgs = images.filter(im => catBins.some(b => b.id === assignment[im.id])).length;
+      if(!totalImgs) return "";
       const {segment, piece} = parseCategoryLabel(cat.label);
-      const moldesHtml = binsWithImages.map(({bin, imgs}) => {
-        const moldeLabel = cat.moldes > 1 ? `<span class="print-molde-label">Molde ${bin.moldeIndex}:</span>` : "";
-        if(!imgs.length){
-          return cat.moldes > 1 ? `<div class="print-molde">${moldeLabel}<span class="print-empty">sem imagem</span></div>` : "";
-        }
-        const tilesHtml = imgs.map(im => `<img src="${im.src}" alt="">`).join("");
-        return `<div class="print-molde">${moldeLabel}<div class="print-tiles">${tilesHtml}</div></div>`;
+      const moldesHtml = catBins.map(bin => {
+        const imgs = images.filter(im => assignment[im.id] === bin.id);
+        const {feito, contratado, restante} = pilotoInfo(bin.id);
+        const isFinal = finalizado.has(bin.id);
+        const moldeHead = cat.moldes > 1 ? `Molde ${bin.moldeIndex} de ${bin.moldes}` : "Peça única";
+        const badgeHtml = contratado === 0
+          ? `<span class="print-badge none">—</span>`
+          : restante === 0
+            ? `<span class="print-badge good">✓ completo</span>`
+            : `<span class="print-badge warn">faltam ${restante}</span>`;
+        const tilesHtml = imgs.length
+          ? imgs.map(im => `<img src="${im.src}" alt="">`).join("")
+          : `<div class="print-img-empty">Sem imagem</div>`;
+        return `<div class="print-molde-col">
+          <div class="print-molde-head">${moldeHead}</div>
+          <div class="print-status-row"><span>Pilotos: ${feito} de ${contratado}</span>${badgeHtml}</div>
+          <div class="print-final-row ${isFinal ? "on" : "off"}">${isFinal ? "☑ Finalizado" : "☐ Não finalizado"}</div>
+          <div class="print-img-grid">${tilesHtml}</div>
+        </div>`;
       }).join("");
       return `<div class="print-cat">
-        <h2><span class="print-seg">${segment}</span>${piece}</h2>
-        ${moldesHtml}
+        <div class="print-cat-header">
+          <span class="print-seg">${segment}</span>
+          <span class="print-cat-title">${piece}</span>
+          <span class="print-cat-count">(${totalImgs} no total)</span>
+        </div>
+        <div class="print-moldes-row">${moldesHtml}</div>
       </div>`;
     }).join("");
     if(!catsHtml.trim()) return "";
