@@ -35,7 +35,7 @@
   .eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--indigo)}
   h1{font-family:Georgia,serif;font-size:25px;margin:6px 0 4px;letter-spacing:-.01em}
   .sub{color:var(--ink-2);font-size:13px;max-width:60ch}
-  .actions{display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:100%;min-width:0}
   button,a.ghost{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--surface);
     color:var(--ink-2);padding:8px 14px;font-size:12.5px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center}
   button:hover,a.ghost:hover{border-color:var(--ink)}
@@ -168,6 +168,25 @@
   .sync-status.pending{background:var(--warn-bg);color:var(--warn)}
   .sync-status.ok{background:var(--good-bg);color:var(--good)}
   .sync-status.off{background:var(--accent-bg);color:var(--accent)}
+
+  #printView{display:none}
+  @media print{
+    body *{visibility:hidden}
+    #printView, #printView *{visibility:visible}
+    #printView{display:block;position:absolute;left:0;top:0;width:100%;color:#000;background:#fff}
+    .print-collection{page-break-before:always}
+    .print-collection:first-child{page-break-before:auto}
+    .print-coll-title{font-family:Georgia,serif;font-size:22px;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:16px}
+    .print-cat{margin-bottom:22px;break-inside:avoid}
+    .print-cat h2{font-size:15px;margin:0 0 8px}
+    .print-cat .print-seg{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;
+      letter-spacing:.05em;background:#eee;border:1px solid #999;border-radius:4px;padding:2px 6px;margin-right:6px}
+    .print-molde{margin-bottom:10px}
+    .print-molde h3{font-size:11.5px;color:#333;margin:0 0 6px;font-weight:600}
+    .print-tiles{display:flex;flex-wrap:wrap;gap:8px}
+    .print-tiles img{width:110px;height:138px;object-fit:contain;border:1px solid #ccc;background:#fafafa}
+    .print-empty{font-size:11px;color:#888;font-style:italic}
+  }
 </style>
 
 <div class="wrap">
@@ -181,6 +200,7 @@
     <div class="actions">
       <span id="syncStatus" class="sync-status" style="display:none"></span>
       <a class="ghost" href="painel-revisao-mix.html">← Painel de revisão</a>
+      <button id="btnExportPdf" title="Gera um PDF com todas as coleções, pronto pra enviar ao cliente">🖨️ Exportar PDF</button>
       <button id="btnBackupDownload" title="Baixa um arquivo com todo o arranjo atual">⇓ Baixar backup</button>
       <button id="btnBackupRestore" title="Restaura um arquivo de backup baixado antes">⇧ Restaurar backup</button>
       <input type="file" id="backupFileInput" accept="application/json" style="display:none">
@@ -228,6 +248,8 @@
   </div>
 
   <div class="board" id="board"></div>
+
+  <div id="printView"></div>
 
   <div class="note">
     <strong>Como funciona:</strong> clique e segure uma miniatura, arraste até outra caixa e solte. Funciona em
@@ -1108,7 +1130,12 @@ function wireDragEvents(){
 }
 
 document.getElementById("btnReset").onclick = () => {
-  if(!confirm("Voltar todas as imagens para o arranjo sugerido original? (imagens importadas por link não são apagadas, só voltam para \"Sem categoria\"; imagens originais que você tinha removido voltam a aparecer)")) return;
+  // Ação de alto risco (desfaz a posição de TODAS as imagens de uma vez) — um "OK" de um clique
+  // só é fácil demais de apertar sem querer, então pede pra digitar a palavra de confirmação.
+  const digitado = prompt("Isso vai voltar TODAS as imagens para o arranjo sugerido original " +
+    "(imagens importadas não são apagadas, só voltam para \"Sem categoria\"; imagens originais que " +
+    "você tinha removido voltam a aparecer).\n\nPra confirmar, digite RESETAR abaixo:");
+  if(digitado !== "RESETAR") return;
   assignment = normalizeAssignment(Object.assign({}, DEFAULT_ASSIGNMENT));
   imported.forEach(im => assignment[im.id] = "extras");
   hidden = new Set();
@@ -1220,6 +1247,38 @@ function setBackupMsg(text, isErr){
   el.style.display = text ? "block" : "none";
   el.style.color = isErr ? "var(--accent)" : "";
 }
+
+// Gera um PDF com TODAS as coleções (não só a aba aberta na hora), pronto pra mandar pro
+// cliente — usa o "Imprimir > Salvar como PDF" do próprio navegador, sem depender de nenhum
+// serviço externo, então funciona até offline.
+function buildPrintHtml(){
+  const images = allImages();
+  return COLLECTION_KEYS.map(collKey => {
+    const label = COLLECTION_LABELS[collKey] || collKey;
+    const cats = CATEGORIES.filter(cat => cat.id.split("_")[0] === collKey);
+    const catsHtml = cats.map(cat => {
+      const {segment, piece} = parseCategoryLabel(cat.label);
+      const catBins = BINS.filter(b => b.categoryId === cat.id);
+      const moldesHtml = catBins.map(b => {
+        const imgs = images.filter(im => assignment[im.id] === b.id);
+        const moldeTitle = cat.moldes > 1 ? `<h3>Molde ${b.moldeIndex} de ${b.moldes}</h3>` : "";
+        const tilesHtml = imgs.length
+          ? imgs.map(im => `<img src="${im.src}" alt="">`).join("")
+          : `<span class="print-empty">(sem imagem ainda)</span>`;
+        return `<div class="print-molde">${moldeTitle}<div class="print-tiles">${tilesHtml}</div></div>`;
+      }).join("");
+      return `<div class="print-cat">
+        <h2><span class="print-seg">${segment}</span>${piece}</h2>
+        ${moldesHtml}
+      </div>`;
+    }).join("");
+    return `<div class="print-collection"><h1 class="print-coll-title">${label}</h1>${catsHtml}</div>`;
+  }).join("");
+}
+document.getElementById("btnExportPdf").onclick = () => {
+  document.getElementById("printView").innerHTML = buildPrintHtml();
+  window.print();
+};
 
 document.getElementById("btnBackupDownload").onclick = () => {
   const payload = {
