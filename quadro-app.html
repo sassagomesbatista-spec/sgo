@@ -204,7 +204,8 @@
     .print-cat-count{font-size:9px;color:#8a8579;font-weight:400}
     .print-moldes-row{display:flex;flex-wrap:wrap;gap:7px}
     .print-molde-col{background:#f9f8f6;border:1px solid #e5e5e5;border-radius:6px;
-      padding:7px 8px;flex:1 1 128px;min-width:128px}
+      padding:7px 8px;flex:1 1 210px;min-width:210px;display:flex;gap:8px;align-items:flex-start}
+    .print-molde-info{flex:1 1 auto;min-width:0}
     .print-molde-head{font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
       color:#8a8579;margin-bottom:5px}
     .print-status-row{display:flex;align-items:center;justify-content:space-between;gap:5px;
@@ -218,10 +219,10 @@
     .print-final-row.off{color:#8a8579}
     .print-final-row.reprovado{color:#c98500;font-weight:700}
     .print-final-row.cancelado{color:#a13d2f;font-weight:700}
-    .print-img-grid{display:flex;flex-wrap:wrap;gap:4px}
-    .print-img-grid img{width:40px;height:50px;object-fit:contain;background:#fff;border-radius:4px;border:1px solid #e5e0d8}
-    .print-img-empty{width:40px;height:50px;border:1.2px dashed #c9c3b6;border-radius:4px;
-      display:flex;align-items:center;justify-content:center;font-size:5.5px;color:#a39d8f;
+    .print-img-grid{flex:0 0 auto;display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end}
+    .print-img-grid img{width:76px;height:95px;object-fit:contain;background:#fff;border-radius:4px;border:1px solid #e5e0d8}
+    .print-img-empty{width:76px;height:95px;border:1.2px dashed #c9c3b6;border-radius:4px;
+      display:flex;align-items:center;justify-content:center;font-size:6px;color:#a39d8f;
       text-align:center;padding:2px;line-height:1.15}
   }
 </style>
@@ -1291,10 +1292,12 @@ function buildPrintHtml(){
           : isReprovado ? `<div class="print-final-row reprovado">🚫 Reprovado${reprovadoMotivo[bin.id] ? " — " + MOTIVOS_REPROVACAO[reprovadoMotivo[bin.id]] : ""}</div>`
           : `<div class="print-final-row ${isFinal ? "on" : "off"}">${isFinal ? "☑ Finalizado" : "☐ Não finalizado"}</div>`;
         return `<div class="print-molde-col">
-          <div class="print-molde-head">${moldeHead}</div>
-          <div class="print-status-row"><span>Pilotos: ${feito} de ${contratado}</span>${badgeHtml}</div>
-          <div class="print-status-row"><span>Modelagem: ${modelInfo.feito} de ${modelInfo.contratado}</span>${modelBadgeHtml}</div>
-          ${statusLineHtml}
+          <div class="print-molde-info">
+            <div class="print-molde-head">${moldeHead}</div>
+            <div class="print-status-row"><span>Pilotos: ${feito} de ${contratado}</span>${badgeHtml}</div>
+            <div class="print-status-row"><span>Modelagem: ${modelInfo.feito} de ${modelInfo.contratado}</span>${modelBadgeHtml}</div>
+            ${statusLineHtml}
+          </div>
           <div class="print-img-grid">${tilesHtml}</div>
         </div>`;
       }).join("");
