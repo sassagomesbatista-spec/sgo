@@ -92,10 +92,19 @@
   .piloto-pill{font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--line);color:var(--ink-3)}
   .piloto-pill.good{background:var(--good-bg);color:var(--good)}
   .piloto-pill.warn{background:var(--warn-bg);color:var(--warn)}
-  .finalize-toggle{font-size:10.5px;font-weight:700;padding:5px 11px;border-radius:999px;
+  .status-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .status-toggle{font-size:10.5px;font-weight:700;padding:5px 11px;border-radius:999px;
     border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer;white-space:nowrap}
-  .finalize-toggle:hover{border-color:var(--good)}
-  .finalize-toggle.on{background:var(--good);border-color:var(--good);color:#fff}
+  .status-toggle:hover{border-color:var(--ink)}
+  .status-toggle.final.on{background:var(--good);border-color:var(--good);color:#fff}
+  .status-toggle.reprovado.on{background:var(--warn);border-color:var(--warn);color:#fff}
+  .status-toggle.cancelado.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .reprovado-motivo{font:inherit;font-size:10.5px;font-weight:700;padding:5px 9px;border-radius:999px;
+    border:1px solid var(--warn);background:var(--warn-bg);color:var(--ink)}
+  .molde-card.molde-reprovado{outline:2px solid var(--warn)}
+  .molde-card.molde-cancelado{outline:2px solid var(--accent)}
+  .col.reprovado{outline:2px solid var(--warn)}
+  .col.cancelado{outline:2px solid var(--accent)}
   .dropzone{min-height:78px;flex:1;border-radius:var(--radius-sm);transition:background .15s;padding:2px}
   .dropzone.dragover{background:var(--indigo-bg)}
   .dropzone.empty::after{content:"arraste uma imagem aqui";display:block;font-size:11.5px;color:var(--ink-3);
@@ -213,6 +222,8 @@
     .print-final-row{font-size:7.5px;margin-bottom:6px}
     .print-final-row.on{color:#0ca30c;font-weight:700}
     .print-final-row.off{color:#8a8579}
+    .print-final-row.reprovado{color:#c98500;font-weight:700}
+    .print-final-row.cancelado{color:#a13d2f;font-weight:700}
     .print-img-grid{display:flex;flex-wrap:wrap;gap:4px}
     .print-img-grid img{width:40px;height:50px;object-fit:cover;border-radius:4px;border:1px solid #e5e0d8}
     .print-img-empty{width:40px;height:50px;border:1.2px dashed #c9c3b6;border-radius:4px;
@@ -625,6 +636,10 @@ const LS_PILOTOS_KEY = "quadroEditavel.pilotos.v1";
 const LS_APPROVED_KEY = "quadroEditavel.approved.v1";
 const LS_HIDDEN_KEY = "quadroEditavel.hidden.v1";
 const LS_FINALIZADO_KEY = "quadroEditavel.finalizado.v1";
+const LS_REPROVADO_KEY = "quadroEditavel.reprovado.v1";
+const LS_CANCELADO_KEY = "quadroEditavel.cancelado.v1";
+const LS_REPROVADO_MOTIVO_KEY = "quadroEditavel.reprovadoMotivo.v1";
+const MOTIVOS_REPROVACAO = {criacao: "Criação", modelagem: "Modelagem", custo: "Custo"};
 
 // Estado da sincronização com a nuvem (Firestore) — declarado aqui em cima, antes de
 // qualquer chamada a save*, porque algumas rodam de forma síncrona logo no carregamento
@@ -635,7 +650,8 @@ let fsFns = null, db = null, metaRef = null, assignmentRef = null, imagesCol = n
 let lastSyncedAssignment = {};
 let lastSyncedImportedIds = new Set();
 let lastSyncedPilotos = {};
-let lastSyncedSets = {approved: new Set(), hidden: new Set(), finalizado: new Set()};
+let lastSyncedSets = {approved: new Set(), hidden: new Set(), finalizado: new Set(), reprovado: new Set(), cancelado: new Set()};
+let lastSyncedReprovadoMotivo = {};
 
 function normalizeAssignment(a){
   const validBins = new Set(BINS.map(b => b.id));
@@ -757,6 +773,39 @@ function saveFinalizado(set){
   safeLSSet(LS_FINALIZADO_KEY, JSON.stringify([...set]));
   fsSyncSet("finalizado", set);
 }
+function loadReprovado(){
+  const parsed = safeLSGetParsed(LS_REPROVADO_KEY);
+  return new Set(Array.isArray(parsed.value) ? parsed.value : []);
+}
+function saveReprovado(set){
+  safeLSSet(LS_REPROVADO_KEY, JSON.stringify([...set]));
+  fsSyncSet("reprovado", set);
+}
+function loadCancelado(){
+  const parsed = safeLSGetParsed(LS_CANCELADO_KEY);
+  return new Set(Array.isArray(parsed.value) ? parsed.value : []);
+}
+function saveCancelado(set){
+  safeLSSet(LS_CANCELADO_KEY, JSON.stringify([...set]));
+  fsSyncSet("cancelado", set);
+}
+function loadReprovadoMotivo(){
+  const parsed = safeLSGetParsed(LS_REPROVADO_MOTIVO_KEY);
+  return (parsed.value && typeof parsed.value === "object") ? parsed.value : {};
+}
+function saveReprovadoMotivo(map){
+  safeLSSet(LS_REPROVADO_MOTIVO_KEY, JSON.stringify(map));
+  fsSyncReprovadoMotivo(map);
+}
+function fsSyncReprovadoMotivo(map){
+  if(!fsReady) return;
+  const updates = {};
+  Object.keys(map).forEach(binId => {
+    if(map[binId] !== lastSyncedReprovadoMotivo[binId]) updates["reprovadoMotivo." + binId] = map[binId];
+  });
+  lastSyncedReprovadoMotivo = Object.assign({}, map);
+  if(Object.keys(updates).length) fsWrite(fsFns.updateDoc(metaRef, updates));
+}
 
 let assignment = loadAssignment();
 let imported = loadImported();
@@ -764,6 +813,9 @@ let pilotos = loadPilotos();
 let approved = loadApproved();
 let hidden = loadHidden();
 let finalizado = loadFinalizado();
+let reprovado = loadReprovado();
+let cancelado = loadCancelado();
+let reprovadoMotivo = loadReprovadoMotivo();
 
 // Se o painel estiver aberto em mais de uma aba/janela ao mesmo tempo (ex: uma aba com o
 // painel e outra com o site de referência pra copiar imagem), cada aba só carrega o estado
@@ -780,6 +832,9 @@ window.addEventListener("storage", ev => {
     case LS_APPROVED_KEY: approved = loadApproved(); break;
     case LS_HIDDEN_KEY: hidden = loadHidden(); break;
     case LS_FINALIZADO_KEY: finalizado = loadFinalizado(); break;
+    case LS_REPROVADO_KEY: reprovado = loadReprovado(); break;
+    case LS_CANCELADO_KEY: cancelado = loadCancelado(); break;
+    case LS_REPROVADO_MOTIVO_KEY: reprovadoMotivo = loadReprovadoMotivo(); break;
     default: return;
   }
   render();
@@ -916,8 +971,28 @@ function render(){
 
   renderCollectionTabs();
 
-  function pilotosRowHtml(binId){
+  function statusRowHtml(binId){
     const isFinal = finalizado.has(binId);
+    const isReprovado = reprovado.has(binId);
+    const isCancelado = cancelado.has(binId);
+    const motivoSelectHtml = isReprovado ? `
+      <select class="reprovado-motivo" data-bin="${binId}">
+        <option value=""${!reprovadoMotivo[binId] ? ' selected' : ''}>Selecione o motivo...</option>
+        ${Object.entries(MOTIVOS_REPROVACAO).map(([key, label]) =>
+          `<option value="${key}"${reprovadoMotivo[binId] === key ? ' selected' : ''}>${label}</option>`).join("")}
+      </select>` : "";
+    return `
+      <div class="status-row">
+        <button class="status-toggle final${isFinal?' on':''}" data-status="finalizado" data-bin="${binId}">
+          ${isFinal ? "✅ Finalizado" : "☐ Finalizado"}</button>
+        <button class="status-toggle reprovado${isReprovado?' on':''}" data-status="reprovado" data-bin="${binId}">
+          ${isReprovado ? "🚫 Reprovado" : "☐ Reprovado"}</button>
+        <button class="status-toggle cancelado${isCancelado?' on':''}" data-status="cancelado" data-bin="${binId}">
+          ${isCancelado ? "❌ Cancelado" : "☐ Cancelado"}</button>
+        ${motivoSelectHtml}
+      </div>`;
+  }
+  function pilotosRowHtml(binId){
     return `
       <div class="pilotos-row">
         <span class="plabel">Pilotos entregues</span>
@@ -925,9 +1000,8 @@ function render(){
         <span class="plabel">de</span>
         <input type="number" min="0" class="piloto-contratado" data-bin="${binId}" value="${pilotoInfo(binId).contratado}">
         ${pilotoPillHtml(binId)}
-        <button class="finalize-toggle${isFinal?' on':''}" data-finalize="${binId}">
-          ${isFinal ? "✅ Finalizado" : "☐ Marcar como finalizado"}</button>
-      </div>`;
+      </div>
+      ${statusRowHtml(binId)}`;
   }
 
   boardEl.innerHTML = "";
@@ -937,10 +1011,12 @@ function render(){
     if(cat.moldes <= 1){
       const bin = catBins[0];
       const isFinal = finalizado.has(bin.id);
+      const isReprovado = reprovado.has(bin.id);
+      const isCancelado = cancelado.has(bin.id);
       const deliveredBadgeHtml = isFinal
         ? `<div class="delivered-badge">✅ Finalizado / entregue ao cliente</div>` : "";
       const col = document.createElement("div");
-      col.className = "col" + (isFinal ? " delivered" : "");
+      col.className = "col" + (isFinal ? " delivered" : "") + (isReprovado ? " reprovado" : "") + (isCancelado ? " cancelado" : "");
       col.dataset.catId = cat.id;
       const count = images.filter(im => assignment[im.id] === bin.id).length;
       col.innerHTML = `${deliveredBadgeHtml}${catTitleHtml(bin.label, count, bin.id, false)}
@@ -958,7 +1034,10 @@ function render(){
       const moldesHtml = catBins.map(b => {
         const mcount = images.filter(im => assignment[im.id] === b.id).length;
         const moldeFinal = finalizado.has(b.id);
-        return `<div class="molde-card${moldeFinal ? ' molde-done' : ''}">
+        const moldeReprovado = reprovado.has(b.id);
+        const moldeCancelado = cancelado.has(b.id);
+        const moldeClass = (moldeFinal ? ' molde-done' : '') + (moldeReprovado ? ' molde-reprovado' : '') + (moldeCancelado ? ' molde-cancelado' : '');
+        return `<div class="molde-card${moldeClass}">
           <h4>Molde ${b.moldeIndex} de ${b.moldes} <span class="count" data-count-for="${b.id}">(${mcount})</span></h4>
           ${pilotosRowHtml(b.id)}
           <div class="dropzone tiles" data-bin="${b.id}"></div>
@@ -1041,29 +1120,47 @@ function render(){
     });
   });
 
-  document.querySelectorAll(".finalize-toggle").forEach(btn => {
+  document.querySelectorAll(".status-toggle").forEach(btn => {
     btn.addEventListener("click", ev => {
       ev.stopPropagation();
-      const binId = btn.dataset.finalize;
-      if(finalizado.has(binId)){
-        finalizado.delete(binId);
-      }else{
-        finalizado.add(binId);
-        // Marcar como finalizado assume que os pilotos contratados desse molde/categoria já
-        // foram todos entregues (não dá pra estar finalizado com piloto faltando).
-        if(!pilotos[binId]) pilotos[binId] = {feito:0, contratado:0};
-        pilotos[binId].feito = pilotos[binId].contratado;
-        savePilotos(pilotos);
+      const binId = btn.dataset.bin;
+      const status = btn.dataset.status;
+      // só um status vale por vez — ativar um desliga os outros dois desse molde/card.
+      const sets = {finalizado, reprovado, cancelado};
+      const wasOn = sets[status].has(binId);
+      Object.keys(sets).forEach(key => { if(key !== status) sets[key].delete(binId); });
+      if(wasOn) sets[status].delete(binId);
+      else{
+        sets[status].add(binId);
+        if(status === "finalizado"){
+          // Marcar como finalizado assume que os pilotos contratados desse molde/categoria já
+          // foram todos entregues (não dá pra estar finalizado com piloto faltando).
+          if(!pilotos[binId]) pilotos[binId] = {feito:0, contratado:0};
+          pilotos[binId].feito = pilotos[binId].contratado;
+          savePilotos(pilotos);
+        }
       }
+      if(status !== "reprovado" || wasOn){ delete reprovadoMotivo[binId]; saveReprovadoMotivo(reprovadoMotivo); }
       saveFinalizado(finalizado);
+      saveReprovado(reprovado);
+      saveCancelado(cancelado);
       render();
       // O card não muda de lugar — só pisca rapidinho no mesmo lugar pra confirmar o clique.
       const moved = document.querySelector(`[data-cat-id="${binId}"]`) ||
-        [...document.querySelectorAll(".molde-card")].find(c => c.querySelector(`[data-finalize="${binId}"]`));
+        [...document.querySelectorAll(".molde-card")].find(c => c.querySelector(`[data-status][data-bin="${binId}"]`));
       if(moved){
         moved.classList.add("just-moved");
         setTimeout(() => moved.classList.remove("just-moved"), 900);
       }
+    });
+  });
+
+  document.querySelectorAll(".reprovado-motivo").forEach(sel => {
+    sel.addEventListener("change", () => {
+      const binId = sel.dataset.bin;
+      if(sel.value) reprovadoMotivo[binId] = sel.value;
+      else delete reprovadoMotivo[binId];
+      saveReprovadoMotivo(reprovadoMotivo);
     });
   });
 
@@ -1313,6 +1410,8 @@ function buildPrintHtml(){
         const imgs = images.filter(im => assignment[im.id] === bin.id);
         const {feito, contratado, restante} = pilotoInfo(bin.id);
         const isFinal = finalizado.has(bin.id);
+        const isReprovado = reprovado.has(bin.id);
+        const isCancelado = cancelado.has(bin.id);
         const moldeHead = cat.moldes > 1 ? `Molde ${bin.moldeIndex} de ${bin.moldes}` : "Peça única";
         const badgeHtml = contratado === 0
           ? `<span class="print-badge none">—</span>`
@@ -1322,10 +1421,13 @@ function buildPrintHtml(){
         const tilesHtml = imgs.length
           ? imgs.map(im => `<img src="${im.src}" alt="">`).join("")
           : `<div class="print-img-empty">Sem imagem</div>`;
+        const statusLineHtml = isCancelado ? `<div class="print-final-row cancelado">❌ Cancelado</div>`
+          : isReprovado ? `<div class="print-final-row reprovado">🚫 Reprovado${reprovadoMotivo[bin.id] ? " — " + MOTIVOS_REPROVACAO[reprovadoMotivo[bin.id]] : ""}</div>`
+          : `<div class="print-final-row ${isFinal ? "on" : "off"}">${isFinal ? "☑ Finalizado" : "☐ Não finalizado"}</div>`;
         return `<div class="print-molde-col">
           <div class="print-molde-head">${moldeHead}</div>
           <div class="print-status-row"><span>Pilotos: ${feito} de ${contratado}</span>${badgeHtml}</div>
-          <div class="print-final-row ${isFinal ? "on" : "off"}">${isFinal ? "☑ Finalizado" : "☐ Não finalizado"}</div>
+          ${statusLineHtml}
           <div class="print-img-grid">${tilesHtml}</div>
         </div>`;
       }).join("");
@@ -1501,12 +1603,20 @@ function applyRemoteMeta(data){
     BINS.filter(b => b.categoryId === cat.id).forEach(b => fin.add(b.id));
   });
   finalizado = fin;
+  reprovado = new Set(data.reprovado || []);
+  cancelado = new Set(data.cancelado || []);
+  reprovadoMotivo = data.reprovadoMotivo || {};
   lastSyncedPilotos = JSON.parse(JSON.stringify(pilotos));
-  lastSyncedSets = {approved: new Set(approved), hidden: new Set(hidden), finalizado: new Set(finalizado)};
+  lastSyncedSets = {approved: new Set(approved), hidden: new Set(hidden), finalizado: new Set(finalizado),
+    reprovado: new Set(reprovado), cancelado: new Set(cancelado)};
+  lastSyncedReprovadoMotivo = Object.assign({}, reprovadoMotivo);
   safeLSSet(LS_PILOTOS_KEY, JSON.stringify(pilotos));
   safeLSSet(LS_APPROVED_KEY, JSON.stringify([...approved]));
   safeLSSet(LS_HIDDEN_KEY, JSON.stringify([...hidden]));
   safeLSSet(LS_FINALIZADO_KEY, JSON.stringify([...finalizado]));
+  safeLSSet(LS_REPROVADO_KEY, JSON.stringify([...reprovado]));
+  safeLSSet(LS_CANCELADO_KEY, JSON.stringify([...cancelado]));
+  safeLSSet(LS_REPROVADO_MOTIVO_KEY, JSON.stringify(reprovadoMotivo));
   render();
 }
 function applyRemoteAssignment(data){
@@ -1565,14 +1675,20 @@ async function bootstrapFirestore(){
   // dados). Nunca sobrescreve o que já está aqui sem antes juntar os dois lados.
   const metaSnap = await f.getDoc(metaRef);
   if(!metaSnap.exists()){
-    await f.setDoc(metaRef, {pilotos, approved:[...approved], hidden:[...hidden], finalizado:[...finalizado]});
+    await f.setDoc(metaRef, {pilotos, approved:[...approved], hidden:[...hidden], finalizado:[...finalizado],
+      reprovado:[...reprovado], cancelado:[...cancelado], reprovadoMotivo});
     lastSyncedPilotos = JSON.parse(JSON.stringify(pilotos));
-    lastSyncedSets = {approved: new Set(approved), hidden: new Set(hidden), finalizado: new Set(finalizado)};
+    lastSyncedSets = {approved: new Set(approved), hidden: new Set(hidden), finalizado: new Set(finalizado),
+      reprovado: new Set(reprovado), cancelado: new Set(cancelado)};
+    lastSyncedReprovadoMotivo = Object.assign({}, reprovadoMotivo);
   }else{
     const cloudMeta = metaSnap.data();
     const mergedApproved = mergeSetSafe([...approved], cloudMeta.approved);
     const mergedHidden = mergeSetSafe([...hidden], cloudMeta.hidden);
     const mergedFinalizado = mergeSetSafe([...finalizado], cloudMeta.finalizado);
+    const mergedReprovado = mergeSetSafe([...reprovado], cloudMeta.reprovado);
+    const mergedCancelado = mergeSetSafe([...cancelado], cloudMeta.cancelado);
+    const mergedReprovadoMotivo = Object.assign({}, reprovadoMotivo, cloudMeta.reprovadoMotivo || {});
     const mergedPilotos = Object.assign({}, cloudMeta.pilotos || {});
     Object.keys(pilotos).forEach(binId => {
       const l = pilotos[binId] || {feito:0, contratado:0};
@@ -1580,7 +1696,8 @@ async function bootstrapFirestore(){
       // "feito" só sobe, nunca some — pega sempre o maior dos dois lados.
       mergedPilotos[binId] = {feito: Math.max(l.feito||0, c.feito||0), contratado: (c.contratado || l.contratado || 0)};
     });
-    const mergedMeta = {pilotos: mergedPilotos, approved: mergedApproved, hidden: mergedHidden, finalizado: mergedFinalizado};
+    const mergedMeta = {pilotos: mergedPilotos, approved: mergedApproved, hidden: mergedHidden,
+      finalizado: mergedFinalizado, reprovado: mergedReprovado, cancelado: mergedCancelado, reprovadoMotivo: mergedReprovadoMotivo};
     applyRemoteMeta(mergedMeta);
     await f.setDoc(metaRef, mergedMeta);
   }
