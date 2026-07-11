@@ -149,6 +149,19 @@
   .pilotos-summary .num.warn{color:var(--warn)}
   .pilotos-summary .num.good{color:var(--good)}
   .pilotos-summary .lbl{font-size:11px;color:var(--ink-3);margin-top:2px}
+
+  .auth-overlay{position:fixed;inset:0;background:rgba(20,18,10,.55);display:flex;
+    align-items:center;justify-content:center;z-index:50}
+  .auth-overlay.hidden{display:none}
+  .auth-box{background:var(--surface);color:var(--ink);border-radius:var(--radius);padding:28px 30px;
+    max-width:360px;width:90%;box-shadow:var(--shadow-card)}
+  .auth-box h2{font-family:Georgia,serif;margin:0 0 8px;font-size:19px}
+  .auth-sub{font-size:12.5px;color:var(--ink-2);margin-bottom:16px}
+  .auth-box input{width:100%;font:inherit;padding:9px 11px;border-radius:8px;border:1px solid var(--line);
+    background:var(--paper);color:var(--ink);margin-bottom:10px}
+  .auth-box button{width:100%;background:var(--indigo);color:#fff;border:none;padding:10px;
+    border-radius:8px;font-weight:700;cursor:pointer;font-size:13px}
+  .auth-error{color:var(--accent);font-size:12.5px;font-weight:600;margin-top:10px;min-height:1em}
 </style>
 
 <div class="wrap">
@@ -166,10 +179,26 @@
       <input type="file" id="backupFileInput" accept="application/json" style="display:none">
       <button id="btnReset">↺ Resetar sugestão original</button>
       <button id="btnSyncPilotos" title="Traz de volta os números de pilotos contratados do Asana, sem mexer no que você já preencheu em 'feitos'">🔄 Sincronizar contratados</button>
+      <button id="btnLogout" title="Sair da conta" style="display:none">Sair</button>
     </div>
   </header>
   <p id="backupMsg" class="sub" style="display:none"></p>
   <div id="storageWarning" class="storage-warning hidden"></div>
+
+  <div id="authLoading" class="auth-overlay">
+    <div class="auth-box">Carregando…</div>
+  </div>
+  <div id="loginGate" class="auth-overlay hidden">
+    <div class="auth-box">
+      <h2>Entrar no painel</h2>
+      <p class="auth-sub">Esse painel salva na nuvem agora — entre com o e-mail e a senha cadastrados pra usar,
+        assim os dados ficam disponíveis em qualquer navegador ou aparelho.</p>
+      <input type="email" id="loginEmail" placeholder="E-mail" autocomplete="username">
+      <input type="password" id="loginPassword" placeholder="Senha" autocomplete="current-password">
+      <button id="btnLogin" type="button">Entrar</button>
+      <p id="loginError" class="auth-error"></p>
+    </div>
+  </div>
 
   <nav class="collection-tabs" id="collectionTabs"></nav>
 
@@ -450,9 +479,25 @@ function showStorageWarning(){
 }
 function hideStorageWarning(){
   const el = document.getElementById("storageWarning");
-  // Um aviso de corrupção não pode ser escondido só porque outra chave, sem relação, salvou
-  // com sucesso logo em seguida — só desaparece quando ela mesma for corrigida/dispensada.
-  if(el && el.dataset.warnType !== "corruption") el.classList.add("hidden");
+  // Um aviso de corrupção ou de falha na nuvem não pode ser escondido só porque outra chave,
+  // sem relação, salvou com sucesso no navegador local logo em seguida — só desaparece quando
+  // ele mesmo for corrigido/dispensado (ou, no caso da nuvem, quando ela sincronizar de novo).
+  if(el && el.dataset.warnType === "quota") el.classList.add("hidden");
+}
+function showCloudWarning(){
+  const el = document.getElementById("storageWarning");
+  if(!el || el.dataset.warnType === "corruption") return;
+  el.classList.remove("hidden");
+  el.dataset.warnType = "cloud";
+  el.innerHTML = '⚠️ Não consegui salvar na nuvem agora (sem internet ou sessão expirada) — o que você fizer ' +
+    'continua salvo neste navegador e sincroniza sozinho assim que a conexão voltar.';
+}
+function clearCloudWarning(){
+  const el = document.getElementById("storageWarning");
+  if(el && el.dataset.warnType === "cloud") el.classList.add("hidden");
+}
+function fsWrite(promise){
+  promise.then(clearCloudWarning).catch(err => { console.error("Firestore:", err); showCloudWarning(); });
 }
 function safeLSSet(key, value){
   try{
@@ -502,6 +547,16 @@ const LS_APPROVED_KEY = "quadroEditavel.approved.v1";
 const LS_HIDDEN_KEY = "quadroEditavel.hidden.v1";
 const LS_FINALIZADO_KEY = "quadroEditavel.finalizado.v1";
 
+// Estado da sincronização com a nuvem (Firestore) — declarado aqui em cima, antes de
+// qualquer chamada a save*, porque algumas rodam de forma síncrona logo no carregamento
+// do script (ex: o ajuste de pilotos das categorias pré-finalizadas, mais abaixo).
+let fsReady = false;
+let fsFns = null, db = null, metaRef = null, assignmentRef = null, imagesCol = null;
+let lastSyncedAssignment = {};
+let lastSyncedImportedIds = new Set();
+let lastSyncedPilotos = {};
+let lastSyncedSets = {approved: new Set(), hidden: new Set(), finalizado: new Set()};
+
 function normalizeAssignment(a){
   const validBins = new Set(BINS.map(b => b.id));
   validBins.add("extras");
@@ -526,6 +581,7 @@ function loadAssignment(){
 }
 function saveAssignment(a){
   safeLSSet(LS_KEY, JSON.stringify(a));
+  fsSyncAssignment(a);
 }
 function loadImported(){
   const parsed = safeLSGetParsed(LS_IMPORTED_KEY);
@@ -533,6 +589,7 @@ function loadImported(){
 }
 function saveImported(list){
   safeLSSet(LS_IMPORTED_KEY, JSON.stringify(list));
+  fsSyncImported(list);
 }
 // O contrato só nos dá o total de pilotos por CATEGORIA (ex: 6 pra "Top com bojo" com 3 moldes).
 // A observação da OS 126 confirma "2 peças pilotos de cada modelo" — dividindo o total pelo
@@ -585,6 +642,7 @@ function loadPilotos(){
 }
 function savePilotos(p){
   safeLSSet(LS_PILOTOS_KEY, JSON.stringify(p));
+  fsSyncPilotos(p);
 }
 function loadApproved(){
   const parsed = safeLSGetParsed(LS_APPROVED_KEY);
@@ -592,6 +650,7 @@ function loadApproved(){
 }
 function saveApproved(set){
   safeLSSet(LS_APPROVED_KEY, JSON.stringify([...set]));
+  fsSyncSet("approved", set);
 }
 function loadHidden(){
   const parsed = safeLSGetParsed(LS_HIDDEN_KEY);
@@ -599,6 +658,7 @@ function loadHidden(){
 }
 function saveHidden(set){
   safeLSSet(LS_HIDDEN_KEY, JSON.stringify([...set]));
+  fsSyncSet("hidden", set);
 }
 
 // Ponto de partida: essas categorias já foram confirmadas como entregues/feitas (Asana + OS 128).
@@ -615,6 +675,7 @@ function loadFinalizado(){
 }
 function saveFinalizado(set){
   safeLSSet(LS_FINALIZADO_KEY, JSON.stringify([...set]));
+  fsSyncSet("finalizado", set);
 }
 
 let assignment = loadAssignment();
@@ -1198,6 +1259,206 @@ document.getElementById("backupFileInput").addEventListener("change", ev => {
   reader.readAsText(file);
 });
 
+// ============================================================================
+// Sincronização com a nuvem (Firestore) — o navegador/localStorage sozinho não
+// dá conta: cada navegador/aparelho tem seu próprio armazenamento, então abrir
+// em outro navegador ou celular parecia "não estar salvando nada". Cada uma
+// das funções save* acima já grava no localStorage (fica funcionando mesmo
+// sem internet) e agora também empurra só o que mudou pro Firestore — nunca
+// o objeto inteiro — pra nunca sobrescrever em silêncio o que outra aba ou
+// outro aparelho tiver salvado nesse meio tempo.
+// ============================================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyCHZ0Fz6tqbYEi8xsD7ZWp4DElwhh4znuw",
+  authDomain: "painel-referencias-sgo.firebaseapp.com",
+  projectId: "painel-referencias-sgo",
+  storageBucket: "painel-referencias-sgo.firebasestorage.app",
+  messagingSenderId: "75253606332",
+  appId: "1:75253606332:web:e8ae339b2a9da72ae96db9"
+};
+
+function fsSyncAssignment(a){
+  if(!fsReady) return;
+  const changes = {};
+  Object.keys(a).forEach(k => { if(a[k] !== lastSyncedAssignment[k]) changes[k] = a[k]; });
+  Object.keys(lastSyncedAssignment).forEach(k => { if(!(k in a)) changes[k] = fsFns.deleteField(); });
+  lastSyncedAssignment = Object.assign({}, a);
+  if(Object.keys(changes).length) fsWrite(fsFns.updateDoc(assignmentRef, changes));
+}
+function fsSyncImported(list){
+  if(!fsReady) return;
+  const currentIds = new Set(list.map(im => im.id));
+  list.forEach(im => {
+    if(!lastSyncedImportedIds.has(im.id)){
+      fsWrite(fsFns.setDoc(fsFns.doc(imagesCol, im.id), {src: im.src, imported: true}));
+    }
+  });
+  lastSyncedImportedIds.forEach(id => {
+    if(!currentIds.has(id)) fsWrite(fsFns.deleteDoc(fsFns.doc(imagesCol, id)));
+  });
+  lastSyncedImportedIds = currentIds;
+}
+function fsSyncPilotos(p){
+  if(!fsReady) return;
+  const updates = {};
+  Object.keys(p).forEach(binId => {
+    const cur = p[binId] || {feito:0, contratado:0};
+    const prev = lastSyncedPilotos[binId] || {};
+    if(cur.feito !== prev.feito) updates["pilotos." + binId + ".feito"] = cur.feito;
+    if(cur.contratado !== prev.contratado) updates["pilotos." + binId + ".contratado"] = cur.contratado;
+  });
+  lastSyncedPilotos = JSON.parse(JSON.stringify(p));
+  if(Object.keys(updates).length) fsWrite(fsFns.updateDoc(metaRef, updates));
+}
+function fsSyncSet(fieldName, set){
+  if(!fsReady) return;
+  const prev = lastSyncedSets[fieldName];
+  const added = [...set].filter(id => !prev.has(id));
+  const removed = [...prev].filter(id => !set.has(id));
+  lastSyncedSets[fieldName] = new Set(set);
+  if(added.length) fsWrite(fsFns.updateDoc(metaRef, {[fieldName]: fsFns.arrayUnion(...added)}));
+  if(removed.length) fsWrite(fsFns.updateDoc(metaRef, {[fieldName]: fsFns.arrayRemove(...removed)}));
+}
+
+function applyRemoteMeta(data){
+  if(data.pilotos) pilotos = data.pilotos;
+  approved = new Set(data.approved || []);
+  hidden = new Set(data.hidden || []);
+  const fin = new Set(data.finalizado || []);
+  CATEGORIES.filter(cat => cat.moldes > 1 && fin.has(cat.id)).forEach(cat => {
+    BINS.filter(b => b.categoryId === cat.id).forEach(b => fin.add(b.id));
+  });
+  finalizado = fin;
+  lastSyncedPilotos = JSON.parse(JSON.stringify(pilotos));
+  lastSyncedSets = {approved: new Set(approved), hidden: new Set(hidden), finalizado: new Set(finalizado)};
+  safeLSSet(LS_PILOTOS_KEY, JSON.stringify(pilotos));
+  safeLSSet(LS_APPROVED_KEY, JSON.stringify([...approved]));
+  safeLSSet(LS_HIDDEN_KEY, JSON.stringify([...hidden]));
+  safeLSSet(LS_FINALIZADO_KEY, JSON.stringify([...finalizado]));
+  render();
+}
+function applyRemoteAssignment(data){
+  const a = normalizeAssignment(Object.assign({}, data));
+  Object.keys(DEFAULT_ASSIGNMENT).forEach(imgId => { if(!(imgId in a)) a[imgId] = DEFAULT_ASSIGNMENT[imgId]; });
+  assignment = a;
+  lastSyncedAssignment = Object.assign({}, a);
+  safeLSSet(LS_KEY, JSON.stringify(a));
+  render();
+}
+function applyRemoteImages(docs){
+  imported = docs.map(d => ({id: d.id, src: d.data().src, imported: true}));
+  lastSyncedImportedIds = new Set(imported.map(im => im.id));
+  safeLSSet(LS_IMPORTED_KEY, JSON.stringify(imported));
+  render();
+}
+
+async function bootstrapFirestore(){
+  const f = fsFns;
+  const metaSnap = await f.getDoc(metaRef);
+  if(!metaSnap.exists()){
+    await f.setDoc(metaRef, {pilotos, approved:[...approved], hidden:[...hidden], finalizado:[...finalizado]});
+    lastSyncedPilotos = JSON.parse(JSON.stringify(pilotos));
+    lastSyncedSets = {approved: new Set(approved), hidden: new Set(hidden), finalizado: new Set(finalizado)};
+  }else{
+    applyRemoteMeta(metaSnap.data());
+  }
+
+  const assignSnap = await f.getDoc(assignmentRef);
+  if(!assignSnap.exists()){
+    await f.setDoc(assignmentRef, assignment);
+    lastSyncedAssignment = Object.assign({}, assignment);
+  }else{
+    applyRemoteAssignment(assignSnap.data());
+  }
+
+  // Se a nuvem ainda não tem nenhuma imagem importada mas esse navegador já tinha (uso de
+  // antes da migração pra nuvem existir), sobe essas imagens pra virarem a cópia oficial.
+  const imagesSnap = await f.getDocs(imagesCol);
+  if(imagesSnap.empty && imported.length){
+    for(const im of imported){
+      await f.setDoc(f.doc(imagesCol, im.id), {src: im.src, imported: true});
+    }
+    lastSyncedImportedIds = new Set(imported.map(im => im.id));
+  }else{
+    applyRemoteImages(imagesSnap.docs);
+  }
+
+  fsReady = true;
+  render();
+
+  f.onSnapshot(metaRef, snap => { if(snap.exists()) applyRemoteMeta(snap.data()); });
+  f.onSnapshot(assignmentRef, snap => { if(snap.exists()) applyRemoteAssignment(snap.data()); });
+  f.onSnapshot(imagesCol, snap => applyRemoteImages(snap.docs));
+}
+
+function showAuthLoading(show){
+  const el = document.getElementById("authLoading");
+  if(el) el.classList.toggle("hidden", !show);
+}
+function showLoginGate(show){
+  const el = document.getElementById("loginGate");
+  if(el) el.classList.toggle("hidden", !show);
+  const out = document.getElementById("btnLogout");
+  if(out) out.style.display = show ? "none" : "";
+}
+
+async function initFirebase(){
+  try{
+    const [{initializeApp}, authMod, fsMod] = await Promise.all([
+      import("https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js"),
+      import("https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js"),
+      import("https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js")
+    ]);
+    const app = initializeApp(firebaseConfig);
+    const auth = authMod.getAuth(app);
+    db = fsMod.getFirestore(app);
+    fsFns = fsMod;
+    metaRef = fsMod.doc(db, "panelMeta", "main");
+    assignmentRef = fsMod.doc(db, "panelAssignment", "main");
+    imagesCol = fsMod.collection(db, "panelImages");
+
+    try{ await fsMod.enableIndexedDbPersistence(db); }
+    catch(e){ /* já ativado em outra aba, ou navegador sem suporte — segue sem isso */ }
+
+    document.getElementById("btnLogin").addEventListener("click", async () => {
+      const email = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value;
+      const errEl = document.getElementById("loginError");
+      errEl.textContent = "";
+      if(!email || !password){ errEl.textContent = "Preenche e-mail e senha."; return; }
+      try{
+        await authMod.signInWithEmailAndPassword(auth, email, password);
+      }catch(e){
+        errEl.textContent = "Não consegui entrar — confere o e-mail e a senha.";
+      }
+    });
+    const logoutBtn = document.getElementById("btnLogout");
+    if(logoutBtn) logoutBtn.addEventListener("click", () => authMod.signOut(auth));
+
+    authMod.onAuthStateChanged(auth, async user => {
+      showAuthLoading(false);
+      if(user){
+        showLoginGate(false);
+        try{
+          await bootstrapFirestore();
+        }catch(e){
+          console.error("Erro ao sincronizar com a nuvem:", e);
+          showCloudWarning();
+        }
+      }else{
+        fsReady = false;
+        showLoginGate(true);
+      }
+    });
+  }catch(e){
+    // Não consegui nem carregar o Firebase (sem internet, bloqueio de rede, etc) — o painel
+    // continua funcionando só com o navegador local, como antes da migração pra nuvem.
+    console.error("Firebase indisponível, seguindo só com armazenamento local:", e);
+    showAuthLoading(false);
+  }
+}
+
+initFirebase();
 render();
 })();
 </script>
