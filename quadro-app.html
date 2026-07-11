@@ -121,10 +121,15 @@
   .or-sep{font-size:12px;color:var(--ink-3)}
 
   .collection-tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
-  .coltab{font:inherit;font-size:13.5px;font-weight:700;padding:11px 26px;border-radius:999px;
-    border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer}
+  .coltab{font:inherit;font-size:13.5px;font-weight:700;padding:9px 10px 9px 22px;border-radius:999px;
+    border:1px solid var(--line);background:var(--surface);color:var(--ink-2);
+    display:inline-flex;align-items:center;gap:6px}
   .coltab:hover{border-color:var(--ink)}
   .coltab.active{background:var(--indigo);border-color:var(--indigo);color:#fff}
+  .coltab-label{cursor:pointer;padding:2px 0}
+  .coltab-del{font:inherit;font-size:15px;line-height:1;padding:3px 7px;border:none;background:transparent;
+    color:inherit;opacity:.5;cursor:pointer;border-radius:6px}
+  .coltab-del:hover{opacity:1;background:rgba(0,0,0,.14)}
 
   .pilotos-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
   .pilotos-summary .cell{background:var(--surface);border-radius:var(--radius-sm);padding:14px 16px;box-shadow:var(--shadow-card)}
@@ -537,6 +542,7 @@ function collectionKeys(){
   return [...new Set(CATEGORIES.map(c => c.collectionKey))];
 }
 function collectionLabel(key){
+  if(!key) return "";
   const cat = CATEGORIES.find(c => c.collectionKey === key);
   return cat ? cat.collectionLabel : key;
 }
@@ -546,15 +552,71 @@ function renderCollectionTabs(){
   const keys = collectionKeys();
   if(!activeCollection || !keys.includes(activeCollection)) activeCollection = keys[0] || null;
   nav.innerHTML = keys.map(key => {
-    return `<button class="coltab${key===activeCollection?' active':''}" data-collection="${key}">${collectionLabel(key)}</button>`;
+    return `<span class="coltab${key===activeCollection?' active':''}" data-collection="${key}">
+      <span class="coltab-label">${collectionLabel(key)}</span>
+      <button class="coltab-del" data-collection="${key}" title="Apagar a coleção ${collectionLabel(key)}">×</button>
+    </span>`;
   }).join("");
-  nav.querySelectorAll(".coltab").forEach(btn => {
-    btn.addEventListener("click", () => {
-      activeCollection = btn.dataset.collection;
+  nav.querySelectorAll(".coltab").forEach(tab => {
+    tab.querySelector(".coltab-label").addEventListener("click", () => {
+      activeCollection = tab.dataset.collection;
       saveActiveCollection(activeCollection);
       render();
     });
   });
+  nav.querySelectorAll(".coltab-del").forEach(btn => {
+    btn.addEventListener("click", ev => {
+      ev.stopPropagation();
+      deleteCollection(btn.dataset.collection);
+    });
+  });
+}
+
+// Apaga a coleção inteira (todos os produtos dela). As imagens que estavam encaixadas
+// nesses produtos voltam pro pool "Sem categoria / extras" em vez de serem apagadas.
+function deleteCollection(collKey){
+  const label = collectionLabel(collKey);
+  const catsToRemove = CATEGORIES.filter(cat => cat.collectionKey === collKey);
+  if(!catsToRemove.length) return;
+  const ok = confirm(`Apagar a coleção "${label}" inteira?\n\n` +
+    `Os ${catsToRemove.length} produto(s) dela serão removidos do painel. As imagens que estavam ` +
+    `encaixadas neles voltam pro Pool de imagens / extras (não são apagadas). Essa ação não pode ser desfeita.`);
+  if(!ok) return;
+
+  const removedCatIds = new Set(catsToRemove.map(c => c.id));
+  const removedBinIds = BINS.filter(b => removedCatIds.has(b.categoryId)).map(b => b.id);
+  const removedBinIdSet = new Set(removedBinIds);
+
+  Object.keys(assignment).forEach(imgId => {
+    if(removedBinIdSet.has(assignment[imgId])) assignment[imgId] = "extras";
+  });
+  saveAssignment(assignment);
+
+  removedBinIds.forEach(binId => {
+    delete pilotos[binId];
+    delete modelagem[binId];
+    finalizado.delete(binId);
+    reprovado.delete(binId);
+    cancelado.delete(binId);
+    delete reprovadoMotivo[binId];
+  });
+  savePilotos(pilotos);
+  saveModelagem(modelagem);
+  saveFinalizado(finalizado);
+  saveReprovado(reprovado);
+  saveCancelado(cancelado);
+  saveReprovadoMotivo(reprovadoMotivo);
+
+  CATEGORIES = CATEGORIES.filter(cat => cat.collectionKey !== collKey);
+  recomputeBins();
+  saveCategoriesLocal();
+  fsWrite(fsFns.updateDoc(boardRef, {categories: CATEGORIES}));
+
+  if(activeCollection === collKey){
+    activeCollection = collectionKeys()[0] || null;
+    saveActiveCollection(activeCollection);
+  }
+  render();
 }
 
 function parseCategoryLabel(label){
