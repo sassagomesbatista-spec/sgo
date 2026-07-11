@@ -162,6 +162,12 @@
   .auth-box button{width:100%;background:var(--indigo);color:#fff;border:none;padding:10px;
     border-radius:8px;font-weight:700;cursor:pointer;font-size:13px}
   .auth-error{color:var(--accent);font-size:12.5px;font-weight:600;margin-top:10px;min-height:1em}
+
+  .sync-status{font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:8px;
+    display:inline-flex;align-items:center;gap:6px}
+  .sync-status.pending{background:var(--warn-bg);color:var(--warn)}
+  .sync-status.ok{background:var(--good-bg);color:var(--good)}
+  .sync-status.off{background:var(--accent-bg);color:var(--accent)}
 </style>
 
 <div class="wrap">
@@ -173,6 +179,7 @@
          automaticamente (não precisa clicar em nada pra salvar).</p>
     </div>
     <div class="actions">
+      <span id="syncStatus" class="sync-status" style="display:none"></span>
       <a class="ghost" href="painel-revisao-mix.html">← Painel de revisão</a>
       <button id="btnBackupDownload" title="Baixa um arquivo com todo o arranjo atual">⇓ Baixar backup</button>
       <button id="btnBackupRestore" title="Restaura um arquivo de backup baixado antes">⇧ Restaurar backup</button>
@@ -496,8 +503,26 @@ function clearCloudWarning(){
   const el = document.getElementById("storageWarning");
   if(el && el.dataset.warnType === "cloud") el.classList.add("hidden");
 }
+let fsPendingWrites = 0;
+function updateSyncStatus(){
+  const el = document.getElementById("syncStatus");
+  if(!el) return;
+  if(!fsReady){ el.style.display = "none"; return; }
+  el.style.display = "";
+  if(fsPendingWrites > 0){
+    el.textContent = "☁️ salvando na nuvem...";
+    el.className = "sync-status pending";
+  }else{
+    el.textContent = "☁️ sincronizado";
+    el.className = "sync-status ok";
+  }
+}
 function fsWrite(promise){
-  promise.then(clearCloudWarning).catch(err => { console.error("Firestore:", err); showCloudWarning(); });
+  fsPendingWrites++;
+  updateSyncStatus();
+  promise
+    .then(() => { fsPendingWrites--; updateSyncStatus(); clearCloudWarning(); })
+    .catch(err => { fsPendingWrites--; updateSyncStatus(); console.error("Firestore:", err); showCloudWarning(); });
 }
 function safeLSSet(key, value){
   try{
@@ -1438,6 +1463,7 @@ async function bootstrapFirestore(){
   applyRemoteImagesList(mergedImages);
 
   fsReady = true;
+  updateSyncStatus();
   render();
 
   f.onSnapshot(metaRef, snap => { if(snap.exists()) applyRemoteMeta(snap.data()); });
@@ -1502,6 +1528,7 @@ async function initFirebase(){
       }else{
         fsReady = false;
         fsBootstrapping = false;
+        updateSyncStatus();
         showLoginGate(true);
       }
     });
