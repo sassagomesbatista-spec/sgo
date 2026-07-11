@@ -172,14 +172,18 @@
   #printView{display:none}
   @media print{
     @page{ margin: 12mm; }
-    body *{visibility:hidden}
-    #printView, #printView *{visibility:visible}
-    #printView{display:block;position:absolute;left:0;top:0;width:100%;color:#000;background:#fff;font-size:11px}
-    .print-collection{page-break-before:always;column-count:2;column-gap:26px}
+    html, body{background:#fff}
+    .wrap{padding:0;max-width:none}
+    /* visibility:hidden mantém o espaço do elemento no layout — como o quadro por trás é bem
+       alto (dezenas de cards), isso gerava várias páginas em branco só pra "cobrir" aquela altura
+       invisível. display:none de verdade tira do fluxo, então só sai página com conteúdo real. */
+    .wrap > *{display:none}
+    .wrap > #printView{display:block;color:#000;background:#fff;font-size:11px}
+    .print-collection{page-break-before:always;display:flex;flex-wrap:wrap;align-content:flex-start;gap:0 26px}
     .print-collection:first-child{page-break-before:auto}
-    .print-coll-title{font-family:Georgia,serif;font-size:17px;border-bottom:2px solid #000;
-      padding-bottom:6px;margin:0 0 12px;column-span:all}
-    .print-cat{margin-bottom:13px;break-inside:avoid}
+    .print-coll-title{width:100%;font-family:Georgia,serif;font-size:17px;border-bottom:2px solid #000;
+      padding-bottom:6px;margin:0 0 12px}
+    .print-cat{width:47%;margin-bottom:13px;break-inside:avoid}
     .print-cat h2{font-size:12px;margin:0 0 5px;display:flex;align-items:center;gap:6px}
     .print-seg{display:inline-block;font-size:8px;font-weight:700;text-transform:uppercase;
       letter-spacing:.03em;background:#eee;border:1px solid #999;border-radius:3px;padding:1px 5px;flex-shrink:0}
@@ -1283,8 +1287,25 @@ function buildPrintHtml(){
     return `<div class="print-collection"><h1 class="print-coll-title">${label}</h1>${catsHtml}</div>`;
   }).join("");
 }
-document.getElementById("btnExportPdf").onclick = () => {
-  document.getElementById("printView").innerHTML = buildPrintHtml();
+document.getElementById("btnExportPdf").onclick = async () => {
+  // Colocar as imagens no DOM não quer dizer que já estão decodificadas/prontas pra desenhar —
+  // chamar print() logo em seguida corta o carregamento das que ainda não terminaram, e elas
+  // saem em branco no PDF (foi exatamente o que aconteceu: as primeiras coleções saíam certas,
+  // as de baixo saíam vazias). Agora espera CADA imagem terminar de decodificar antes de imprimir.
+  const btn = document.getElementById("btnExportPdf");
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Preparando PDF...";
+  const printView = document.getElementById("printView");
+  printView.innerHTML = buildPrintHtml();
+  const imgs = [...printView.querySelectorAll("img")];
+  await Promise.all(imgs.map(img => {
+    if(img.decode) return img.decode().catch(() => {});
+    if(img.complete) return Promise.resolve();
+    return new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
+  }));
+  btn.disabled = false;
+  btn.textContent = originalLabel;
   window.print();
 };
 
