@@ -235,9 +235,11 @@
       <label>Nome do produto</label>
       <input type="text" id="newCatPiece" placeholder="Ex: Top com bojo">
       <label>Coleção</label>
-      <input type="text" id="newCatCollection" placeholder="Ex: Inverno 26">
+      <select id="newCatCollectionSelect"></select>
+      <input type="text" id="newCatCollectionNew" placeholder="Nome da nova coleção" style="display:none">
       <label>Segmento / tema</label>
-      <input type="text" id="newCatSegment" placeholder="Ex: Performance">
+      <select id="newCatSegmentSelect"></select>
+      <input type="text" id="newCatSegmentNew" placeholder="Nome do novo segmento/tema" style="display:none">
       <label>Quantidade de moldes</label>
       <input type="number" id="newCatMoldes" min="1" value="1">
       <div class="addcat-actions">
@@ -846,12 +848,57 @@ function slugify(s){
   return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 30) || "item";
 }
-document.getElementById("btnAddCat").onclick = () => document.getElementById("addCatModal").classList.remove("hidden");
+const NEW_OPTION = "__new__";
+function populateSelect(selEl, options, newLabel){
+  const prev = selEl.value;
+  selEl.innerHTML = options.map(o => `<option value="${o.replace(/"/g,'&quot;')}">${o}</option>`).join("")
+    + `<option value="${NEW_OPTION}">+ ${newLabel}</option>`;
+  if(options.includes(prev)) selEl.value = prev;
+}
+function segmentsForCollection(collLabel){
+  return [...new Set(CATEGORIES.filter(c => c.collectionLabel === collLabel)
+    .map(c => parseCategoryLabel(c.label).segment).filter(Boolean))];
+}
+function refreshAddCatSelects(){
+  const collLabels = [...new Set(CATEGORIES.map(c => c.collectionLabel))];
+  const collSel = document.getElementById("newCatCollectionSelect");
+  populateSelect(collSel, collLabels, "Nova coleção...");
+  if(!collLabels.length) collSel.value = NEW_OPTION;
+  refreshSegmentSelect();
+}
+function refreshSegmentSelect(){
+  const collSel = document.getElementById("newCatCollectionSelect");
+  const isNewColl = collSel.value === NEW_OPTION;
+  const segLabels = isNewColl ? [] : segmentsForCollection(collSel.value);
+  const segSel = document.getElementById("newCatSegmentSelect");
+  populateSelect(segSel, segLabels, "Novo segmento/tema...");
+  if(!segLabels.length) segSel.value = NEW_OPTION;
+  toggleNewInputs();
+}
+function toggleNewInputs(){
+  document.getElementById("newCatCollectionNew").style.display =
+    document.getElementById("newCatCollectionSelect").value === NEW_OPTION ? "" : "none";
+  document.getElementById("newCatSegmentNew").style.display =
+    document.getElementById("newCatSegmentSelect").value === NEW_OPTION ? "" : "none";
+}
+document.getElementById("newCatCollectionSelect").addEventListener("change", refreshSegmentSelect);
+document.getElementById("newCatSegmentSelect").addEventListener("change", toggleNewInputs);
+
+document.getElementById("btnAddCat").onclick = () => {
+  refreshAddCatSelects();
+  document.getElementById("addCatModal").classList.remove("hidden");
+};
 document.getElementById("btnAddCatCancel").onclick = () => document.getElementById("addCatModal").classList.add("hidden");
 document.getElementById("btnAddCatConfirm").onclick = () => {
   const piece = document.getElementById("newCatPiece").value.trim();
-  const coll = document.getElementById("newCatCollection").value.trim() || "Geral";
-  const segment = document.getElementById("newCatSegment").value.trim() || "Geral";
+  const collSelVal = document.getElementById("newCatCollectionSelect").value;
+  const coll = (collSelVal === NEW_OPTION
+    ? document.getElementById("newCatCollectionNew").value.trim()
+    : collSelVal) || "Geral";
+  const segSelVal = document.getElementById("newCatSegmentSelect").value;
+  const segment = (segSelVal === NEW_OPTION
+    ? document.getElementById("newCatSegmentNew").value.trim()
+    : segSelVal) || "Geral";
   const moldes = Math.max(1, parseInt(document.getElementById("newCatMoldes").value, 10) || 1);
   if(!piece){ alert("Digita o nome do produto."); return; }
   const collKey = slugify(coll);
@@ -866,8 +913,8 @@ document.getElementById("btnAddCatConfirm").onclick = () => {
   saveActiveCollection(activeCollection);
   document.getElementById("addCatModal").classList.add("hidden");
   document.getElementById("newCatPiece").value = "";
-  document.getElementById("newCatCollection").value = "";
-  document.getElementById("newCatSegment").value = "";
+  document.getElementById("newCatCollectionNew").value = "";
+  document.getElementById("newCatSegmentNew").value = "";
   document.getElementById("newCatMoldes").value = "1";
   render();
 };
