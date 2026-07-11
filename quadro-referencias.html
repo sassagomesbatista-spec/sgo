@@ -265,12 +265,14 @@
       <button id="btnBackupDownload" title="Baixa um arquivo com todo o arranjo atual">⇓ Baixar backup</button>
       <button id="btnBackupRestore" title="Restaura um arquivo de backup baixado antes">⇧ Restaurar backup</button>
       <input type="file" id="backupFileInput" accept="application/json" style="display:none">
+      <button id="btnMigrate" title="Cria uma cópia completa deste painel no app novo (multi-cliente), sem apagar nem alterar nada aqui">🚀 Migrar para o app novo</button>
       <button id="btnReset">↺ Resetar sugestão original</button>
       <button id="btnSyncPilotos" title="Traz de volta os números de pilotos contratados do Asana, sem mexer no que você já preencheu em 'feitos'">🔄 Sincronizar contratados</button>
       <button id="btnLogout" title="Sair da conta" style="display:none">Sair</button>
     </div>
   </header>
   <p id="backupMsg" class="sub" style="display:none"></p>
+  <p id="migrateMsg" class="sub" style="display:none"></p>
   <div id="storageWarning" class="storage-warning hidden"></div>
 
   <div id="authLoading" class="auth-overlay">
@@ -1680,6 +1682,81 @@ document.getElementById("backupFileInput").addEventListener("change", ev => {
   reader.onerror = () => setBackupMsg("Não consegui ler esse arquivo.", true);
   reader.readAsText(file);
 });
+
+function setMigrateMsg(text, isErr){
+  const el = document.getElementById("migrateMsg");
+  el.textContent = text;
+  el.style.display = text ? "block" : "none";
+  el.style.color = isErr ? "var(--accent)" : "";
+}
+
+// Migração pro app novo (multi-cliente) — só LÊ o estado atual deste painel e
+// CRIA um painel novo no app, sem apagar nem alterar nada aqui. Roda no
+// navegador de quem clicar, usando a mesma conexão com o Firestore já aberta
+// nesta página (mesmo projeto do app novo).
+function buildMigrationCategories(){
+  return CATEGORIES.map(cat => {
+    const collectionKey = cat.id.split("_")[0];
+    return {
+      id: cat.id,
+      label: cat.label,
+      moldes: cat.moldes || 1,
+      collectionKey,
+      collectionLabel: COLLECTION_LABELS[collectionKey] || collectionKey
+    };
+  });
+}
+document.getElementById("btnMigrate").onclick = async () => {
+  if(!fsFns || !db){
+    setMigrateMsg("Espera terminar de carregar a nuvem antes de migrar.", true);
+    return;
+  }
+  const nome = prompt("Nome do painel no app novo:", "painel");
+  if(nome === null) return;
+  const nomeFinal = nome.trim() || "painel";
+  const ok = confirm(`Isso cria um painel novo chamado "${nomeFinal}" no app, com uma cópia de ` +
+    `tudo que está aqui agora (categorias, imagens, pilotos, modelagem, status). ` +
+    `NÃO apaga nem altera nada deste painel atual. Continuar?`);
+  if(!ok) return;
+
+  const btn = document.getElementById("btnMigrate");
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Migrando...";
+  setMigrateMsg("Migrando — isso pode levar um minuto (tem bastante imagem)...");
+
+  try{
+    const f = fsFns;
+    const categories = buildMigrationCategories();
+    const newBoardRef = await f.addDoc(f.collection(db, "boards"), {
+      name: nomeFinal, categories, createdAt: f.serverTimestamp()
+    });
+    const boardId = newBoardRef.id;
+
+    await f.setDoc(f.doc(db, "boards", boardId, "meta", "main"), {
+      pilotos, modelagem,
+      approved: [...approved], hidden: [...hidden], finalizado: [...finalizado],
+      reprovado: [...reprovado], cancelado: [...cancelado], reprovadoMotivo
+    });
+    await f.setDoc(f.doc(db, "boards", boardId, "assignment", "main"), assignment);
+
+    const imgsCol = f.collection(db, "boards", boardId, "images");
+    const imgs = allImages();
+    for(const im of imgs){
+      await f.setDoc(f.doc(imgsCol, im.id), {src: im.src, imported: true});
+    }
+
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+    setMigrateMsg(`Painel "${nomeFinal}" criado com sucesso (${imgs.length} imagens migradas). Abrindo em uma nova aba...`);
+    window.open(`quadro-app.html?board=${boardId}`, "_blank");
+  }catch(e){
+    console.error("Erro na migração:", e);
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+    setMigrateMsg("Não consegui migrar — tenta de novo. Detalhe: " + (e.message || e), true);
+  }
+};
 
 // ============================================================================
 // Sincronização com a nuvem (Firestore) — o navegador/localStorage sozinho não
