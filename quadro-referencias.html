@@ -551,6 +551,7 @@ const LS_FINALIZADO_KEY = "quadroEditavel.finalizado.v1";
 // qualquer chamada a save*, porque algumas rodam de forma síncrona logo no carregamento
 // do script (ex: o ajuste de pilotos das categorias pré-finalizadas, mais abaixo).
 let fsReady = false;
+let fsBootstrapping = false;
 let fsFns = null, db = null, metaRef = null, assignmentRef = null, imagesCol = null;
 let lastSyncedAssignment = {};
 let lastSyncedImportedIds = new Set();
@@ -1346,42 +1347,95 @@ function applyRemoteAssignment(data){
   render();
 }
 function applyRemoteImages(docs){
-  imported = docs.map(d => ({id: d.id, src: d.data().src, imported: true}));
+  applyRemoteImagesList(docs.map(d => ({id: d.id, src: d.data().src, imported: true})));
+}
+function applyRemoteImagesList(list){
+  imported = list;
   lastSyncedImportedIds = new Set(imported.map(im => im.id));
   safeLSSet(LS_IMPORTED_KEY, JSON.stringify(imported));
   render();
 }
 
+// --- Reconciliação segura pro primeiro carregamento depois do login -----------------------
+// A nuvem pode estar "mais vazia" que este navegador (ex: alguém logou antes num aparelho
+// que nunca teve essas imagens/posições). Em vez de confiar cegamente num lado só e apagar
+// o que só existia no outro, essas funções SEMPRE juntam os dois — nunca derrubam dado.
+function mergeAssignmentSafe(localA, cloudA){
+  const merged = Object.assign({}, cloudA || {});
+  Object.keys(localA || {}).forEach(id => {
+    const localBin = localA[id];
+    const cloudBin = merged[id];
+    if(!(id in merged)) { merged[id] = localBin; return; }
+    if(localBin && localBin !== "extras" && (!cloudBin || cloudBin === "extras")){
+      merged[id] = localBin;
+    }
+  });
+  return merged;
+}
+function mergeImagesSafe(localList, cloudDocs){
+  const byId = {};
+  (localList || []).forEach(im => { byId[im.id] = im; });
+  (cloudDocs || []).forEach(d => { if(!byId[d.id]) byId[d.id] = {id: d.id, src: d.data().src, imported: true}; });
+  return Object.values(byId);
+}
+function mergeSetSafe(localArr, cloudArr){
+  return [...new Set([...(localArr || []), ...(cloudArr || [])])];
+}
+
 async function bootstrapFirestore(){
+  // Evita que duas chamadas concorrentes (ex: onAuthStateChanged disparando mais de uma vez)
+  // façam duas leituras "cloud ainda vazia" ao mesmo tempo e acabem se pisando.
+  if(fsBootstrapping || fsReady) return;
+  fsBootstrapping = true;
   const f = fsFns;
+
+  // meta (pilotos/aprovados/ocultos/finalizados) — a nuvem pode já existir mas estar mais
+  // "vazia" que esse navegador (ex: alguém logou antes noutro aparelho que nunca teve esses
+  // dados). Nunca sobrescreve o que já está aqui sem antes juntar os dois lados.
   const metaSnap = await f.getDoc(metaRef);
   if(!metaSnap.exists()){
     await f.setDoc(metaRef, {pilotos, approved:[...approved], hidden:[...hidden], finalizado:[...finalizado]});
     lastSyncedPilotos = JSON.parse(JSON.stringify(pilotos));
     lastSyncedSets = {approved: new Set(approved), hidden: new Set(hidden), finalizado: new Set(finalizado)};
   }else{
-    applyRemoteMeta(metaSnap.data());
+    const cloudMeta = metaSnap.data();
+    const mergedApproved = mergeSetSafe([...approved], cloudMeta.approved);
+    const mergedHidden = mergeSetSafe([...hidden], cloudMeta.hidden);
+    const mergedFinalizado = mergeSetSafe([...finalizado], cloudMeta.finalizado);
+    const mergedPilotos = Object.assign({}, cloudMeta.pilotos || {});
+    Object.keys(pilotos).forEach(binId => {
+      const l = pilotos[binId] || {feito:0, contratado:0};
+      const c = mergedPilotos[binId] || {feito:0, contratado:0};
+      // "feito" só sobe, nunca some — pega sempre o maior dos dois lados.
+      mergedPilotos[binId] = {feito: Math.max(l.feito||0, c.feito||0), contratado: (c.contratado || l.contratado || 0)};
+    });
+    const mergedMeta = {pilotos: mergedPilotos, approved: mergedApproved, hidden: mergedHidden, finalizado: mergedFinalizado};
+    applyRemoteMeta(mergedMeta);
+    await f.setDoc(metaRef, mergedMeta);
   }
 
+  // assignment (em qual card cada imagem está) — mesma lógica: uma posição específica que já
+  // existe aqui não pode ser derrubada por uma nuvem que ainda não sabe dela (ou que só tem a
+  // sugestão padrão / "sem categoria" pra essa imagem).
   const assignSnap = await f.getDoc(assignmentRef);
   if(!assignSnap.exists()){
     await f.setDoc(assignmentRef, assignment);
     lastSyncedAssignment = Object.assign({}, assignment);
   }else{
-    applyRemoteAssignment(assignSnap.data());
+    const merged = mergeAssignmentSafe(assignment, assignSnap.data());
+    applyRemoteAssignment(merged);
+    await f.setDoc(assignmentRef, merged);
   }
 
-  // Se a nuvem ainda não tem nenhuma imagem importada mas esse navegador já tinha (uso de
-  // antes da migração pra nuvem existir), sobe essas imagens pra virarem a cópia oficial.
+  // imagens importadas — nunca substitui a lista local pela da nuvem: sempre junta pelo id
+  // (união), e sobe pra nuvem qualquer imagem que só existia aqui.
   const imagesSnap = await f.getDocs(imagesCol);
-  if(imagesSnap.empty && imported.length){
-    for(const im of imported){
-      await f.setDoc(f.doc(imagesCol, im.id), {src: im.src, imported: true});
-    }
-    lastSyncedImportedIds = new Set(imported.map(im => im.id));
-  }else{
-    applyRemoteImages(imagesSnap.docs);
+  const mergedImages = mergeImagesSafe(imported, imagesSnap.docs);
+  const cloudImageIds = new Set(imagesSnap.docs.map(d => d.id));
+  for(const im of mergedImages){
+    if(!cloudImageIds.has(im.id)) await f.setDoc(f.doc(imagesCol, im.id), {src: im.src, imported: true});
   }
+  applyRemoteImagesList(mergedImages);
 
   fsReady = true;
   render();
@@ -1447,6 +1501,7 @@ async function initFirebase(){
         }
       }else{
         fsReady = false;
+        fsBootstrapping = false;
         showLoginGate(true);
       }
     });
