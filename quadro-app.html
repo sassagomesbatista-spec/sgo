@@ -1,0 +1,1208 @@
+<title>Painel Criativo</title>
+<style>
+  :root{
+    --paper:#eeece4; --surface:#ffffff; --ink:#1c1b19; --ink-2:#56534c; --ink-3:#8a8579;
+    --line:#ded9cd; --indigo:#2d3b66; --indigo-bg:#e7eaf2; --accent:#a13d2f; --accent-bg:#fbe9e6;
+    --gold:#7a5a17; --gold-bg:#f7ecd6; --terra:#a13d2f; --terra-bg:#fbe9e6;
+    --good:#0ca30c; --good-bg:#e6f6e3; --warn:#c98500; --warn-bg:#fdf1de;
+    --radius:14px; --radius-sm:9px;
+    --shadow-card:0 1px 2px rgba(20,18,10,.05),0 8px 20px -6px rgba(20,18,10,.10);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --paper:#17181c; --surface:#202126; --ink:#efeee9; --ink-2:#ababa3; --ink-3:#767269;
+      --line:#34353a; --indigo:#8b9fdb; --indigo-bg:#232a42; --accent:#e08a7a; --accent-bg:#3a2320;
+      --good:#5fce93; --good-bg:#12281a; --warn:#e0a256; --warn-bg:#302408;
+      --shadow-card:0 1px 2px rgba(0,0,0,.3),0 8px 20px -6px rgba(0,0,0,.4); }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font:14.5px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1400px;margin:0 auto;padding:36px 28px 90px}
+  header{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:22px;
+    display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--indigo)}
+  h1{font-family:Georgia,serif;font-size:25px;margin:6px 0 4px;letter-spacing:-.01em}
+  .sub{color:var(--ink-2);font-size:13px;max-width:60ch}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;max-width:100%;min-width:0}
+  button,a.ghost{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--surface);
+    color:var(--ink-2);padding:8px 14px;font-size:12.5px;font-weight:600;text-decoration:none;display:inline-flex;align-items:center}
+  button:hover,a.ghost:hover{border-color:var(--ink)}
+
+  #extras-wrap{margin-bottom:32px;position:sticky;top:0;z-index:5;background:var(--paper);
+    padding:16px 0 14px;box-shadow:0 10px 16px -8px rgba(0,0,0,.14)}
+  #extras-wrap .eyebrow-row{display:flex;align-items:baseline;gap:10px;margin-bottom:2px}
+  #extras-wrap h2{font-family:Georgia,serif;font-size:17px;margin:0}
+  #extras-wrap .hint{font-size:12px;color:var(--ink-3);margin-bottom:10px}
+  .bin{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-card)}
+  #extras-bin{padding:16px;min-height:90px;max-height:210px;overflow-y:auto}
+
+  .board{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px}
+  .category-group{grid-column:1/-1;background:var(--surface);border-radius:var(--radius);padding:20px 22px;
+    box-shadow:var(--shadow-card)}
+  .delivered-badge{background:var(--good-bg);color:var(--good);font-size:12.5px;font-weight:700;
+    padding:9px 14px;border-radius:var(--radius-sm);margin-bottom:14px}
+  .storage-warning{background:var(--bad-bg,#fbe7e6);color:var(--bad,#a13a3a);font-size:13.5px;font-weight:700;
+    padding:14px 18px;border-radius:var(--radius);margin-bottom:18px;box-shadow:var(--shadow-card)}
+  .storage-warning.hidden{display:none}
+  .storage-warning .btn-download-now{margin-left:10px;font-weight:700;background:var(--bad,#a13a3a);
+    color:#fff;border:none;border-radius:8px;padding:7px 14px;cursor:pointer;font-size:12.5px}
+
+  .cat-title{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .cat-title h3{font-size:15.5px;margin:0}
+  .seg-badge{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+    padding:3px 9px;border-radius:999px;background:var(--indigo-bg);color:var(--indigo)}
+  .seg-badge.seg-alt1{background:var(--terra-bg);color:var(--terra)}
+  .seg-badge.seg-alt2{background:var(--gold-bg);color:var(--gold)}
+  .count{font-weight:400;color:var(--ink-3);font-size:12.5px}
+  .count-total{color:var(--ink-2)}
+
+  .col{background:var(--surface);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow-card)}
+  .col.delivered{outline:2px solid var(--good)}
+  .category-group.delivered{outline:2px solid var(--good)}
+  .cat-header{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+  .moldes-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+  .molde-card{background:var(--paper);border-radius:var(--radius-sm);padding:14px 16px}
+  .molde-card.molde-done{outline:2px solid var(--good)}
+  .molde-card h4{font-size:13px;margin:0 0 8px;color:var(--ink-2)}
+  .molde-card .count{font-weight:600;color:var(--ink-3)}
+
+  .pilotos-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;margin:8px 0}
+  .pilotos-row .plabel{color:var(--ink-3)}
+  .pilotos-row input{width:44px;font:inherit;font-size:12.5px;padding:4px 6px;border-radius:6px;
+    border:1px solid var(--line);background:var(--surface);color:var(--ink);text-align:center}
+  .piloto-pill{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--line);color:var(--ink-3)}
+  .piloto-pill.good{background:var(--good-bg);color:var(--good)}
+  .piloto-pill.warn{background:var(--warn-bg);color:var(--warn)}
+  .finalize-toggle{font-size:11.5px;padding:5px 10px}
+  .finalize-toggle.on{background:var(--good-bg);color:var(--good);border-color:var(--good)}
+  .just-moved{animation:flash .9s ease}
+  @keyframes flash{0%{box-shadow:0 0 0 3px var(--indigo)}100%{box-shadow:none}}
+
+  .dropzone{min-height:60px;display:flex;flex-wrap:wrap;gap:10px}
+  .dropzone.empty::after{content:"arraste uma imagem aqui";color:var(--ink-3);font-size:12px;
+    display:flex;align-items:center;padding:10px}
+  .dropzone.dragover{outline:2px dashed var(--indigo);outline-offset:4px;border-radius:8px}
+  .tile{position:relative;width:118px;height:148px;border-radius:9px;overflow:hidden;
+    box-shadow:0 1px 3px rgba(0,0,0,.15);cursor:grab;flex-shrink:0}
+  .tile.dragging{opacity:.4}
+  .tile img{width:100%;height:100%;object-fit:contain;background:var(--paper);display:block}
+  .tile.broken{background:var(--accent-bg)}
+  #extras-bin .tile{width:165px;height:206px}
+  #extras-bin .tiles{gap:12px}
+  .tile .del,.tile .approve{position:absolute;top:4px;width:22px;height:22px;border-radius:999px;border:none;
+    cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center}
+  .tile .del{right:4px;background:rgba(0,0,0,.55);color:#fff}
+  .tile .approve{left:4px;background:rgba(255,255,255,.85);color:var(--ink-3)}
+  .tile .approve.on{background:var(--good);color:#fff}
+  .tile.approved{outline:2px solid var(--good)}
+
+  .importbar{display:flex;gap:8px;align-items:center;margin-bottom:22px;flex-wrap:wrap}
+  .importbar input[type=text]{flex:1 1 320px;font:inherit;padding:9px 12px;border-radius:8px;
+    border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+  .imsg{font-size:12px;color:var(--ink-3)}
+  .imsg.err{color:var(--accent)}
+  .or-sep{font-size:12px;color:var(--ink-3)}
+
+  .collection-tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+  .coltab{font:inherit;font-size:13.5px;font-weight:700;padding:11px 26px;border-radius:999px;
+    border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer}
+  .coltab:hover{border-color:var(--ink)}
+  .coltab.active{background:var(--indigo);border-color:var(--indigo);color:#fff}
+
+  .pilotos-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+  .pilotos-summary .cell{background:var(--surface);border-radius:var(--radius-sm);padding:14px 16px;box-shadow:var(--shadow-card)}
+  .pilotos-summary .num{font-size:21px;font-weight:700}
+  .pilotos-summary .num.warn{color:var(--warn)}
+  .pilotos-summary .num.good{color:var(--good)}
+  .pilotos-summary .lbl{font-size:11px;color:var(--ink-3);margin-top:2px}
+
+  .auth-overlay{position:fixed;inset:0;background:rgba(20,18,10,.55);display:flex;
+    align-items:center;justify-content:center;z-index:50}
+  .auth-overlay.hidden{display:none}
+  .auth-box{background:var(--surface);color:var(--ink);border-radius:var(--radius);padding:28px 30px;
+    max-width:380px;width:90%;box-shadow:var(--shadow-card)}
+  .auth-box h2{font-family:Georgia,serif;margin:0 0 8px;font-size:19px}
+  .auth-sub{font-size:12.5px;color:var(--ink-2);margin-bottom:16px}
+  .auth-box input,.auth-box select,.auth-box textarea{width:100%;font:inherit;padding:9px 11px;border-radius:8px;
+    border:1px solid var(--line);background:var(--paper);color:var(--ink);margin-bottom:10px}
+  .auth-box button.primary{width:100%;background:var(--indigo);color:#fff;border:none;padding:10px;
+    border-radius:8px;font-weight:700;cursor:pointer;font-size:13px}
+  .auth-error{color:var(--accent);font-size:12.5px;font-weight:600;margin-top:10px;min-height:1em}
+
+  .sync-status{font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:8px;
+    display:inline-flex;align-items:center;gap:6px}
+  .sync-status.pending{background:var(--warn-bg);color:var(--warn)}
+  .sync-status.ok{background:var(--good-bg);color:var(--good)}
+
+  #addCatModal{position:fixed;inset:0;background:rgba(20,18,10,.55);display:flex;
+    align-items:center;justify-content:center;z-index:40}
+  #addCatModal.hidden{display:none}
+  .addcat-box{background:var(--surface);border-radius:var(--radius);padding:26px 28px;max-width:420px;
+    width:92%;box-shadow:var(--shadow-card);max-height:85vh;overflow-y:auto}
+  .addcat-box h2{font-family:Georgia,serif;margin:0 0 14px;font-size:18px}
+  .addcat-box label{display:block;font-size:12px;font-weight:700;color:var(--ink-2);margin:12px 0 4px}
+  .addcat-box input,.addcat-box select{width:100%;font:inherit;padding:9px 11px;border-radius:8px;
+    border:1px solid var(--line);background:var(--paper);color:var(--ink)}
+  .addcat-actions{display:flex;gap:8px;margin-top:18px;justify-content:flex-end}
+
+  @media print{
+    @page{ margin: 12mm; }
+    html, body{background:#fff}
+    .wrap{padding:0;max-width:none}
+    .wrap > *{display:none}
+    .wrap > #printView{display:block;background:#f4f1eb;font-size:9.5px;color:#1c1b19;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+    .print-cover{margin-bottom:14px}
+    .print-cover-eyebrow{font-size:9px;font-weight:700;text-transform:uppercase;
+      letter-spacing:.08em;color:#2d3b66}
+    .print-cover-title{font-family:Georgia,serif;font-size:20px;margin:4px 0 3px}
+    .print-cover-date{font-size:9px;color:#8a8579}
+    .print-collection{page-break-before:always;padding:8px 5px}
+    .print-collection.print-collection-first{page-break-before:auto}
+    .print-coll-title{font-family:Georgia,serif;font-size:16px;border-bottom:2px solid #1c1b19;
+      padding-bottom:6px;margin:0 0 10px}
+    .print-seg-header{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+      color:#2d3b66;margin:12px 0 6px;padding-bottom:3px;border-bottom:1px solid #ddd7c9}
+    .print-seg-header:first-child{margin-top:0}
+    .print-cat{background:#ffffff;border:1px solid #e5e0d8;border-radius:7px;padding:10px 12px;
+      margin-bottom:9px;page-break-inside:avoid}
+    .print-cat-header{display:flex;align-items:baseline;gap:7px;margin-bottom:8px}
+    .print-seg{display:inline-block;font-size:7.5px;font-weight:700;text-transform:uppercase;
+      letter-spacing:.04em;background:#e8eaf6;color:#2d3b66;border-radius:4px;padding:2px 6px;flex-shrink:0}
+    .print-cat-title{font-size:11.5px;font-weight:700}
+    .print-cat-count{font-size:9px;color:#8a8579;font-weight:400}
+    .print-moldes-row{display:flex;flex-wrap:wrap;gap:7px}
+    .print-molde-col{background:#f9f8f6;border:1px solid #e5e5e5;border-radius:6px;
+      padding:7px 8px;flex:1 1 128px;min-width:128px}
+    .print-molde-head{font-size:7.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+      color:#8a8579;margin-bottom:5px}
+    .print-status-row{display:flex;align-items:center;justify-content:space-between;gap:5px;
+      font-size:8px;margin-bottom:4px}
+    .print-badge{font-size:7px;font-weight:700;border-radius:9px;padding:1px 6px;white-space:nowrap}
+    .print-badge.good{background:#e6f6e3;color:#0ca30c}
+    .print-badge.warn{background:#fdf1de;color:#c98500}
+    .print-badge.none{background:#ececec;color:#999}
+    .print-final-row{font-size:7.5px;margin-bottom:6px}
+    .print-final-row.on{color:#0ca30c;font-weight:700}
+    .print-final-row.off{color:#8a8579}
+    .print-img-grid{display:flex;flex-wrap:wrap;gap:4px}
+    .print-img-grid img{width:40px;height:50px;object-fit:cover;border-radius:4px;border:1px solid #e5e0d8}
+    .print-img-empty{width:40px;height:50px;border:1.2px dashed #c9c3b6;border-radius:4px;
+      display:flex;align-items:center;justify-content:center;font-size:5.5px;color:#a39d8f;
+      text-align:center;padding:2px;line-height:1.15}
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">Storm · Painel Criativo</div>
+      <h1 id="boardTitle">Carregando…</h1>
+      <p class="sub">Arraste qualquer imagem para outra categoria. O arranjo fica salvo na nuvem
+        automaticamente (não precisa clicar em nada pra salvar).</p>
+    </div>
+    <div class="actions">
+      <span id="syncStatus" class="sync-status" style="display:none"></span>
+      <a class="ghost" href="dashboard.html">← Todos os painéis</a>
+      <button id="btnAddCat" title="Adicionar um produto/categoria novo a este painel">+ Adicionar produto</button>
+      <button id="btnExportPdf" title="Gera um PDF com todas as coleções, pronto pra enviar ao cliente">🖨️ Exportar PDF</button>
+      <button id="btnBackupDownload" title="Baixa um arquivo com todo o arranjo atual">⇓ Baixar backup</button>
+      <button id="btnBackupRestore" title="Restaura um arquivo de backup baixado antes">⇧ Restaurar backup</button>
+      <input type="file" id="backupFileInput" accept="application/json" style="display:none">
+      <button id="btnLogout" title="Sair da conta" style="display:none">Sair</button>
+    </div>
+  </header>
+  <p id="backupMsg" class="sub" style="display:none"></p>
+  <div id="storageWarning" class="storage-warning hidden"></div>
+
+  <div id="authLoading" class="auth-overlay">
+    <div class="auth-box">Carregando…</div>
+  </div>
+  <div id="loginGate" class="auth-overlay hidden">
+    <div class="auth-box">
+      <h2>Entrar no painel</h2>
+      <p class="auth-sub">Esse painel salva na nuvem — entre com o e-mail e a senha cadastrados pra usar.</p>
+      <input type="email" id="loginEmail" placeholder="E-mail" autocomplete="username">
+      <input type="password" id="loginPassword" placeholder="Senha" autocomplete="current-password">
+      <button id="btnLogin" type="button" class="primary">Entrar</button>
+      <p id="loginError" class="auth-error"></p>
+    </div>
+  </div>
+
+  <div id="addCatModal" class="hidden">
+    <div class="addcat-box">
+      <h2>Adicionar produto</h2>
+      <label>Nome do produto</label>
+      <input type="text" id="newCatPiece" placeholder="Ex: Top com bojo">
+      <label>Coleção</label>
+      <input type="text" id="newCatCollection" placeholder="Ex: Inverno 26">
+      <label>Segmento / tema</label>
+      <input type="text" id="newCatSegment" placeholder="Ex: Performance">
+      <label>Quantidade de moldes</label>
+      <input type="number" id="newCatMoldes" min="1" value="1">
+      <div class="addcat-actions">
+        <button id="btnAddCatCancel">Cancelar</button>
+        <button id="btnAddCatConfirm" class="primary" style="width:auto;background:var(--indigo);color:#fff;border:none;padding:9px 16px;border-radius:8px;font-weight:700;cursor:pointer">Adicionar</button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="collection-tabs" id="collectionTabs"></nav>
+
+  <div class="pilotos-summary" id="pilotosSummary"></div>
+
+  <div class="importbar">
+    <input type="text" id="importUrl" placeholder="Cole aqui o link direto de uma imagem...">
+    <button id="btnImport">+ Importar imagem</button>
+    <span class="or-sep">ou</span>
+    <button id="btnImportFile">📁 Enviar arquivo do computador</button>
+    <input type="file" id="importFileInput" accept="image/*" multiple style="display:none">
+    <span class="imsg" id="importMsg"></span>
+  </div>
+
+  <div id="extras-wrap">
+    <div class="eyebrow">Pool de imagens</div>
+    <h2>Sem categoria / extras</h2>
+    <div class="hint">Imagens ainda não encaixadas em nenhum produto — arraste daqui para uma categoria abaixo.</div>
+    <div class="bin" id="extras-bin"><div class="dropzone tiles" data-bin="extras"></div></div>
+  </div>
+
+  <div class="board" id="board"></div>
+
+  <div id="printView"></div>
+
+  <div class="note" style="color:var(--ink-3);font-size:12px;margin-top:26px">
+    <strong>Como funciona:</strong> clique e segure uma miniatura, arraste até outra caixa e solte.
+    Use "+ Adicionar produto" pra criar novas categorias neste painel a qualquer momento.
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCHZ0Fz6tqbYEi8xsD7ZWp4DElwhh4znuw",
+  authDomain: "painel-referencias-sgo.firebaseapp.com",
+  projectId: "painel-referencias-sgo",
+  storageBucket: "painel-referencias-sgo.firebasestorage.app",
+  messagingSenderId: "75253606332",
+  appId: "1:75253606332:web:e8ae339b2a9da72ae96db9"
+};
+
+const params = new URLSearchParams(location.search);
+const BOARD_ID = params.get("board");
+if(!BOARD_ID){
+  location.href = "dashboard.html";
+}
+
+function showStorageWarning(){
+  const el = document.getElementById("storageWarning");
+  if(!el) return;
+  el.classList.remove("hidden");
+  el.dataset.warnType = "quota";
+  el.innerHTML = '⚠️ A última alteração NÃO foi salva neste navegador — espaço insuficiente. ' +
+    'Baixe um backup agora pra não perder nada.' +
+    '<button class="btn-download-now" id="btnStorageWarnBackup">⇓ Baixar backup agora</button>';
+  const btn = document.getElementById("btnStorageWarnBackup");
+  if(btn) btn.onclick = () => document.getElementById("btnBackupDownload").click();
+}
+function hideStorageWarning(){
+  const el = document.getElementById("storageWarning");
+  if(el && el.dataset.warnType === "quota") el.classList.add("hidden");
+}
+function showCorruptionWarning(){
+  const el = document.getElementById("storageWarning");
+  if(!el) return;
+  el.classList.remove("hidden");
+  el.dataset.warnType = "corruption";
+  el.innerHTML = '⚠️ Encontrei dados corrompidos na cópia local deste navegador — a nuvem continua ' +
+    'sendo a fonte confiável, então nada foi perdido.' +
+    '<button class="btn-download-now" id="btnStorageWarnDismiss" style="background:transparent;color:inherit;border:1px solid currentColor">✕ Dispensar</button>';
+  const dismissBtn = document.getElementById("btnStorageWarnDismiss");
+  if(dismissBtn) dismissBtn.onclick = () => { el.dataset.warnType = ""; el.classList.add("hidden"); };
+}
+function showCloudWarning(){
+  const el = document.getElementById("storageWarning");
+  if(!el || el.dataset.warnType === "corruption") return;
+  el.classList.remove("hidden");
+  el.dataset.warnType = "cloud";
+  el.innerHTML = '⚠️ Não consegui salvar na nuvem agora (sem internet ou sessão expirada) — o que você ' +
+    'fizer continua salvo neste navegador e sincroniza sozinho assim que a conexão voltar.';
+}
+function clearCloudWarning(){
+  const el = document.getElementById("storageWarning");
+  if(el && el.dataset.warnType === "cloud") el.classList.add("hidden");
+}
+function safeLSSet(key, value){
+  try{ localStorage.setItem(key, value); hideStorageWarning(); return true; }
+  catch(e){ showStorageWarning(); return false; }
+}
+function safeLSGetParsed(key){
+  let raw = null;
+  try{ raw = localStorage.getItem(key); }catch(e){ return {ok:true, value:null}; }
+  if(!raw) return {ok:true, value:null};
+  try{ return {ok:true, value: JSON.parse(raw)}; }
+  catch(e){ showCorruptionWarning(); return {ok:false, value:null}; }
+}
+let fsPendingWrites = 0;
+function updateSyncStatus(){
+  const el = document.getElementById("syncStatus");
+  if(!el) return;
+  if(!fsReady){ el.style.display = "none"; return; }
+  el.style.display = "";
+  if(fsPendingWrites > 0){ el.textContent = "☁️ salvando na nuvem..."; el.className = "sync-status pending"; }
+  else{ el.textContent = "☁️ sincronizado"; el.className = "sync-status ok"; }
+}
+function fsWrite(promise){
+  fsPendingWrites++;
+  updateSyncStatus();
+  promise
+    .then(() => { fsPendingWrites--; updateSyncStatus(); clearCloudWarning(); })
+    .catch(err => { fsPendingWrites--; updateSyncStatus(); console.error("Firestore:", err); showCloudWarning(); });
+}
+
+const LS_PREFIX = "quadroApp." + BOARD_ID + ".";
+const LS_ASSIGN_KEY = LS_PREFIX + "assignment.v1";
+const LS_IMAGES_KEY = LS_PREFIX + "images.v1";
+const LS_META_KEY = LS_PREFIX + "meta.v1";
+const LS_CATS_KEY = LS_PREFIX + "categories.v1";
+const LS_ACTIVE_COLLECTION_KEY = LS_PREFIX + "activeCollection.v1";
+
+let fsReady = false;
+let fsBootstrapping = false;
+let fsFns = null, db = null, boardRef = null, metaRef = null, assignmentRef = null, imagesCol = null;
+let lastSyncedAssignment = {};
+let lastSyncedImagesIds = new Set();
+let lastSyncedPilotos = {};
+let lastSyncedSets = {approved: new Set(), hidden: new Set(), finalizado: new Set()};
+
+// -------- categorias (dinâmicas, por painel) --------
+let boardName = "";
+let CATEGORIES = [];
+let BINS = [];
+function buildBins(categories){
+  const bins = [];
+  categories.forEach(cat => {
+    if(cat.moldes > 1){
+      for(let i = 1; i <= cat.moldes; i++){
+        bins.push({id: cat.id + "_m" + i, label: cat.label, categoryId: cat.id, moldeIndex: i, moldes: cat.moldes});
+      }
+    }else{
+      bins.push({id: cat.id, label: cat.label, categoryId: cat.id, moldeIndex: null, moldes: 1});
+    }
+  });
+  return bins;
+}
+function recomputeBins(){ BINS = buildBins(CATEGORIES); }
+
+function normalizeAssignment(a){
+  const validBins = new Set(BINS.map(b => b.id));
+  validBins.add("extras");
+  Object.keys(a).forEach(imgId => { if(!validBins.has(a[imgId])) a[imgId] = "extras"; });
+  return a;
+}
+
+function loadAssignment(){
+  const parsed = safeLSGetParsed(LS_ASSIGN_KEY);
+  return normalizeAssignment(parsed.value || {});
+}
+function saveAssignment(a){
+  safeLSSet(LS_ASSIGN_KEY, JSON.stringify(a));
+  fsSyncAssignment(a);
+}
+function loadImages(){
+  const parsed = safeLSGetParsed(LS_IMAGES_KEY);
+  return Array.isArray(parsed.value) ? parsed.value : [];
+}
+function saveImages(list){
+  safeLSSet(LS_IMAGES_KEY, JSON.stringify(list));
+  fsSyncImages(list);
+}
+function loadMeta(){
+  const parsed = safeLSGetParsed(LS_META_KEY);
+  const v = parsed.value || {};
+  return {
+    pilotos: v.pilotos || {},
+    approved: new Set(v.approved || []),
+    hidden: new Set(v.hidden || []),
+    finalizado: new Set(v.finalizado || [])
+  };
+}
+function savePilotos(p){
+  safeLSSet(LS_META_KEY, JSON.stringify({pilotos: p, approved: [...approved], hidden: [...hidden], finalizado: [...finalizado]}));
+  fsSyncPilotos(p);
+}
+function saveApproved(set){
+  safeLSSet(LS_META_KEY, JSON.stringify({pilotos, approved: [...set], hidden: [...hidden], finalizado: [...finalizado]}));
+  fsSyncSet("approved", set);
+}
+function saveHidden(set){
+  safeLSSet(LS_META_KEY, JSON.stringify({pilotos, approved: [...approved], hidden: [...set], finalizado: [...finalizado]}));
+  fsSyncSet("hidden", set);
+}
+function saveFinalizado(set){
+  safeLSSet(LS_META_KEY, JSON.stringify({pilotos, approved: [...approved], hidden: [...hidden], finalizado: [...set]}));
+  fsSyncSet("finalizado", set);
+}
+function saveCategoriesLocal(){
+  safeLSSet(LS_CATS_KEY, JSON.stringify(CATEGORIES));
+}
+
+let assignment = {};
+let images = [];
+let pilotos = {}, approved = new Set(), hidden = new Set(), finalizado = new Set();
+let activeCollection = null;
+
+function loadActiveCollection(){
+  try{ return localStorage.getItem(LS_ACTIVE_COLLECTION_KEY) || null; }catch(e){ return null; }
+}
+function saveActiveCollection(key){
+  try{ localStorage.setItem(LS_ACTIVE_COLLECTION_KEY, key); }catch(e){}
+}
+
+function allImages(){ return images.filter(im => !hidden.has(im.id)); }
+
+function collectionKeys(){
+  return [...new Set(CATEGORIES.map(c => c.collectionKey))];
+}
+function collectionLabel(key){
+  const cat = CATEGORIES.find(c => c.collectionKey === key);
+  return cat ? cat.collectionLabel : key;
+}
+
+function renderCollectionTabs(){
+  const nav = document.getElementById("collectionTabs");
+  const keys = collectionKeys();
+  if(!activeCollection || !keys.includes(activeCollection)) activeCollection = keys[0] || null;
+  nav.innerHTML = keys.map(key => {
+    return `<button class="coltab${key===activeCollection?' active':''}" data-collection="${key}">${collectionLabel(key)}</button>`;
+  }).join("");
+  nav.querySelectorAll(".coltab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      activeCollection = btn.dataset.collection;
+      saveActiveCollection(activeCollection);
+      render();
+    });
+  });
+}
+
+function parseCategoryLabel(label){
+  const parts = label.split(" · ");
+  return {collection: parts[0], segment: parts[1] || "", piece: parts[2] || parts[0]};
+}
+const segClassCache = {};
+let segClassOrder = [];
+function segClass(segment){
+  const key = (segment || "").toLowerCase();
+  if(!(key in segClassCache)){
+    const idx = segClassOrder.indexOf(key);
+    if(idx === -1){ segClassOrder.push(key); segClassCache[key] = segClassOrder.length - 1; }
+    else segClassCache[key] = idx;
+  }
+  const n = segClassCache[key] % 3;
+  return n === 0 ? "" : n === 1 ? "seg-alt1" : "seg-alt2";
+}
+function catTitleHtml(label, countText, countForId, isTotal){
+  const {segment, piece} = parseCategoryLabel(label);
+  const cls = "count" + (isTotal ? " count-total" : "");
+  return `<div class="cat-title"><span class="seg-badge ${segClass(segment)}">${segment}</span>
+    <h3>${piece} <span class="${cls}" data-count-for="${countForId}">(${countText})</span></h3></div>`;
+}
+
+function computeCount(id){
+  const imgs = allImages();
+  const cat = CATEGORIES.find(c => c.id === id);
+  if(cat && cat.moldes > 1){
+    const catBins = BINS.filter(b => b.categoryId === id);
+    return imgs.filter(im => catBins.some(b => b.id === assignment[im.id])).length;
+  }
+  return imgs.filter(im => assignment[im.id] === id).length;
+}
+function updateCountBadge(id){
+  const el = document.querySelector(`[data-count-for="${id}"]`);
+  if(!el) return;
+  const cat = CATEGORIES.find(c => c.id === id);
+  const count = computeCount(id);
+  el.textContent = cat && cat.moldes > 1 ? `(${count} no total)` : `(${count})`;
+}
+
+function pilotoInfo(binId){
+  const pv = pilotos[binId] || {};
+  const feito = Math.max(0, parseInt(pv.feito,10) || 0);
+  const contratado = Math.max(0, parseInt(pv.contratado,10) || 0);
+  const restante = Math.max(0, contratado - feito);
+  return {feito, contratado, restante};
+}
+function pilotoPillHtml(binId){
+  const {feito, contratado, restante} = pilotoInfo(binId);
+  if(contratado === 0) return `<span class="piloto-pill" data-bin="${binId}">—</span>`;
+  if(restante === 0) return `<span class="piloto-pill good" data-bin="${binId}">✓ completo</span>`;
+  return `<span class="piloto-pill warn" data-bin="${binId}">faltam ${restante}</span>`;
+}
+function updatePilotoPill(binId){
+  const row = document.querySelector(`.piloto-feito[data-bin="${binId}"]`);
+  if(!row) return;
+  const pillEl = row.closest(".pilotos-row").querySelector(".piloto-pill");
+  if(pillEl) pillEl.outerHTML = pilotoPillHtml(binId);
+}
+
+function categoriesInActiveCollection(){
+  return CATEGORIES.filter(cat => cat.collectionKey === activeCollection);
+}
+
+function renderPilotosSummary(){
+  const el = document.getElementById("pilotosSummary");
+  const catBins = BINS.filter(b => categoriesInActiveCollection().some(c => c.id === b.categoryId));
+  let contratado = 0, feito = 0;
+  catBins.forEach(b => { const info = pilotoInfo(b.id); contratado += info.contratado; feito += info.feito; });
+  const restante = Math.max(0, contratado - feito);
+  const totalAprovadas = allImages().filter(im => approved.has(im.id)).length;
+  el.innerHTML = `
+    <div class="cell"><div class="num">${contratado}</div><div class="lbl">Pilotos contratados — ${collectionLabel(activeCollection)}</div></div>
+    <div class="cell"><div class="num">${feito}</div><div class="lbl">Pilotos já feitos</div></div>
+    <div class="cell"><div class="num warn">${restante}</div><div class="lbl">Pilotos restantes</div></div>
+    <div class="cell"><div class="num">${totalAprovadas}</div><div class="lbl">Imagens aprovadas (total geral)</div></div>`;
+}
+
+function render(){
+  const boardEl = document.getElementById("board");
+  const extrasZone = document.querySelector('#extras-bin .dropzone');
+  const imgs = allImages();
+
+  renderCollectionTabs();
+
+  function pilotosRowHtml(binId){
+    const isFinal = finalizado.has(binId);
+    return `
+      <div class="pilotos-row">
+        <span class="plabel">Pilotos entregues</span>
+        <input type="number" min="0" class="piloto-feito" data-bin="${binId}" value="${pilotoInfo(binId).feito}">
+        <span class="plabel">de</span>
+        <input type="number" min="0" class="piloto-contratado" data-bin="${binId}" value="${pilotoInfo(binId).contratado}">
+        ${pilotoPillHtml(binId)}
+        <button class="finalize-toggle${isFinal?' on':''}" data-finalize="${binId}">
+          ${isFinal ? "✅ Finalizado" : "☐ Marcar como finalizado"}</button>
+      </div>`;
+  }
+
+  boardEl.innerHTML = "";
+  categoriesInActiveCollection().forEach(cat => {
+    const catBins = BINS.filter(b => b.categoryId === cat.id);
+    if(!catBins.length) return;
+
+    if(cat.moldes <= 1){
+      const bin = catBins[0];
+      const isFinal = finalizado.has(bin.id);
+      const deliveredBadgeHtml = isFinal
+        ? `<div class="delivered-badge">✅ Finalizado / entregue ao cliente</div>` : "";
+      const col = document.createElement("div");
+      col.className = "col" + (isFinal ? " delivered" : "");
+      col.dataset.catId = cat.id;
+      const count = imgs.filter(im => assignment[im.id] === bin.id).length;
+      col.innerHTML = `${deliveredBadgeHtml}${catTitleHtml(bin.label, count, bin.id, false)}
+        ${pilotosRowHtml(bin.id)}
+        <div class="dropzone tiles" data-bin="${bin.id}"></div>`;
+      boardEl.appendChild(col);
+    }else{
+      const allMoldesFinal = catBins.every(b => finalizado.has(b.id));
+      const group = document.createElement("div");
+      group.className = "category-group" + (allMoldesFinal ? " delivered" : "");
+      group.dataset.catId = cat.id;
+      const totalCount = imgs.filter(im => catBins.some(b => b.id === assignment[im.id])).length;
+      const deliveredBadgeHtml = allMoldesFinal
+        ? `<div class="delivered-badge">✅ Todos os moldes finalizados / entregues ao cliente</div>` : "";
+      const moldesHtml = catBins.map(b => {
+        const mcount = imgs.filter(im => assignment[im.id] === b.id).length;
+        const moldeFinal = finalizado.has(b.id);
+        return `<div class="molde-card${moldeFinal ? ' molde-done' : ''}">
+          <h4>Molde ${b.moldeIndex} de ${b.moldes} <span class="count" data-count-for="${b.id}">(${mcount})</span></h4>
+          ${pilotosRowHtml(b.id)}
+          <div class="dropzone tiles" data-bin="${b.id}"></div>
+        </div>`;
+      }).join("");
+      group.innerHTML = `
+        ${deliveredBadgeHtml}
+        <div class="cat-header">
+          ${catTitleHtml(cat.label, totalCount + " no total", cat.id, true)}
+        </div>
+        <div class="moldes-row">${moldesHtml}</div>`;
+      boardEl.appendChild(group);
+    }
+  });
+
+  extrasZone.innerHTML = "";
+  document.querySelectorAll(".dropzone").forEach(zone => zone.innerHTML = "");
+
+  imgs.forEach(im => {
+    const binId = assignment[im.id] || "extras";
+    const zone = document.querySelector(`.dropzone[data-bin="${binId}"]`);
+    if(!zone) return;
+    const tile = document.createElement("div");
+    tile.className = "tile" + (approved.has(im.id) ? " approved" : "");
+    tile.draggable = true;
+    tile.dataset.imgId = im.id;
+    const delBtn = `<button class="del" title="Remover imagem" data-del="${im.id}">×</button>`;
+    const approveBtn = `<button class="approve${approved.has(im.id)?' on':''}" title="Marcar/desmarcar como aprovado pelo cliente" data-approve="${im.id}">✓</button>`;
+    tile.innerHTML = `<img src="${im.src}" alt="" onerror="this.closest('.tile').classList.add('broken')">${approveBtn}${delBtn}`;
+    zone.appendChild(tile);
+  });
+
+  document.querySelectorAll(".dropzone").forEach(zone => {
+    if(zone.dataset.bin !== "extras") zone.classList.toggle("empty", zone.children.length === 0);
+  });
+
+  document.querySelectorAll(".del").forEach(btn => {
+    btn.addEventListener("click", ev => {
+      ev.stopPropagation();
+      const id = btn.dataset.del;
+      if(!confirm("Remover essa imagem? (some da tela; se quiser recuperar depois, restaure um backup)")) return;
+      images = images.filter(im => im.id !== id);
+      saveImages(images);
+      delete assignment[id];
+      approved.delete(id);
+      saveAssignment(assignment);
+      saveApproved(approved);
+      render();
+    });
+  });
+
+  document.querySelectorAll(".approve").forEach(btn => {
+    btn.addEventListener("click", ev => {
+      ev.stopPropagation();
+      const id = btn.dataset.approve;
+      if(approved.has(id)) approved.delete(id); else approved.add(id);
+      saveApproved(approved);
+      render();
+    });
+  });
+
+  document.querySelectorAll(".piloto-feito, .piloto-contratado").forEach(inp => {
+    inp.addEventListener("input", () => {
+      const binId = inp.dataset.bin;
+      if(!pilotos[binId]) pilotos[binId] = {feito:0, contratado:0};
+      const val = Math.max(0, parseInt(inp.value,10) || 0);
+      if(inp.classList.contains("piloto-feito")) pilotos[binId].feito = val;
+      else pilotos[binId].contratado = val;
+      savePilotos(pilotos);
+      updatePilotoPill(binId);
+      renderPilotosSummary();
+    });
+  });
+
+  document.querySelectorAll(".finalize-toggle").forEach(btn => {
+    btn.addEventListener("click", ev => {
+      ev.stopPropagation();
+      const binId = btn.dataset.finalize;
+      if(finalizado.has(binId)) finalizado.delete(binId);
+      else{
+        finalizado.add(binId);
+        if(!pilotos[binId]) pilotos[binId] = {feito:0, contratado:0};
+        pilotos[binId].feito = pilotos[binId].contratado;
+        savePilotos(pilotos);
+      }
+      saveFinalizado(finalizado);
+      render();
+      const moved = document.querySelector(`[data-cat-id="${binId}"]`) ||
+        [...document.querySelectorAll(".molde-card")].find(c => c.querySelector(`[data-finalize="${binId}"]`));
+      if(moved){ moved.classList.add("just-moved"); setTimeout(() => moved.classList.remove("just-moved"), 900); }
+    });
+  });
+
+  renderPilotosSummary();
+  wireDragEvents();
+}
+
+function setImportMsg(text, isErr){
+  const el = document.getElementById("importMsg");
+  el.textContent = text;
+  el.classList.toggle("err", !!isErr);
+}
+
+async function importFromUrl(rawUrl){
+  const url = rawUrl.trim();
+  if(!url) return;
+  setImportMsg("Adicionando imagem...");
+  const id = "imp_" + Date.now() + "_" + Math.random().toString(36).slice(2,7);
+  images.push({id, src: url, imported:true});
+  assignment[id] = "extras";
+  saveImages(images);
+  saveAssignment(assignment);
+  render();
+  setImportMsg("Imagem adicionada em \"Sem categoria\".");
+  document.getElementById("importUrl").value = "";
+}
+
+function moveTileInPlace(imgId, oldBin, newBin){
+  const tile = document.querySelector(`.tile[data-img-id="${imgId}"]`);
+  const newZone = document.querySelector(`.dropzone[data-bin="${newBin}"]`);
+  const oldZone = document.querySelector(`.dropzone[data-bin="${oldBin}"]`);
+  if(tile && newZone) newZone.appendChild(tile);
+  [oldZone, newZone].forEach(zone => {
+    if(zone && zone.dataset.bin !== "extras") zone.classList.toggle("empty", zone.children.length === 0);
+  });
+  [oldBin, newBin].forEach(binId => {
+    updateCountBadge(binId);
+    const parentCat = BINS.find(b => b.id === binId);
+    if(parentCat) updateCountBadge(parentCat.categoryId);
+  });
+}
+
+function wireDragEvents(){
+  document.querySelectorAll(".tile").forEach(tile => {
+    tile.addEventListener("dragstart", ev => {
+      ev.dataTransfer.setData("text/plain", tile.dataset.imgId);
+      setTimeout(()=>tile.classList.add("dragging"), 0);
+    });
+    tile.addEventListener("dragend", () => tile.classList.remove("dragging"));
+  });
+  document.querySelectorAll(".dropzone").forEach(zone => {
+    zone.addEventListener("dragover", ev => { ev.preventDefault(); zone.classList.add("dragover"); });
+    zone.addEventListener("dragleave", () => zone.classList.remove("dragover"));
+    zone.addEventListener("drop", ev => {
+      ev.preventDefault();
+      zone.classList.remove("dragover");
+      const imgId = ev.dataTransfer.getData("text/plain");
+      if(!imgId) return;
+      const oldBin = assignment[imgId] || "extras";
+      const newBin = zone.dataset.bin;
+      if(oldBin === newBin) return;
+      assignment[imgId] = newBin;
+      saveAssignment(assignment);
+      moveTileInPlace(imgId, oldBin, newBin);
+    });
+  });
+}
+
+document.getElementById("btnImport").onclick = () => importFromUrl(document.getElementById("importUrl").value);
+document.getElementById("importUrl").addEventListener("keydown", ev => { if(ev.key === "Enter") importFromUrl(ev.target.value); });
+
+function compressImageDataUrl(dataUrl, maxDim, quality){
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      let {width, height} = img;
+      if(width > maxDim || height > maxDim){
+        const scale = maxDim / Math.max(width, height);
+        width = Math.round(width * scale); height = Math.round(height * scale);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width; canvas.height = height;
+      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+function importFromFile(file){
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const id = "imp_" + Date.now() + "_" + Math.random().toString(36).slice(2,7);
+      const compressed = await compressImageDataUrl(reader.result, 1000, 0.82);
+      images.push({id, src: compressed, imported:true});
+      assignment[id] = "extras";
+      resolve();
+    };
+    reader.onerror = () => resolve();
+    reader.readAsDataURL(file);
+  });
+}
+document.getElementById("btnImportFile").onclick = () => document.getElementById("importFileInput").click();
+document.getElementById("importFileInput").addEventListener("change", async ev => {
+  const files = Array.from(ev.target.files || []);
+  ev.target.value = "";
+  if(!files.length) return;
+  setImportMsg("Enviando " + files.length + " imagem(ns)...");
+  for(const file of files){
+    await importFromFile(file);
+    saveImages(images);
+    saveAssignment(assignment);
+  }
+  render();
+  setImportMsg(files.length > 1 ? files.length + " imagens adicionadas." : "Imagem adicionada.");
+});
+document.addEventListener("paste", ev => {
+  const items = (ev.clipboardData && ev.clipboardData.items) || [];
+  const imageFiles = Array.from(items).filter(it => it.type && it.type.startsWith("image/"))
+    .map(it => it.getAsFile()).filter(Boolean);
+  if(!imageFiles.length) return;
+  ev.preventDefault();
+  (async () => {
+    setImportMsg("Colando " + imageFiles.length + " imagem(ns)...");
+    for(const file of imageFiles){
+      await importFromFile(file);
+      saveImages(images);
+      saveAssignment(assignment);
+    }
+    render();
+    setImportMsg(imageFiles.length > 1 ? imageFiles.length + " imagens coladas." : "Imagem colada.");
+  })();
+});
+
+// -------- adicionar categoria manualmente --------
+function slugify(s){
+  return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 30) || "item";
+}
+document.getElementById("btnAddCat").onclick = () => document.getElementById("addCatModal").classList.remove("hidden");
+document.getElementById("btnAddCatCancel").onclick = () => document.getElementById("addCatModal").classList.add("hidden");
+document.getElementById("btnAddCatConfirm").onclick = () => {
+  const piece = document.getElementById("newCatPiece").value.trim();
+  const coll = document.getElementById("newCatCollection").value.trim() || "Geral";
+  const segment = document.getElementById("newCatSegment").value.trim() || "Geral";
+  const moldes = Math.max(1, parseInt(document.getElementById("newCatMoldes").value, 10) || 1);
+  if(!piece){ alert("Digita o nome do produto."); return; }
+  const collKey = slugify(coll);
+  let id = `${collKey}_${slugify(segment)}_${slugify(piece)}`;
+  let n = 1;
+  while(CATEGORIES.some(c => c.id === id)){ n++; id = `${collKey}_${slugify(segment)}_${slugify(piece)}_${n}`; }
+  CATEGORIES.push({id, label: `${coll} · ${segment} · ${piece}`, moldes, collectionKey: collKey, collectionLabel: coll});
+  recomputeBins();
+  saveCategoriesLocal();
+  fsWrite(fsFns.updateDoc(boardRef, {categories: CATEGORIES}));
+  activeCollection = collKey;
+  saveActiveCollection(activeCollection);
+  document.getElementById("addCatModal").classList.add("hidden");
+  document.getElementById("newCatPiece").value = "";
+  document.getElementById("newCatCollection").value = "";
+  document.getElementById("newCatSegment").value = "";
+  document.getElementById("newCatMoldes").value = "1";
+  render();
+};
+
+// -------- backup --------
+function setBackupMsg(text, isErr){
+  const el = document.getElementById("backupMsg");
+  el.textContent = text; el.style.display = text ? "block" : "none"; el.style.color = isErr ? "var(--accent)" : "";
+}
+document.getElementById("btnBackupDownload").onclick = () => {
+  const payload = {
+    tipo: "quadroApp.backup", versao: 1, boardId: BOARD_ID, boardName, salvoEm: new Date().toISOString(),
+    categories: CATEGORIES, assignment, images, pilotos, approved: [...approved], hidden: [...hidden], finalizado: [...finalizado]
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type: "application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `painel-${slugify(boardName)}-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  setBackupMsg("Backup baixado. Guarde esse arquivo em um lugar seguro.");
+};
+document.getElementById("btnBackupRestore").onclick = () => document.getElementById("backupFileInput").click();
+document.getElementById("backupFileInput").addEventListener("change", ev => {
+  const file = ev.target.files[0];
+  ev.target.value = "";
+  if(!file) return;
+  if(!confirm("Isso substitui TODO o arranjo atual pelo do backup. Continuar?")) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    let data;
+    try{ data = JSON.parse(reader.result); }catch(e){ setBackupMsg("Arquivo inválido.", true); return; }
+    if(data.tipo !== "quadroApp.backup"){ setBackupMsg("Esse arquivo não é um backup deste app.", true); return; }
+    CATEGORIES = data.categories || [];
+    recomputeBins();
+    saveCategoriesLocal();
+    fsWrite(fsFns.updateDoc(boardRef, {categories: CATEGORIES}));
+    assignment = normalizeAssignment(data.assignment || {});
+    images = data.images || [];
+    pilotos = data.pilotos || {};
+    approved = new Set(data.approved || []);
+    hidden = new Set(data.hidden || []);
+    finalizado = new Set(data.finalizado || []);
+    saveAssignment(assignment);
+    saveImages(images);
+    savePilotos(pilotos);
+    saveApproved(approved);
+    saveHidden(hidden);
+    saveFinalizado(finalizado);
+    render();
+    setBackupMsg("Backup restaurado com sucesso.");
+  };
+  reader.onerror = () => setBackupMsg("Não consegui ler esse arquivo.", true);
+  reader.readAsText(file);
+});
+
+// -------- PDF --------
+function buildPrintHtml(){
+  const imgs = allImages();
+  const today = new Date().toLocaleDateString("pt-BR");
+  const coverHtml = `<div class="print-cover">
+    <div class="print-cover-eyebrow">Storm · Painel Criativo</div>
+    <h1 class="print-cover-title">${boardName || "Painel"}</h1>
+    <div class="print-cover-date">Gerado em ${today}</div>
+  </div>`;
+  let firstCollectionUsed = false;
+  const collectionsHtml = collectionKeys().map(collKey => {
+    const label = collectionLabel(collKey);
+    const cats = CATEGORIES.filter(cat => cat.collectionKey === collKey);
+    let lastSegment = null;
+    const catsHtml = cats.map(cat => {
+      const catBins = BINS.filter(b => b.categoryId === cat.id);
+      const totalImgs = imgs.filter(im => catBins.some(b => b.id === assignment[im.id])).length;
+      if(!totalImgs) return "";
+      const {segment, piece} = parseCategoryLabel(cat.label);
+      let segHeaderHtml = "";
+      if(segment !== lastSegment){ segHeaderHtml = `<div class="print-seg-header">${segment}</div>`; lastSegment = segment; }
+      const moldesHtml = catBins.map(bin => {
+        const binImgs = imgs.filter(im => assignment[im.id] === bin.id);
+        const {feito, contratado, restante} = pilotoInfo(bin.id);
+        const isFinal = finalizado.has(bin.id);
+        const moldeHead = cat.moldes > 1 ? `Molde ${bin.moldeIndex} de ${bin.moldes}` : "Peça única";
+        const badgeHtml = contratado === 0 ? `<span class="print-badge none">—</span>`
+          : restante === 0 ? `<span class="print-badge good">✓ completo</span>`
+          : `<span class="print-badge warn">faltam ${restante}</span>`;
+        const tilesHtml = binImgs.length ? binImgs.map(im => `<img src="${im.src}" alt="">`).join("")
+          : `<div class="print-img-empty">Sem imagem</div>`;
+        return `<div class="print-molde-col">
+          <div class="print-molde-head">${moldeHead}</div>
+          <div class="print-status-row"><span>Pilotos: ${feito} de ${contratado}</span>${badgeHtml}</div>
+          <div class="print-final-row ${isFinal ? "on" : "off"}">${isFinal ? "☑ Finalizado" : "☐ Não finalizado"}</div>
+          <div class="print-img-grid">${tilesHtml}</div>
+        </div>`;
+      }).join("");
+      return `${segHeaderHtml}<div class="print-cat">
+        <div class="print-cat-header">
+          <span class="print-seg">${segment}</span>
+          <span class="print-cat-title">${piece}</span>
+          <span class="print-cat-count">(${totalImgs} no total)</span>
+        </div>
+        <div class="print-moldes-row">${moldesHtml}</div>
+      </div>`;
+    }).join("");
+    if(!catsHtml.trim()) return "";
+    const firstClass = firstCollectionUsed ? "" : " print-collection-first";
+    firstCollectionUsed = true;
+    return `<div class="print-collection${firstClass}"><h1 class="print-coll-title">${label}</h1>${catsHtml}</div>`;
+  }).join("");
+  return coverHtml + collectionsHtml;
+}
+document.getElementById("btnExportPdf").onclick = async () => {
+  const btn = document.getElementById("btnExportPdf");
+  const originalLabel = btn.textContent;
+  btn.disabled = true; btn.textContent = "Preparando PDF...";
+  const printView = document.getElementById("printView");
+  printView.innerHTML = buildPrintHtml();
+  const imgEls = [...printView.querySelectorAll("img")];
+  await Promise.all(imgEls.map(img => {
+    if(img.decode) return img.decode().catch(() => {});
+    if(img.complete) return Promise.resolve();
+    return new Promise(resolve => { img.onload = resolve; img.onerror = resolve; });
+  }));
+  btn.disabled = false; btn.textContent = originalLabel;
+  window.print();
+};
+
+// -------- sincronização com a nuvem --------
+function fsSyncAssignment(a){
+  if(!fsReady) return;
+  const changes = {};
+  Object.keys(a).forEach(k => { if(a[k] !== lastSyncedAssignment[k]) changes[k] = a[k]; });
+  Object.keys(lastSyncedAssignment).forEach(k => { if(!(k in a)) changes[k] = fsFns.deleteField(); });
+  lastSyncedAssignment = Object.assign({}, a);
+  if(Object.keys(changes).length) fsWrite(fsFns.updateDoc(assignmentRef, changes));
+}
+function fsSyncImages(list){
+  if(!fsReady) return;
+  const currentIds = new Set(list.map(im => im.id));
+  list.forEach(im => {
+    if(!lastSyncedImagesIds.has(im.id)) fsWrite(fsFns.setDoc(fsFns.doc(imagesCol, im.id), {src: im.src, imported: true}));
+  });
+  lastSyncedImagesIds.forEach(id => { if(!currentIds.has(id)) fsWrite(fsFns.deleteDoc(fsFns.doc(imagesCol, id))); });
+  lastSyncedImagesIds = currentIds;
+}
+function fsSyncPilotos(p){
+  if(!fsReady) return;
+  const updates = {};
+  Object.keys(p).forEach(binId => {
+    const cur = p[binId] || {feito:0, contratado:0};
+    const prev = lastSyncedPilotos[binId] || {};
+    if(cur.feito !== prev.feito) updates["pilotos." + binId + ".feito"] = cur.feito;
+    if(cur.contratado !== prev.contratado) updates["pilotos." + binId + ".contratado"] = cur.contratado;
+  });
+  lastSyncedPilotos = JSON.parse(JSON.stringify(p));
+  if(Object.keys(updates).length) fsWrite(fsFns.updateDoc(metaRef, updates));
+}
+function fsSyncSet(fieldName, set){
+  if(!fsReady) return;
+  const prev = lastSyncedSets[fieldName];
+  const added = [...set].filter(id => !prev.has(id));
+  const removed = [...prev].filter(id => !set.has(id));
+  lastSyncedSets[fieldName] = new Set(set);
+  if(added.length) fsWrite(fsFns.updateDoc(metaRef, {[fieldName]: fsFns.arrayUnion(...added)}));
+  if(removed.length) fsWrite(fsFns.updateDoc(metaRef, {[fieldName]: fsFns.arrayRemove(...removed)}));
+}
+
+function mergeAssignmentSafe(localA, cloudA){
+  const merged = Object.assign({}, cloudA || {});
+  Object.keys(localA || {}).forEach(id => {
+    const localBin = localA[id]; const cloudBin = merged[id];
+    if(!(id in merged)){ merged[id] = localBin; return; }
+    if(localBin && localBin !== "extras" && (!cloudBin || cloudBin === "extras")) merged[id] = localBin;
+  });
+  return merged;
+}
+function mergeImagesSafe(localList, cloudDocs){
+  const byId = {};
+  (localList || []).forEach(im => { byId[im.id] = im; });
+  (cloudDocs || []).forEach(d => { if(!byId[d.id]) byId[d.id] = {id: d.id, src: d.data().src, imported: true}; });
+  return Object.values(byId);
+}
+function mergeSetSafe(localArr, cloudArr){ return [...new Set([...(localArr || []), ...(cloudArr || [])])]; }
+
+function applyRemoteMeta(data){
+  if(data.pilotos) pilotos = data.pilotos;
+  approved = new Set(data.approved || []);
+  hidden = new Set(data.hidden || []);
+  finalizado = new Set(data.finalizado || []);
+  lastSyncedPilotos = JSON.parse(JSON.stringify(pilotos));
+  lastSyncedSets = {approved: new Set(approved), hidden: new Set(hidden), finalizado: new Set(finalizado)};
+  safeLSSet(LS_META_KEY, JSON.stringify({pilotos, approved: [...approved], hidden: [...hidden], finalizado: [...finalizado]}));
+  render();
+}
+function applyRemoteAssignment(data){
+  const a = normalizeAssignment(Object.assign({}, data));
+  assignment = a;
+  lastSyncedAssignment = Object.assign({}, a);
+  safeLSSet(LS_ASSIGN_KEY, JSON.stringify(a));
+  render();
+}
+function applyRemoteImagesList(list){
+  images = list;
+  lastSyncedImagesIds = new Set(images.map(im => im.id));
+  safeLSSet(LS_IMAGES_KEY, JSON.stringify(images));
+  render();
+}
+function applyRemoteImages(docs){ applyRemoteImagesList(docs.map(d => ({id: d.id, src: d.data().src, imported: true}))); }
+
+async function bootstrapFirestore(){
+  if(fsBootstrapping || fsReady) return;
+  fsBootstrapping = true;
+  const f = fsFns;
+
+  const boardSnap = await f.getDoc(boardRef);
+  if(!boardSnap.exists()){
+    document.getElementById("boardTitle").textContent = "Painel não encontrado";
+    setImportMsg("Esse painel não existe ou foi removido.", true);
+    return;
+  }
+  const boardData = boardSnap.data();
+  boardName = boardData.name || "Painel sem nome";
+  document.getElementById("boardTitle").textContent = boardName;
+  document.title = boardName + " · Painel Criativo";
+  CATEGORIES = boardData.categories || [];
+  recomputeBins();
+  saveCategoriesLocal();
+  if(!activeCollection) activeCollection = loadActiveCollection();
+
+  const metaSnap = await f.getDoc(metaRef);
+  if(!metaSnap.exists()){
+    await f.setDoc(metaRef, {pilotos, approved:[...approved], hidden:[...hidden], finalizado:[...finalizado]});
+    lastSyncedPilotos = JSON.parse(JSON.stringify(pilotos));
+    lastSyncedSets = {approved: new Set(approved), hidden: new Set(hidden), finalizado: new Set(finalizado)};
+  }else{
+    const cloudMeta = metaSnap.data();
+    const mergedApproved = mergeSetSafe([...approved], cloudMeta.approved);
+    const mergedHidden = mergeSetSafe([...hidden], cloudMeta.hidden);
+    const mergedFinalizado = mergeSetSafe([...finalizado], cloudMeta.finalizado);
+    const mergedPilotos = Object.assign({}, cloudMeta.pilotos || {});
+    Object.keys(pilotos).forEach(binId => {
+      const l = pilotos[binId] || {feito:0, contratado:0};
+      const c = mergedPilotos[binId] || {feito:0, contratado:0};
+      mergedPilotos[binId] = {feito: Math.max(l.feito||0, c.feito||0), contratado: (c.contratado || l.contratado || 0)};
+    });
+    const mergedMeta = {pilotos: mergedPilotos, approved: mergedApproved, hidden: mergedHidden, finalizado: mergedFinalizado};
+    applyRemoteMeta(mergedMeta);
+    await f.setDoc(metaRef, mergedMeta);
+  }
+
+  const assignSnap = await f.getDoc(assignmentRef);
+  if(!assignSnap.exists()){
+    await f.setDoc(assignmentRef, assignment);
+    lastSyncedAssignment = Object.assign({}, assignment);
+  }else{
+    const merged = mergeAssignmentSafe(assignment, assignSnap.data());
+    applyRemoteAssignment(merged);
+    await f.setDoc(assignmentRef, merged);
+  }
+
+  const imagesSnap = await f.getDocs(imagesCol);
+  const mergedImages = mergeImagesSafe(images, imagesSnap.docs);
+  const cloudImageIds = new Set(imagesSnap.docs.map(d => d.id));
+  for(const im of mergedImages){
+    if(!cloudImageIds.has(im.id)) await f.setDoc(f.doc(imagesCol, im.id), {src: im.src, imported: true});
+  }
+  applyRemoteImagesList(mergedImages);
+
+  fsReady = true;
+  updateSyncStatus();
+  render();
+
+  f.onSnapshot(metaRef, snap => { if(snap.exists()) applyRemoteMeta(snap.data()); });
+  f.onSnapshot(assignmentRef, snap => { if(snap.exists()) applyRemoteAssignment(snap.data()); });
+  f.onSnapshot(imagesCol, snap => applyRemoteImages(snap.docs));
+  f.onSnapshot(boardRef, snap => {
+    if(!snap.exists()) return;
+    const d = snap.data();
+    if(d.name && d.name !== boardName){ boardName = d.name; document.getElementById("boardTitle").textContent = boardName; }
+    if(d.categories){ CATEGORIES = d.categories; recomputeBins(); saveCategoriesLocal(); render(); }
+  });
+}
+
+function showAuthLoading(show){ const el = document.getElementById("authLoading"); if(el) el.classList.toggle("hidden", !show); }
+function showLoginGate(show){
+  const el = document.getElementById("loginGate"); if(el) el.classList.toggle("hidden", !show);
+  const out = document.getElementById("btnLogout"); if(out) out.style.display = show ? "none" : "";
+}
+
+async function initFirebase(){
+  try{
+    const [{initializeApp}, authMod, fsMod] = await Promise.all([
+      import("https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js"),
+      import("https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js"),
+      import("https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js")
+    ]);
+    const app = initializeApp(firebaseConfig);
+    const auth = authMod.getAuth(app);
+    db = fsMod.getFirestore(app);
+    fsFns = fsMod;
+    boardRef = fsMod.doc(db, "boards", BOARD_ID);
+    metaRef = fsMod.doc(db, "boards", BOARD_ID, "meta", "main");
+    assignmentRef = fsMod.doc(db, "boards", BOARD_ID, "assignment", "main");
+    imagesCol = fsMod.collection(db, "boards", BOARD_ID, "images");
+
+    try{ await fsMod.enableIndexedDbPersistence(db); }catch(e){}
+
+    document.getElementById("btnLogin").addEventListener("click", async () => {
+      const email = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value;
+      const errEl = document.getElementById("loginError");
+      errEl.textContent = "";
+      if(!email || !password){ errEl.textContent = "Preenche e-mail e senha."; return; }
+      try{ await authMod.signInWithEmailAndPassword(auth, email, password); }
+      catch(e){ errEl.textContent = "Não consegui entrar — confere o e-mail e a senha."; }
+    });
+    const logoutBtn = document.getElementById("btnLogout");
+    if(logoutBtn) logoutBtn.addEventListener("click", () => authMod.signOut(auth));
+
+    authMod.onAuthStateChanged(auth, async user => {
+      showAuthLoading(false);
+      if(user){
+        showLoginGate(false);
+        try{ await bootstrapFirestore(); }
+        catch(e){ console.error("Erro ao sincronizar com a nuvem:", e); showCloudWarning(); }
+      }else{
+        fsReady = false; fsBootstrapping = false; updateSyncStatus();
+        showLoginGate(true);
+      }
+    });
+  }catch(e){
+    console.error("Firebase indisponível:", e);
+    showAuthLoading(false);
+    document.getElementById("boardTitle").textContent = "Sem conexão com a nuvem";
+  }
+}
+
+initFirebase();
+})();
+</script>

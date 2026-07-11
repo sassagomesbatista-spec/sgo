@@ -1,0 +1,258 @@
+<title>Painéis · Storm</title>
+<style>
+  :root{
+    --paper:#eeece4; --surface:#ffffff; --ink:#1c1b19; --ink-2:#56534c; --ink-3:#8a8579;
+    --line:#ded9cd; --indigo:#2d3b66; --indigo-bg:#e7eaf2; --accent:#a13d2f; --accent-bg:#fbe9e6;
+    --radius:14px; --radius-sm:9px;
+    --shadow-card:0 1px 2px rgba(20,18,10,.05),0 8px 20px -6px rgba(20,18,10,.10);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --paper:#17181c; --surface:#202126; --ink:#efeee9; --ink-2:#ababa3; --ink-3:#767269;
+      --line:#34353a; --indigo:#8b9fdb; --indigo-bg:#232a42; --accent:#e08a7a; --accent-bg:#3a2320;
+      --shadow-card:0 1px 2px rgba(0,0,0,.3),0 8px 20px -6px rgba(0,0,0,.4); }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font:14.5px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1100px;margin:0 auto;padding:36px 28px 90px}
+  header{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:26px;
+    display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--indigo)}
+  h1{font-family:Georgia,serif;font-size:26px;margin:6px 0 4px;letter-spacing:-.01em}
+  .sub{color:var(--ink-2);font-size:13px}
+  button,a.ghost{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--surface);
+    color:var(--ink-2);padding:9px 16px;font-size:13px;font-weight:700;text-decoration:none;display:inline-flex;align-items:center}
+  button:hover,a.ghost:hover{border-color:var(--ink)}
+  button.primary{background:var(--indigo);border-color:var(--indigo);color:#fff}
+  #btnLogout{margin-left:8px}
+
+  .board-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+  .board-card{background:var(--surface);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow-card);
+    text-decoration:none;color:var(--ink);display:block;transition:transform .1s}
+  .board-card:hover{transform:translateY(-2px)}
+  .board-card h3{font-family:Georgia,serif;font-size:18px;margin:0 0 6px}
+  .board-card .meta{font-size:11.5px;color:var(--ink-3)}
+  .empty-hint{color:var(--ink-3);font-size:13.5px;padding:40px 0;text-align:center}
+
+  .auth-overlay{position:fixed;inset:0;background:rgba(20,18,10,.55);display:flex;
+    align-items:center;justify-content:center;z-index:50}
+  .auth-overlay.hidden{display:none}
+  .auth-box{background:var(--surface);color:var(--ink);border-radius:var(--radius);padding:28px 30px;
+    max-width:420px;width:92%;box-shadow:var(--shadow-card);max-height:85vh;overflow-y:auto}
+  .auth-box h2{font-family:Georgia,serif;margin:0 0 8px;font-size:19px}
+  .auth-sub{font-size:12.5px;color:var(--ink-2);margin-bottom:16px}
+  .auth-box input,.auth-box select{width:100%;font:inherit;padding:9px 11px;border-radius:8px;
+    border:1px solid var(--line);background:var(--paper);color:var(--ink);margin-bottom:10px}
+  .auth-box label{display:block;font-size:12px;font-weight:700;color:var(--ink-2);margin:12px 0 4px}
+  .auth-box button.primary{width:100%;border:none;padding:10px;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px}
+  .auth-error{color:var(--accent);font-size:12.5px;font-weight:600;margin-top:10px;min-height:1em}
+  .file-hint{font-size:11.5px;color:var(--ink-3);margin-top:2px}
+  .modal-actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="eyebrow">Storm</div>
+      <h1>Painéis</h1>
+      <p class="sub">Um painel por cliente/projeto. Escolha um pra abrir ou crie um novo.</p>
+    </div>
+    <div>
+      <button id="btnNewBoard" class="primary">+ Criar novo painel</button>
+      <button id="btnLogout" style="display:none">Sair</button>
+    </div>
+  </header>
+
+  <div id="boardGrid" class="board-grid"></div>
+  <div id="emptyHint" class="empty-hint" style="display:none">Você ainda não tem nenhum painel. Clica em "+ Criar novo painel" pra começar.</div>
+
+  <div id="authLoading" class="auth-overlay"><div class="auth-box">Carregando…</div></div>
+  <div id="loginGate" class="auth-overlay hidden">
+    <div class="auth-box">
+      <h2>Entrar</h2>
+      <p class="auth-sub">Entre com o e-mail e a senha cadastrados pra ver seus painéis.</p>
+      <input type="email" id="loginEmail" placeholder="E-mail" autocomplete="username">
+      <input type="password" id="loginPassword" placeholder="Senha" autocomplete="current-password">
+      <button id="btnLogin" type="button" class="primary">Entrar</button>
+      <p id="loginError" class="auth-error"></p>
+    </div>
+  </div>
+
+  <div id="newBoardModal" class="auth-overlay hidden">
+    <div class="auth-box">
+      <h2>Criar novo painel</h2>
+      <p class="auth-sub">Dá um nome pro painel (cliente/projeto). Se já tiver a planilha de produtos pronta, pode subir ela agora pra já criar as categorias — ou deixa em branco e adiciona os produtos depois, dentro do painel.</p>
+      <label>Nome do painel</label>
+      <input type="text" id="newBoardName" placeholder="Ex: Cliente X — Inverno 26">
+      <label>Planilha de produtos (opcional)</label>
+      <input type="file" id="newBoardFile" accept=".xlsx,.xls,.csv">
+      <div class="file-hint">Reconhece as colunas: Tipo Peça, Coleção, Tema, Código, Imagem Capa.</div>
+      <p id="newBoardError" class="auth-error"></p>
+      <div class="modal-actions">
+        <button id="btnNewBoardCancel">Cancelar</button>
+        <button id="btnNewBoardConfirm" class="primary">Criar painel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+(function(){
+"use strict";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCHZ0Fz6tqbYEi8xsD7ZWp4DElwhh4znuw",
+  authDomain: "painel-referencias-sgo.firebaseapp.com",
+  projectId: "painel-referencias-sgo",
+  storageBucket: "painel-referencias-sgo.firebasestorage.app",
+  messagingSenderId: "75253606332",
+  appId: "1:75253606332:web:e8ae339b2a9da72ae96db9"
+};
+
+let db = null, fsFns = null;
+
+function showAuthLoading(show){ document.getElementById("authLoading").classList.toggle("hidden", !show); }
+function showLoginGate(show){
+  document.getElementById("loginGate").classList.toggle("hidden", !show);
+  document.getElementById("btnLogout").style.display = show ? "none" : "";
+}
+
+function slugify(s){
+  return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 30) || "item";
+}
+
+function parseSheetToCategories(workbook){
+  const sheetName = workbook.SheetNames[0];
+  const ws = workbook.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(ws, {defval: ""});
+  const categories = [];
+  const idCounts = {};
+  rows.forEach(row => {
+    const coll = String(row["Coleção"] || row["Colecao"] || "Geral").trim();
+    const segment = String(row["Tema"] || row["Segmento"] || "Geral").trim();
+    const piece = String(row["Tipo Peça"] || row["Tipo Peca"] || row["Produto"] || "").trim();
+    if(!piece) return;
+    const collKey = slugify(coll);
+    let id = `${collKey}_${slugify(segment)}_${slugify(piece)}`;
+    idCounts[id] = (idCounts[id] || 0) + 1;
+    if(idCounts[id] > 1) id = `${id}_${idCounts[id]}`;
+    const moldesRaw = parseInt(row["Moldes"], 10);
+    categories.push({
+      id, label: `${coll} · ${segment} · ${piece}`,
+      moldes: Number.isFinite(moldesRaw) && moldesRaw > 0 ? moldesRaw : 1,
+      collectionKey: collKey, collectionLabel: coll,
+      codigo: String(row["Código"] || row["Codigo"] || ""),
+      imagemCapa: String(row["Imagem Capa"] || row["Imagem"] || "")
+    });
+  });
+  return categories;
+}
+
+async function renderBoards(){
+  const q = fsFns.query(fsFns.collection(db, "boards"), fsFns.orderBy("createdAt", "desc"));
+  fsFns.onSnapshot(q, snap => {
+    const grid = document.getElementById("boardGrid");
+    const emptyHint = document.getElementById("emptyHint");
+    if(snap.empty){
+      grid.innerHTML = "";
+      emptyHint.style.display = "block";
+      return;
+    }
+    emptyHint.style.display = "none";
+    grid.innerHTML = snap.docs.map(d => {
+      const data = d.data();
+      const created = data.createdAt && data.createdAt.toDate ? data.createdAt.toDate().toLocaleDateString("pt-BR") : "";
+      const catCount = (data.categories || []).length;
+      return `<a class="board-card" href="quadro-app.html?board=${d.id}">
+        <h3>${data.name || "Sem nome"}</h3>
+        <div class="meta">${catCount} produto(s) · criado em ${created}</div>
+      </a>`;
+    }).join("");
+  }, err => console.error("Erro ao listar painéis:", err));
+}
+
+document.getElementById("btnNewBoard").onclick = () => document.getElementById("newBoardModal").classList.remove("hidden");
+document.getElementById("btnNewBoardCancel").onclick = () => document.getElementById("newBoardModal").classList.add("hidden");
+
+document.getElementById("btnNewBoardConfirm").onclick = async () => {
+  const name = document.getElementById("newBoardName").value.trim();
+  const errEl = document.getElementById("newBoardError");
+  errEl.textContent = "";
+  if(!name){ errEl.textContent = "Dá um nome pro painel."; return; }
+  const btn = document.getElementById("btnNewBoardConfirm");
+  btn.disabled = true; btn.textContent = "Criando...";
+  try{
+    let categories = [];
+    const file = document.getElementById("newBoardFile").files[0];
+    if(file){
+      if(typeof XLSX === "undefined"){
+        errEl.textContent = "Não consegui carregar o leitor de planilhas agora — cria o painel sem a planilha e adiciona os produtos depois, ou tenta de novo em instantes.";
+        btn.disabled = false; btn.textContent = "Criar painel";
+        return;
+      }
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, {type: "array"});
+      categories = parseSheetToCategories(wb);
+    }
+    const boardRef = await fsFns.addDoc(fsFns.collection(db, "boards"), {
+      name, categories, createdAt: fsFns.serverTimestamp()
+    });
+    // se a planilha trouxe imagem de capa, já entra como referência inicial de cada produto.
+    const imagesWithCover = categories.filter(c => c.imagemCapa);
+    if(imagesWithCover.length){
+      const assignment = {};
+      for(const cat of imagesWithCover){
+        const imgId = "cover_" + cat.id;
+        await fsFns.setDoc(fsFns.doc(db, "boards", boardRef.id, "images", imgId), {src: cat.imagemCapa, imported: true, cover: true});
+        assignment[imgId] = cat.moldes > 1 ? (cat.id + "_m1") : cat.id;
+      }
+      await fsFns.setDoc(fsFns.doc(db, "boards", boardRef.id, "assignment", "main"), assignment);
+    }
+    location.href = "quadro-app.html?board=" + boardRef.id;
+  }catch(e){
+    console.error(e);
+    errEl.textContent = "Não consegui criar o painel. Tenta de novo.";
+    btn.disabled = false; btn.textContent = "Criar painel";
+  }
+};
+
+async function initFirebase(){
+  try{
+    const [{initializeApp}, authMod, fsMod] = await Promise.all([
+      import("https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js"),
+      import("https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js"),
+      import("https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js")
+    ]);
+    const app = initializeApp(firebaseConfig);
+    const auth = authMod.getAuth(app);
+    db = fsMod.getFirestore(app);
+    fsFns = fsMod;
+
+    document.getElementById("btnLogin").addEventListener("click", async () => {
+      const email = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value;
+      const errEl = document.getElementById("loginError");
+      errEl.textContent = "";
+      if(!email || !password){ errEl.textContent = "Preenche e-mail e senha."; return; }
+      try{ await authMod.signInWithEmailAndPassword(auth, email, password); }
+      catch(e){ errEl.textContent = "Não consegui entrar — confere o e-mail e a senha."; }
+    });
+    document.getElementById("btnLogout").addEventListener("click", () => authMod.signOut(auth));
+
+    authMod.onAuthStateChanged(auth, user => {
+      showAuthLoading(false);
+      if(user){ showLoginGate(false); renderBoards(); }
+      else showLoginGate(true);
+    });
+  }catch(e){
+    console.error("Firebase indisponível:", e);
+    showAuthLoading(false);
+    document.getElementById("emptyHint").style.display = "block";
+    document.getElementById("emptyHint").textContent = "Não consegui conectar à nuvem agora. Confere sua internet e recarrega a página.";
+  }
+}
+initFirebase();
+})();
+</script>
