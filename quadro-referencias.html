@@ -187,6 +187,24 @@
   .sync-status.ok{background:var(--good-bg);color:var(--good)}
   .sync-status.off{background:var(--accent-bg);color:var(--accent)}
 
+  #historyModal{position:fixed;inset:0;background:rgba(20,18,10,.55);display:flex;
+    align-items:center;justify-content:center;z-index:50}
+  #historyModal.hidden{display:none}
+  .history-box{background:var(--surface);color:var(--ink);border-radius:var(--radius);padding:26px 28px;
+    max-width:480px;width:92%;max-height:80vh;overflow-y:auto;box-shadow:var(--shadow-card)}
+  .history-box h2{font-family:Georgia,serif;margin:0 0 6px;font-size:19px}
+  .history-box .hint{font-size:12.5px;color:var(--ink-2);margin-bottom:16px}
+  .history-list{list-style:none;margin:0;padding:0}
+  .history-item{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:11px 4px;border-bottom:1px solid var(--line)}
+  .history-item:last-child{border-bottom:none}
+  .history-item .when{font-size:12.5px;color:var(--ink-2)}
+  .history-item button{font:inherit;font-size:12px;font-weight:700;padding:6px 12px;border-radius:8px;
+    border:1px solid var(--line);background:var(--paper);color:var(--ink);cursor:pointer}
+  .history-item button:hover{border-color:var(--ink)}
+  .history-close{width:100%;margin-top:16px;background:var(--indigo);color:#fff;border:none;padding:10px;
+    border-radius:8px;font-weight:700;cursor:pointer;font-size:13px}
+
   #printView{display:none}
   @media print{
     @page{ margin: 12mm; }
@@ -266,6 +284,7 @@
       <button id="btnBackupRestore" title="Restaura um arquivo de backup baixado antes">⇧ Restaurar backup</button>
       <input type="file" id="backupFileInput" accept="application/json" style="display:none">
       <button id="btnMigrate" title="Cria uma cópia completa deste painel no app novo (multi-cliente), sem apagar nem alterar nada aqui">🚀 Migrar para o app novo</button>
+      <button id="btnHistory" title="Salva sozinho, a cada poucos minutos, uma cópia de segurança na nuvem — veja e restaure versões anteriores aqui">🕐 Histórico</button>
       <button id="btnReset">↺ Resetar sugestão original</button>
       <button id="btnSyncPilotos" title="Traz de volta os números de pilotos contratados do Asana, sem mexer no que você já preencheu em 'feitos'">🔄 Sincronizar contratados</button>
       <button id="btnLogout" title="Sair da conta" style="display:none">Sair</button>
@@ -287,6 +306,16 @@
       <input type="password" id="loginPassword" placeholder="Senha" autocomplete="current-password">
       <button id="btnLogin" type="button">Entrar</button>
       <p id="loginError" class="auth-error"></p>
+    </div>
+  </div>
+
+  <div id="historyModal" class="hidden">
+    <div class="history-box">
+      <h2>Histórico de versões</h2>
+      <p class="hint">O painel salva sozinho, a cada poucos minutos, uma cópia completa aqui. Escolha uma
+        versão pra ver quando foi salva e restaurar, se precisar.</p>
+      <ul class="history-list" id="historyList"></ul>
+      <button class="history-close" id="btnHistoryClose">Fechar</button>
     </div>
   </div>
 
@@ -668,7 +697,7 @@ const MOTIVOS_REPROVACAO = {criacao: "Criação", modelagem: "Modelagem", custo:
 // do script (ex: o ajuste de pilotos das categorias pré-finalizadas, mais abaixo).
 let fsReady = false;
 let fsBootstrapping = false;
-let fsFns = null, db = null, metaRef = null, assignmentRef = null, imagesCol = null;
+let fsFns = null, db = null, metaRef = null, assignmentRef = null, imagesCol = null, historyCol = null;
 let lastSyncedAssignment = {};
 let lastSyncedImportedIds = new Set();
 let lastSyncedPilotos = {};
@@ -1771,6 +1800,100 @@ document.getElementById("btnMigrate").onclick = async () => {
   }
 };
 
+// Histórico automático — a cada poucos minutos, sozinho, guarda uma cópia completa numa
+// coleção separada do Firestore. É uma segunda camada de segurança além do backup manual:
+// se alguma edição se perder antes de sincronizar (ex: cache limpo no meio do caminho),
+// ainda dá pra voltar numa versão de poucos minutos atrás.
+const HISTORY_MAX = 30;
+async function saveHistorySnapshot(){
+  if(!fsReady) return;
+  try{
+    const payload = {
+      salvoEm: fsFns.serverTimestamp(),
+      assignment, imported, pilotos, modelagem,
+      approved: [...approved], hidden: [...hidden], finalizado: [...finalizado],
+      reprovado: [...reprovado], cancelado: [...cancelado], reprovadoMotivo
+    };
+    await fsFns.addDoc(historyCol, payload);
+    const snap = await fsFns.getDocs(fsFns.query(historyCol, fsFns.orderBy("salvoEm", "desc")));
+    if(snap.docs.length > HISTORY_MAX){
+      for(const d of snap.docs.slice(HISTORY_MAX)) await fsFns.deleteDoc(fsFns.doc(historyCol, d.id));
+    }
+  }catch(e){
+    console.error("Erro ao salvar histórico automático:", e);
+  }
+}
+function startHistorySnapshots(){
+  saveHistorySnapshot();
+  setInterval(() => { if(fsReady) saveHistorySnapshot(); }, 3 * 60 * 1000);
+}
+
+document.getElementById("btnHistory").onclick = async () => {
+  const modal = document.getElementById("historyModal");
+  const list = document.getElementById("historyList");
+  list.innerHTML = `<li class="history-item"><span class="when">Carregando...</span></li>`;
+  modal.classList.remove("hidden");
+  try{
+    const snap = await fsFns.getDocs(fsFns.query(historyCol, fsFns.orderBy("salvoEm", "desc")));
+    if(snap.empty){
+      list.innerHTML = `<li class="history-item"><span class="when">Ainda não tem nenhuma versão salva — espera alguns minutos com o painel aberto.</span></li>`;
+      return;
+    }
+    list.innerHTML = "";
+    snap.docs.forEach(d => {
+      const data = d.data();
+      const when = data.salvoEm && data.salvoEm.toDate ? data.salvoEm.toDate().toLocaleString("pt-BR") : "(sem data)";
+      const li = document.createElement("li");
+      li.className = "history-item";
+      li.innerHTML = `<span class="when">${when}</span><button data-hist-id="${d.id}">Restaurar</button>`;
+      list.appendChild(li);
+    });
+    list.querySelectorAll("button[data-hist-id]").forEach(btn => {
+      btn.addEventListener("click", () => restoreHistorySnapshot(btn.dataset.histId));
+    });
+  }catch(e){
+    list.innerHTML = `<li class="history-item"><span class="when">Erro ao carregar histórico.</span></li>`;
+    console.error(e);
+  }
+};
+document.getElementById("btnHistoryClose").onclick = () => document.getElementById("historyModal").classList.add("hidden");
+
+async function restoreHistorySnapshot(id){
+  const ok = confirm("Restaurar essa versão vai substituir o arranjo atual (posições, imagens, pilotos, modelagem e status). Continuar?");
+  if(!ok) return;
+  try{
+    const snap = await fsFns.getDoc(fsFns.doc(historyCol, id));
+    if(!snap.exists()){ alert("Essa versão não existe mais."); return; }
+    const data = snap.data();
+    assignment = normalizeAssignment(data.assignment || {});
+    imported = Array.isArray(data.imported) ? data.imported : [];
+    pilotos = data.pilotos && typeof data.pilotos === "object" ? data.pilotos : {};
+    modelagem = data.modelagem && typeof data.modelagem === "object" ? data.modelagem : {};
+    approved = new Set(Array.isArray(data.approved) ? data.approved : []);
+    hidden = new Set(Array.isArray(data.hidden) ? data.hidden : []);
+    finalizado = new Set(Array.isArray(data.finalizado) ? data.finalizado : DEFAULT_FINALIZADO_IDS);
+    reprovado = new Set(Array.isArray(data.reprovado) ? data.reprovado : []);
+    cancelado = new Set(Array.isArray(data.cancelado) ? data.cancelado : []);
+    reprovadoMotivo = data.reprovadoMotivo && typeof data.reprovadoMotivo === "object" ? data.reprovadoMotivo : {};
+    saveAssignment(assignment);
+    saveImported(imported);
+    savePilotos(pilotos);
+    saveModelagem(modelagem);
+    saveApproved(approved);
+    saveHidden(hidden);
+    saveFinalizado(finalizado);
+    saveReprovado(reprovado);
+    saveCancelado(cancelado);
+    saveReprovadoMotivo(reprovadoMotivo);
+    render();
+    document.getElementById("historyModal").classList.add("hidden");
+    setBackupMsg("Versão restaurada com sucesso.");
+  }catch(e){
+    console.error(e);
+    alert("Não consegui restaurar essa versão. Detalhe: " + (e.message || e));
+  }
+}
+
 // ============================================================================
 // Sincronização com a nuvem (Firestore) — o navegador/localStorage sozinho não
 // dá conta: cada navegador/aparelho tem seu próprio armazenamento, então abrir
@@ -1988,6 +2111,7 @@ async function bootstrapFirestore(){
   fsReady = true;
   updateSyncStatus();
   render();
+  startHistorySnapshots();
 
   f.onSnapshot(metaRef, snap => { if(snap.exists()) applyRemoteMeta(snap.data()); });
   f.onSnapshot(assignmentRef, snap => { if(snap.exists()) applyRemoteAssignment(snap.data()); });
@@ -2019,6 +2143,7 @@ async function initFirebase(){
     metaRef = fsMod.doc(db, "panelMeta", "main");
     assignmentRef = fsMod.doc(db, "panelAssignment", "main");
     imagesCol = fsMod.collection(db, "panelImages");
+    historyCol = fsMod.collection(db, "panelHistory");
 
     try{ await fsMod.enableIndexedDbPersistence(db); }
     catch(e){ /* já ativado em outra aba, ou navegador sem suporte — segue sem isso */ }
