@@ -171,21 +171,23 @@
 
   #printView{display:none}
   @media print{
+    @page{ margin: 12mm; }
     body *{visibility:hidden}
     #printView, #printView *{visibility:visible}
-    #printView{display:block;position:absolute;left:0;top:0;width:100%;color:#000;background:#fff}
-    .print-collection{page-break-before:always}
+    #printView{display:block;position:absolute;left:0;top:0;width:100%;color:#000;background:#fff;font-size:11px}
+    .print-collection{page-break-before:always;column-count:2;column-gap:26px}
     .print-collection:first-child{page-break-before:auto}
-    .print-coll-title{font-family:Georgia,serif;font-size:22px;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:16px}
-    .print-cat{margin-bottom:22px;break-inside:avoid}
-    .print-cat h2{font-size:15px;margin:0 0 8px}
-    .print-cat .print-seg{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;
-      letter-spacing:.05em;background:#eee;border:1px solid #999;border-radius:4px;padding:2px 6px;margin-right:6px}
-    .print-molde{margin-bottom:10px}
-    .print-molde h3{font-size:11.5px;color:#333;margin:0 0 6px;font-weight:600}
-    .print-tiles{display:flex;flex-wrap:wrap;gap:8px}
-    .print-tiles img{width:110px;height:138px;object-fit:contain;border:1px solid #ccc;background:#fafafa}
-    .print-empty{font-size:11px;color:#888;font-style:italic}
+    .print-coll-title{font-family:Georgia,serif;font-size:17px;border-bottom:2px solid #000;
+      padding-bottom:6px;margin:0 0 12px;column-span:all}
+    .print-cat{margin-bottom:13px;break-inside:avoid}
+    .print-cat h2{font-size:12px;margin:0 0 5px;display:flex;align-items:center;gap:6px}
+    .print-seg{display:inline-block;font-size:8px;font-weight:700;text-transform:uppercase;
+      letter-spacing:.03em;background:#eee;border:1px solid #999;border-radius:3px;padding:1px 5px;flex-shrink:0}
+    .print-molde{margin-bottom:5px}
+    .print-molde-label{font-size:9px;color:#555;margin-right:4px}
+    .print-tiles{display:flex;flex-wrap:wrap;gap:4px}
+    .print-tiles img{width:58px;height:73px;object-fit:cover;border:1px solid #ccc}
+    .print-empty{font-size:9px;color:#999;font-style:italic}
   }
 </style>
 
@@ -1252,26 +1254,32 @@ function setBackupMsg(text, isErr){
 // cliente — usa o "Imprimir > Salvar como PDF" do próprio navegador, sem depender de nenhum
 // serviço externo, então funciona até offline.
 function buildPrintHtml(){
+  // Documento pra mandar pro cliente: só entram categorias que já têm pelo menos uma imagem —
+  // uma lista cheia de "sem imagem ainda" não é algo que se manda pra fora. Layout em duas
+  // colunas e miniaturas pequenas pra caber bem mais coisa por página.
   const images = allImages();
   return COLLECTION_KEYS.map(collKey => {
     const label = COLLECTION_LABELS[collKey] || collKey;
     const cats = CATEGORIES.filter(cat => cat.id.split("_")[0] === collKey);
     const catsHtml = cats.map(cat => {
-      const {segment, piece} = parseCategoryLabel(cat.label);
       const catBins = BINS.filter(b => b.categoryId === cat.id);
-      const moldesHtml = catBins.map(b => {
-        const imgs = images.filter(im => assignment[im.id] === b.id);
-        const moldeTitle = cat.moldes > 1 ? `<h3>Molde ${b.moldeIndex} de ${b.moldes}</h3>` : "";
-        const tilesHtml = imgs.length
-          ? imgs.map(im => `<img src="${im.src}" alt="">`).join("")
-          : `<span class="print-empty">(sem imagem ainda)</span>`;
-        return `<div class="print-molde">${moldeTitle}<div class="print-tiles">${tilesHtml}</div></div>`;
+      const binsWithImages = catBins.map(b => ({bin: b, imgs: images.filter(im => assignment[im.id] === b.id)}));
+      if(!binsWithImages.some(x => x.imgs.length)) return "";
+      const {segment, piece} = parseCategoryLabel(cat.label);
+      const moldesHtml = binsWithImages.map(({bin, imgs}) => {
+        const moldeLabel = cat.moldes > 1 ? `<span class="print-molde-label">Molde ${bin.moldeIndex}:</span>` : "";
+        if(!imgs.length){
+          return cat.moldes > 1 ? `<div class="print-molde">${moldeLabel}<span class="print-empty">sem imagem</span></div>` : "";
+        }
+        const tilesHtml = imgs.map(im => `<img src="${im.src}" alt="">`).join("");
+        return `<div class="print-molde">${moldeLabel}<div class="print-tiles">${tilesHtml}</div></div>`;
       }).join("");
       return `<div class="print-cat">
         <h2><span class="print-seg">${segment}</span>${piece}</h2>
         ${moldesHtml}
       </div>`;
     }).join("");
+    if(!catsHtml.trim()) return "";
     return `<div class="print-collection"><h1 class="print-coll-title">${label}</h1>${catsHtml}</div>`;
   }).join("");
 }
