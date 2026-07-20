@@ -144,18 +144,30 @@ npm test           # testes unitários (Vitest) — regras financeiras, CSV, for
 npm run test:e2e   # testes end-to-end (Playwright) — requer o app rodando/buildável
 ```
 
-### Deploy (Vercel)
+### Deploy (Railway)
 
-1. Importe o repositório na Vercel, com **Root Directory** = `reforma-apartamento`.
-2. Adicione um banco Postgres em Storage → Create Database (Neon/Vercel Postgres).
-3. Confira em Settings → Environment Variables se ficou criada uma variável chamada exatamente
-   `DATABASE_URL` (é o nome que o Prisma espera). Se a integração criou outro nome (ex.:
-   `POSTGRES_PRISMA_URL` ou `POSTGRES_URL`), adicione manualmente uma variável `DATABASE_URL`
-   com o mesmo valor.
-4. Defina `NEXTAUTH_SECRET` (qualquer string aleatória longa) nas variáveis de ambiente.
-5. Deploy. O `vercel-build` do `package.json` já roda `prisma migrate deploy` (aplica as
-   migrations no banco de produção) e depois `prisma db seed` (só popula dados de demonstração
-   se o banco ainda estiver vazio — nunca apaga dados reais em deploys seguintes).
+O projeto já vem com `railway.json` configurado (build/start commands), então basta:
+
+1. No Railway, **New Project → Deploy from GitHub repo** → selecione `sgo`, branch
+   `claude/apartment-renovation-expense-manager-pifo2i`.
+2. Em Settings do serviço criado, defina **Root Directory** = `reforma-apartamento`.
+3. No mesmo projeto Railway, clique **+ New → Database → Add PostgreSQL** (fica no mesmo
+   projeto, ao lado do serviço da aplicação).
+4. No serviço da aplicação, vá em **Variables** e adicione:
+   - `DATABASE_URL` → clique em "Add Reference" e aponte para `Postgres.DATABASE_URL` (o
+     Railway conecta os dois serviços automaticamente, sem copiar/colar string de conexão).
+   - `NEXTAUTH_SECRET` → qualquer string aleatória longa.
+5. Deploy (acontece automático após conectar). O build já roda `prisma migrate deploy` e o seed
+   idempotente (só popula dados de demonstração se o banco estiver vazio — nunca apaga dados
+   reais em deploys seguintes).
+6. Em Settings → Networking, gere um domínio público (`Generate Domain`) para conseguir acessar
+   pelo navegador.
+
+**Sobre uploads de arquivo**: assim como em qualquer plataforma serverless/containers efêmeros,
+o Railway não garante disco persistente entre deploys por padrão — comprovantes/documentos
+enviados podem não sobreviver a um redeploy. Se isso importar, o próximo passo é configurar um
+[Volume do Railway](https://docs.railway.com/reference/volumes) apontando para `public/uploads`,
+ou trocar `lib/upload.ts` por um bucket S3-compatible.
 
 ### Docker
 

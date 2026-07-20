@@ -10,8 +10,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:migrate": "prisma migrate dev",
     "test": "vitest run",
-    "test:e2e": "playwright test",
-    "vercel-build": "prisma generate && prisma migrate deploy && tsx prisma/seed.ts && next build"
+    "test:e2e": "playwright test"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
