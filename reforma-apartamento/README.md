@@ -157,9 +157,11 @@ O projeto já vem com `railway.json` configurado (build/start commands), então 
    - `DATABASE_URL` → clique em "Add Reference" e aponte para `Postgres.DATABASE_URL` (o
      Railway conecta os dois serviços automaticamente, sem copiar/colar string de conexão).
    - `NEXTAUTH_SECRET` → qualquer string aleatória longa.
-5. Deploy (acontece automático após conectar). O build já roda `prisma migrate deploy` e o seed
-   idempotente (só popula dados de demonstração se o banco estiver vazio — nunca apaga dados
-   reais em deploys seguintes).
+5. Deploy (acontece automático após conectar). A migração do banco e o seed idempotente (só
+   popula dados de demonstração se o banco estiver vazio — nunca apaga dados reais em deploys
+   seguintes) rodam no **start** do container, não no build — o Railway só libera acesso à rede
+   privada (`postgres.railway.internal`) depois que o container já subiu, então tentar migrar
+   durante o build falha com `Can't reach database server`.
 6. Em Settings → Networking, gere um domínio público (`Generate Domain`) para conseguir acessar
    pelo navegador.
 
