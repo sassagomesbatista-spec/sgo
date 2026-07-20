@@ -315,7 +315,7 @@ function FormularioLancamento({
   modoEdicao?: boolean;
 }) {
   return (
-    <form action={action} className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3" encType="multipart/form-data">
+    <form action={action} className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
       <Field label="Tipo">
         <SelectInput name="tipo" defaultValue={valores?.tipo ?? "saida"}>
           <option value="saida">Saída</option>

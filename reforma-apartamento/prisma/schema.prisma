@@ -1,17 +1,16 @@
 // Modelo de dados — Gerenciador de Reforma de Apartamento
 //
 // Decisão técnica: todo valor financeiro é armazenado como Int (centavos de R$),
-// nunca como Float. SQLite/Prisma não suportam o tipo Decimal nativo do Prisma
-// (disponível só em postgresql/mysql/sqlserver/cockroachdb), então usamos centavos
-// inteiros como estratégia portátil que já evita erro de ponto flutuante hoje e
-// migra sem atrito para Decimal(14,2) quando o banco virar Postgres.
+// nunca como Float. Isso evita erro de ponto flutuante independente do banco e
+// funciona igual em SQLite ou Postgres — poderia virar Decimal(14,2) no Postgres
+// sem mudar a lógica de negócio, que já trata tudo como inteiro.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

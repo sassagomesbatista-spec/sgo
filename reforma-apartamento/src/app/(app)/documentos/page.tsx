@@ -67,7 +67,7 @@ export default async function DocumentosPage() {
       <Card>
         <details>
           <summary className="cursor-pointer text-sm font-semibold text-foreground">+ Novo documento</summary>
-          <form action={criarDocumento} className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3" encType="multipart/form-data">
+          <form action={criarDocumento} className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
             <Field label="Nome" className="md:col-span-2">
               <TextInput name="nome" required />
             </Field>

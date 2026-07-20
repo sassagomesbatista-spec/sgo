@@ -40,7 +40,7 @@ export default async function CotacoesPage() {
       <Card>
         <details>
           <summary className="cursor-pointer text-sm font-semibold text-foreground">+ Nova cotação</summary>
-          <form action={criarCotacao} className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3" encType="multipart/form-data">
+          <form action={criarCotacao} className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
             <Field label="Item ou serviço" className="md:col-span-2">
               <TextInput name="itemDescricao" required placeholder="Ex: Ar-condicionado 4 ambientes" />
             </Field>

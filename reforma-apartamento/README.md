@@ -18,11 +18,11 @@ então adicionar colaboradores no futuro não exige migração de schema.
   `proxy.ts`, o Prisma 7 mudou a config de datasource); o código já reflete isso (por isso o
   Prisma foi fixado na v6, mais estável e documentada).
 - **TypeScript**, **Tailwind CSS v4**.
-- **Prisma + SQLite** para o MVP local. Todo valor monetário é um `Int` em **centavos**, nunca
-  `Float` — decisão tomada porque o conector SQLite do Prisma não suporta o tipo `Decimal`
-  (disponível só em postgresql/mysql/sqlserver/cockroachdb). Migrar para Postgres é trocar o
-  `provider` do datasource; os campos `*Centavos` continuam funcionando ou podem virar
-  `Decimal(14,2)` sem mudar a lógica de negócio (que já trata tudo como inteiro).
+- **Prisma + PostgreSQL**. Todo valor monetário é um `Int` em **centavos**, nunca `Float` —
+  evita erro de ponto flutuante independente do banco, e os campos `*Centavos` poderiam virar
+  `Decimal(14,2)` sem mudar a lógica de negócio (que já trata tudo como inteiro). O projeto
+  começou em SQLite durante o desenvolvimento inicial e migrou para Postgres (necessário para
+  rodar em ambientes serverless como a Vercel, onde não há disco persistente).
 - **Autenticação própria** com cookie de sessão HTTP-only assinado (JWT via `jose`) + `bcryptjs`
   para hash de senha. NextAuth v5 (beta) foi avaliado e descartado para o MVP por risco de
   incompatibilidade com o Next.js 16 ainda em preview; a interface de `lib/auth.ts` é pequena o
@@ -59,6 +59,10 @@ entrega funcional):
   `TarefaDependencia` existe e a UI mostra quem depende de quem, mas o recálculo de datas
   propagado ainda é manual).
 - Upload real para S3 (hoje é disco local — troca de implementação, não de contrato).
+  **Atenção ao rodar na Vercel**: o filesystem do app é somente leitura em runtime serverless,
+  então uploads de comprovantes/documentos não persistem entre requisições — o registro é salvo
+  normalmente, só o anexo não fica guardado. Funciona sem essa limitação quando rodado localmente
+  ou em qualquer servidor Node.js tradicional com disco (ex: Docker, VPS).
 
 ## Modelo de dados
 
@@ -119,14 +123,16 @@ e2e/                   testes Playwright (fluxo de login + páginas principais)
 
 ## Instalação e execução local
 
-Pré-requisitos: Node.js 20+.
+Pré-requisitos: Node.js 20+ e um PostgreSQL rodando (local, Docker, ou um banco gerenciado
+gratuito como [Neon](https://neon.tech) — nesse caso, use a connection string dele em
+`DATABASE_URL`).
 
 ```bash
 npm install
-cp .env.example .env      # ajuste NEXTAUTH_SECRET
-npx prisma migrate dev    # cria o banco SQLite e aplica as migrations
-npm run db:seed           # popula dados fictícios de demonstração
-npm run dev               # http://localhost:3000
+cp .env.example .env       # ajuste DATABASE_URL e NEXTAUTH_SECRET
+npx prisma migrate dev     # cria as tabelas no Postgres e aplica as migrations
+npm run db:seed            # popula dados fictícios de demonstração (idempotente)
+npm run dev                # http://localhost:3000
 ```
 
 Login de demonstração criado pelo seed: `demo@reforma.local` / `reforma123`.
@@ -138,11 +144,23 @@ npm test           # testes unitários (Vitest) — regras financeiras, CSV, for
 npm run test:e2e   # testes end-to-end (Playwright) — requer o app rodando/buildável
 ```
 
+### Deploy (Vercel)
+
+1. Importe o repositório na Vercel, com **Root Directory** = `reforma-apartamento`.
+2. Adicione um banco Postgres em Storage → Create Database (Neon/Vercel Postgres).
+3. Confira em Settings → Environment Variables se ficou criada uma variável chamada exatamente
+   `DATABASE_URL` (é o nome que o Prisma espera). Se a integração criou outro nome (ex.:
+   `POSTGRES_PRISMA_URL` ou `POSTGRES_URL`), adicione manualmente uma variável `DATABASE_URL`
+   com o mesmo valor.
+4. Defina `NEXTAUTH_SECRET` (qualquer string aleatória longa) nas variáveis de ambiente.
+5. Deploy. O `vercel-build` do `package.json` já roda `prisma migrate deploy` (aplica as
+   migrations no banco de produção) e depois `prisma db seed` (só popula dados de demonstração
+   se o banco ainda estiver vazio — nunca apaga dados reais em deploys seguintes).
+
 ### Docker
 
-Não incluído neste MVP (SQLite local não exige container). Para produção com Postgres, o
-próximo passo natural é um `docker-compose.yml` com Postgres + a própria aplicação — a troca de
-`DATABASE_URL` e do `provider` em `schema.prisma` é o único ajuste necessário no código.
+Não incluído neste MVP. Como o projeto já roda sobre Postgres, um `docker-compose.yml` com
+Postgres + a própria aplicação é um próximo passo direto — não exige trocar nada no schema.
 
 ## Decisões técnicas relevantes
 

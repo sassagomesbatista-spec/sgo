@@ -14,6 +14,15 @@ function addDias(base: Date, dias: number) {
 }
 
 async function main() {
+  const projetoExistente = await prisma.projeto.findFirst();
+  if (projetoExistente && process.env.FORCE_RESEED !== "true") {
+    console.log(
+      "Já existe um projeto no banco — seed ignorado para não apagar dados reais. " +
+        "Defina FORCE_RESEED=true para forçar a recriação dos dados de demonstração."
+    );
+    return;
+  }
+
   console.log("Limpando banco...");
   await prisma.documento.deleteMany();
   await prisma.contrato.deleteMany();
