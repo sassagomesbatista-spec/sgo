@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+:root {
+  --background: #faf6f0;
+  --surface: #ffffff;
+  --surface-muted: #f2ebe1;
+  --foreground: #2b241e;
+  --muted-foreground: #6b6058;
+  --border: #e4dcd0;
+  --accent: #c1622d;
+  --accent-foreground: #fffaf5;
+  --secondary: #7a8b6f;
+  --secondary-foreground: #fffaf5;
+  --gold: #c79a3b;
+  --danger: #b23a34;
+  --danger-foreground: #fff5f4;
+  --success: #4c7a4a;
+  --success-foreground: #f2f8f1;
+  --warning-bg: #fbeed9;
+  --warning-fg: #7a5a12;
+  --danger-bg: #f7e2df;
+  --success-bg: #e6efe4;
+}
+
+:root[data-theme="dark"] {
+  --background: #1c1712;
+  --surface: #241d17;
+  --surface-muted: #2c241d;
+  --foreground: #f2ece2;
+  --muted-foreground: #a89d8f;
+  --border: #3a322a;
+  --accent: #e08a52;
+  --accent-foreground: #241206;
+  --secondary: #9bad8e;
+  --secondary-foreground: #12190f;
+  --gold: #d8b25c;
+  --danger: #e2665f;
+  --danger-foreground: #2b0f0d;
+  --success: #7fb47a;
+  --success-foreground: #0e1a0d;
+  --warning-bg: #3a2f14;
+  --warning-fg: #e8c877;
+  --danger-bg: #3a1e1c;
+  --success-bg: #1c2a1a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --background: #1c1712;
+    --surface: #241d17;
+    --surface-muted: #2c241d;
+    --foreground: #f2ece2;
+    --muted-foreground: #a89d8f;
+    --border: #3a322a;
+    --accent: #e08a52;
+    --accent-foreground: #241206;
+    --secondary: #9bad8e;
+    --secondary-foreground: #12190f;
+    --gold: #d8b25c;
+    --danger: #e2665f;
+    --danger-foreground: #2b0f0d;
+    --success: #7fb47a;
+    --success-foreground: #0e1a0d;
+    --warning-bg: #3a2f14;
+    --warning-fg: #e8c877;
+    --danger-bg: #3a1e1c;
+    --success-bg: #1c2a1a;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-gold: var(--gold);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-fg: var(--warning-fg);
+  --color-danger-bg: var(--danger-bg);
+  --color-success-bg: var(--success-bg);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+* {
+  border-color: var(--border);
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
