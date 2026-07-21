@@ -9,6 +9,8 @@ import {
   calcularProgressoFisico,
   calcularReservaContingencia,
   calcularVariacaoOrcamento,
+  calcularContratadoEPagoDoItem,
+  calcularSaldoConta,
   diasEntre,
   type LancamentoCalc,
   type TarefaCalc,
@@ -134,6 +136,45 @@ describe("calcularVariacaoOrcamento", () => {
     expect(resultado.estimado).toBe(15_000);
     expect(resultado.realizado).toBe(16_000);
     expect(resultado.variacao).toBe(1_000);
+  });
+});
+
+describe("calcularContratadoEPagoDoItem", () => {
+  it("soma apenas os lançamentos de saída vinculados ao item, por status", () => {
+    const lancamentos: LancamentoCalc[] = [
+      { tipo: "saida", status: "pago", valorCentavos: 20_000 },
+      { tipo: "saida", status: "pago_parcialmente", valorCentavos: 5_000 },
+      { tipo: "saida", status: "contratado", valorCentavos: 10_000 },
+      { tipo: "saida", status: "previsto", valorCentavos: 999_999 }, // ainda não é nem contratado
+      { tipo: "entrada", status: "pago", valorCentavos: 999_999 }, // entrada não conta
+    ];
+    const { contratado, pago } = calcularContratadoEPagoDoItem(lancamentos);
+    expect(pago).toBe(25_000);
+    expect(contratado).toBe(35_000);
+  });
+
+  it("retorna 0/0 quando não há lançamentos vinculados", () => {
+    expect(calcularContratadoEPagoDoItem([])).toEqual({ contratado: 0, pago: 0 });
+  });
+});
+
+describe("calcularSaldoConta", () => {
+  it("soma o saldo inicial com entradas/saídas pagas a partir da data de referência", () => {
+    const dataSaldoInicial = new Date("2026-01-01");
+    const lancamentos = [
+      { tipo: "entrada", status: "pago", valorCentavos: 10_000, dataPagamento: new Date("2026-01-05") },
+      { tipo: "saida", status: "pago", valorCentavos: 3_000, dataPagamento: new Date("2026-01-10") },
+      { tipo: "saida", status: "previsto", valorCentavos: 999_999, dataPagamento: null }, // não pago, ignora
+    ];
+    expect(calcularSaldoConta(50_000, dataSaldoInicial, lancamentos)).toBe(50_000 + 10_000 - 3_000);
+  });
+
+  it("ignora lançamentos pagos antes da data do saldo inicial (já embutidos nele)", () => {
+    const dataSaldoInicial = new Date("2026-01-10");
+    const lancamentos = [
+      { tipo: "entrada", status: "pago", valorCentavos: 999_999, dataPagamento: new Date("2025-12-01") },
+    ];
+    expect(calcularSaldoConta(50_000, dataSaldoInicial, lancamentos)).toBe(50_000);
   });
 });
 

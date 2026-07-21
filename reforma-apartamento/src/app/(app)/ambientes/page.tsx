@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getProjetoAtual } from "@/lib/projeto";
 import { prisma } from "@/lib/prisma";
 import { formatarMoeda } from "@/lib/money";
+import { totalContratado, totalPago } from "@/lib/calculos";
 import { Card, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field, TextInput, SubmitButton } from "@/components/ui/form";
@@ -16,7 +17,6 @@ export default async function AmbientesPage() {
     orderBy: { ordem: "asc" },
     include: {
       lancamentos: { where: { deletedAt: null } },
-      orcamentoItens: { where: { deletedAt: null } },
     },
   });
 
@@ -49,10 +49,8 @@ export default async function AmbientesPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {ambientes.map((a) => {
-            const pago = a.lancamentos
-              .filter((l) => l.tipo === "saida" && ["pago", "pago_parcialmente"].includes(l.status))
-              .reduce((acc, l) => acc + l.valorCentavos, 0);
-            const contratado = a.orcamentoItens.reduce((acc, i) => acc + i.valorContratadoCentavos, 0);
+            const pago = totalPago(a.lancamentos);
+            const contratado = totalContratado(a.lancamentos);
             const excluirComId = excluirAmbiente.bind(null, a.id);
             return (
               <Card key={a.id}>

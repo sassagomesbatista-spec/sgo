@@ -332,45 +332,49 @@ async function main() {
   }
 
   console.log("Criando itens de orçamento...");
+  // contratado/pago não são mais campos do item: são calculados a partir dos
+  // lançamentos vinculados a ele (ver orcamentoItemId nos lançamentos abaixo).
   const orcamentoItensSeed = [
-    { nome: "Honorários arquiteta", categoria: "Arquiteta", ambiente: "Apartamento inteiro", estimado: 25000, aprovado: 25000, contratado: 25000, pago: 25000 },
-    { nome: "Demolição geral", categoria: "Demolição", ambiente: "Apartamento inteiro", estimado: 8000, aprovado: 8000, contratado: 8000, pago: 8600 },
-    { nome: "Elétrica completa", categoria: "Elétrica", ambiente: "Apartamento inteiro", estimado: 32000, aprovado: 32000, contratado: 33500, pago: 33500 },
-    { nome: "Hidráulica completa", categoria: "Hidráulica", ambiente: "Apartamento inteiro", estimado: 28000, aprovado: 28000, contratado: 27500, pago: 27500 },
-    { nome: "Alvenaria e drywall", categoria: "Alvenaria", ambiente: "Apartamento inteiro", estimado: 18000, aprovado: 18000, contratado: 19200, pago: 19200 },
-    { nome: "Revestimento cozinha", categoria: "Revestimentos (execução)", ambiente: "Cozinha", estimado: 15000, aprovado: 15000, contratado: 16800, pago: 16800 },
-    { nome: "Piso porcelanato sala", categoria: "Pisos", ambiente: "Sala de estar", estimado: 22000, aprovado: 22000, contratado: 22000, pago: 15000 },
-    { nome: "Piso quarto principal", categoria: "Pisos", ambiente: "Quarto principal", estimado: 12000, aprovado: 12000, contratado: 12000, pago: 7000 },
-    { nome: "Pintura geral apartamento", categoria: "Pintura", ambiente: "Apartamento inteiro", estimado: 14000, aprovado: 14000, contratado: 14000, pago: 5000 },
-    { nome: "Marcenaria cozinha planejada", categoria: "Marcenaria", ambiente: "Cozinha", estimado: 45000, aprovado: 52000, contratado: 52500, pago: 0 },
-    { nome: "Marcenaria home office", categoria: "Marcenaria", ambiente: "Home office", estimado: 18000, aprovado: 0, contratado: 0, pago: 0 },
-    { nome: "Ar-condicionado 4 ambientes", categoria: "Ar-condicionado", ambiente: "Apartamento inteiro", estimado: 18000, aprovado: 18000, contratado: 18000, pago: 0 },
-    { nome: "Louças e metais banheiro social", categoria: "Louças", ambiente: "Banheiro social", estimado: 9500, aprovado: 9500, contratado: 9500, pago: 0 },
-    { nome: "Louças e metais suíte", categoria: "Louças", ambiente: "Suíte", estimado: 12000, aprovado: 0, contratado: 0, pago: 0 },
-    { nome: "Eletrodomésticos cozinha", categoria: "Eletrodomésticos", ambiente: "Cozinha", estimado: 32000, aprovado: 32000, contratado: 32000, pago: 0 },
-    { nome: "Cortinas e persianas", categoria: "Cortinas", ambiente: "Apartamento inteiro", estimado: 11000, aprovado: 11000, contratado: 0, pago: 0 },
-    { nome: "Móveis soltos sala e quartos", categoria: "Móveis soltos", ambiente: "Apartamento inteiro", estimado: 38000, aprovado: 0, contratado: 0, pago: 0 },
-    { nome: "Tapetes", categoria: "Tapetes", ambiente: "Sala de estar", estimado: 6000, aprovado: 0, contratado: 0, pago: 0 },
-    { nome: "Frete e montagem geral", categoria: "Frete", ambiente: "Apartamento inteiro", estimado: 5000, aprovado: 5000, contratado: 0, pago: 0 },
-    { nome: "Caçamba e limpeza de obra", categoria: "Caçamba", ambiente: "Apartamento inteiro", estimado: 3500, aprovado: 3500, contratado: 3500, pago: 3500 },
-    { nome: "Projeto de iluminação", categoria: "Designer de interiores", ambiente: "Apartamento inteiro", estimado: 8000, aprovado: 8000, contratado: 8000, pago: 8000 },
-    { nome: "Reserva de contingência", categoria: "Contingência", ambiente: "Apartamento inteiro", estimado: 60000, aprovado: 0, contratado: 0, pago: 0 },
+    { nome: "Honorários arquiteta", categoria: "Arquiteta", ambiente: "Apartamento inteiro", estimado: 25000, aprovado: 25000 },
+    { nome: "Demolição geral", categoria: "Demolição", ambiente: "Apartamento inteiro", estimado: 8000, aprovado: 8000 },
+    { nome: "Elétrica completa", categoria: "Elétrica", ambiente: "Apartamento inteiro", estimado: 32000, aprovado: 32000 },
+    { nome: "Hidráulica completa", categoria: "Hidráulica", ambiente: "Apartamento inteiro", estimado: 28000, aprovado: 28000 },
+    { nome: "Alvenaria e drywall", categoria: "Alvenaria", ambiente: "Apartamento inteiro", estimado: 18000, aprovado: 18000 },
+    { nome: "Revestimento cozinha", categoria: "Revestimentos (execução)", ambiente: "Cozinha", estimado: 15000, aprovado: 15000 },
+    { nome: "Piso porcelanato sala", categoria: "Pisos", ambiente: "Sala de estar", estimado: 22000, aprovado: 22000 },
+    { nome: "Piso quarto principal", categoria: "Pisos", ambiente: "Quarto principal", estimado: 12000, aprovado: 12000 },
+    { nome: "Pintura geral apartamento", categoria: "Pintura", ambiente: "Apartamento inteiro", estimado: 14000, aprovado: 14000 },
+    { nome: "Marcenaria cozinha planejada", categoria: "Marcenaria", ambiente: "Cozinha", estimado: 45000, aprovado: 52000 },
+    { nome: "Marcenaria home office", categoria: "Marcenaria", ambiente: "Home office", estimado: 18000, aprovado: 0 },
+    { nome: "Ar-condicionado 4 ambientes", categoria: "Ar-condicionado", ambiente: "Apartamento inteiro", estimado: 18000, aprovado: 18000 },
+    { nome: "Louças e metais banheiro social", categoria: "Louças", ambiente: "Banheiro social", estimado: 9500, aprovado: 9500 },
+    { nome: "Louças e metais suíte", categoria: "Louças", ambiente: "Suíte", estimado: 12000, aprovado: 0 },
+    { nome: "Eletrodomésticos cozinha", categoria: "Eletrodomésticos", ambiente: "Cozinha", estimado: 32000, aprovado: 32000 },
+    { nome: "Cortinas e persianas", categoria: "Cortinas", ambiente: "Apartamento inteiro", estimado: 11000, aprovado: 11000 },
+    { nome: "Móveis soltos sala e quartos", categoria: "Móveis soltos", ambiente: "Apartamento inteiro", estimado: 38000, aprovado: 0 },
+    { nome: "Tapetes", categoria: "Tapetes", ambiente: "Sala de estar", estimado: 6000, aprovado: 0 },
+    { nome: "Frete e montagem geral", categoria: "Frete", ambiente: "Apartamento inteiro", estimado: 5000, aprovado: 5000 },
+    { nome: "Caçamba e limpeza de obra", categoria: "Caçamba", ambiente: "Apartamento inteiro", estimado: 3500, aprovado: 3500 },
+    { nome: "Projeto de iluminação", categoria: "Designer de interiores", ambiente: "Apartamento inteiro", estimado: 8000, aprovado: 8000 },
+    { nome: "Reserva de contingência", categoria: "Contingência", ambiente: "Apartamento inteiro", estimado: 60000, aprovado: 0 },
   ];
+  const orcamentoItens: Awaited<ReturnType<typeof prisma.orcamentoItem.create>>[] = [];
   for (const it of orcamentoItensSeed) {
-    await prisma.orcamentoItem.create({
-      data: {
-        projetoId: projeto.id,
-        nome: it.nome,
-        categoriaId: cat(it.categoria).id,
-        ambienteId: amb(it.ambiente).id,
-        valorEstimadoCentavos: reais(it.estimado),
-        valorAprovadoCentavos: reais(it.aprovado),
-        valorContratadoCentavos: reais(it.contratado),
-        valorPagoCentavos: reais(it.pago),
-        prioridade: it.estimado > 20000 ? "alta" : "media",
-      },
-    });
+    orcamentoItens.push(
+      await prisma.orcamentoItem.create({
+        data: {
+          projetoId: projeto.id,
+          nome: it.nome,
+          categoriaId: cat(it.categoria).id,
+          ambienteId: amb(it.ambiente).id,
+          valorEstimadoCentavos: reais(it.estimado),
+          valorAprovadoCentavos: reais(it.aprovado),
+          prioridade: it.estimado > 20000 ? "alta" : "media",
+        },
+      })
+    );
   }
+  const orc = (nome: string) => orcamentoItens.find((o) => o.nome === nome)!;
 
   console.log("Criando lançamentos financeiros...");
   type LancSeed = {
@@ -384,36 +388,37 @@ async function main() {
     fornecedor?: string;
     parcelas?: number;
     formaPagamento?: string;
+    orcamentoItem?: string;
   };
   const lancamentosSeed: LancSeed[] = [
     { tipo: "entrada", descricao: "Aporte inicial da reforma", valor: 300000, diasOffset: -125, status: "pago", formaPagamento: "transferência" },
     { tipo: "entrada", descricao: "Segundo aporte", valor: 150000, diasOffset: -60, status: "pago", formaPagamento: "transferência" },
     { tipo: "entrada", descricao: "Terceiro aporte (reserva)", valor: 50000, diasOffset: -10, status: "pago", formaPagamento: "transferência" },
-    { tipo: "saida", descricao: "Honorários arquiteta — parcela única", valor: 25000, diasOffset: -118, status: "pago", categoria: "Arquiteta", ambiente: "Apartamento inteiro", fornecedor: "Ateliê Fernandes Arquitetura" },
-    { tipo: "saida", descricao: "Demolição geral", valor: 8600, diasOffset: -95, status: "pago", categoria: "Demolição", ambiente: "Apartamento inteiro", fornecedor: "Construtora Bravo Reformas" },
-    { tipo: "saida", descricao: "Elétrica — material", valor: 15000, diasOffset: -85, status: "pago", categoria: "Elétrica", ambiente: "Apartamento inteiro", fornecedor: "Elétrica Sul Instalações" },
-    { tipo: "saida", descricao: "Elétrica — mão de obra", valor: 18500, diasOffset: -80, status: "pago", categoria: "Elétrica", ambiente: "Apartamento inteiro", fornecedor: "Elétrica Sul Instalações" },
-    { tipo: "saida", descricao: "Hidráulica — material e mão de obra", valor: 27500, diasOffset: -80, status: "pago", categoria: "Hidráulica", ambiente: "Apartamento inteiro", fornecedor: "Hidro Prime Serviços" },
-    { tipo: "saida", descricao: "Alvenaria e drywall", valor: 19200, diasOffset: -60, status: "pago", categoria: "Alvenaria", ambiente: "Apartamento inteiro", fornecedor: "Construtora Bravo Reformas" },
+    { tipo: "saida", descricao: "Honorários arquiteta — parcela única", valor: 25000, diasOffset: -118, status: "pago", categoria: "Arquiteta", ambiente: "Apartamento inteiro", fornecedor: "Ateliê Fernandes Arquitetura", orcamentoItem: "Honorários arquiteta" },
+    { tipo: "saida", descricao: "Demolição geral", valor: 8600, diasOffset: -95, status: "pago", categoria: "Demolição", ambiente: "Apartamento inteiro", fornecedor: "Construtora Bravo Reformas", orcamentoItem: "Demolição geral" },
+    { tipo: "saida", descricao: "Elétrica — material", valor: 15000, diasOffset: -85, status: "pago", categoria: "Elétrica", ambiente: "Apartamento inteiro", fornecedor: "Elétrica Sul Instalações", orcamentoItem: "Elétrica completa" },
+    { tipo: "saida", descricao: "Elétrica — mão de obra", valor: 18500, diasOffset: -80, status: "pago", categoria: "Elétrica", ambiente: "Apartamento inteiro", fornecedor: "Elétrica Sul Instalações", orcamentoItem: "Elétrica completa" },
+    { tipo: "saida", descricao: "Hidráulica — material e mão de obra", valor: 27500, diasOffset: -80, status: "pago", categoria: "Hidráulica", ambiente: "Apartamento inteiro", fornecedor: "Hidro Prime Serviços", orcamentoItem: "Hidráulica completa" },
+    { tipo: "saida", descricao: "Alvenaria e drywall", valor: 19200, diasOffset: -60, status: "pago", categoria: "Alvenaria", ambiente: "Apartamento inteiro", fornecedor: "Construtora Bravo Reformas", orcamentoItem: "Alvenaria e drywall" },
     { tipo: "saida", descricao: "Contrapiso", valor: 9000, diasOffset: -45, status: "pago", categoria: "Contrapiso", ambiente: "Apartamento inteiro", fornecedor: "Construtora Bravo Reformas" },
     { tipo: "saida", descricao: "Impermeabilização banheiro social", valor: 4500, diasOffset: -38, status: "pago", categoria: "Impermeabilização", ambiente: "Banheiro social", fornecedor: "Hidro Prime Serviços" },
-    { tipo: "saida", descricao: "Revestimento cozinha — material", valor: 9800, diasOffset: -32, status: "pago", categoria: "Revestimentos (execução)", ambiente: "Cozinha", fornecedor: "Pisos & Pedras Almeida" },
-    { tipo: "saida", descricao: "Revestimento cozinha — mão de obra", valor: 7000, diasOffset: -28, status: "pago", categoria: "Revestimentos (execução)", ambiente: "Cozinha", fornecedor: "Pisos & Pedras Almeida" },
-    { tipo: "saida", descricao: "Piso porcelanato sala — sinal", valor: 15000, diasOffset: -20, status: "pago", categoria: "Pisos", ambiente: "Sala de estar", fornecedor: "Pisos & Pedras Almeida" },
-    { tipo: "saida", descricao: "Piso porcelanato sala — saldo", valor: 7000, diasOffset: 10, status: "aguardando_pagamento", categoria: "Pisos", ambiente: "Sala de estar", fornecedor: "Pisos & Pedras Almeida" },
-    { tipo: "saida", descricao: "Piso quarto principal — sinal", valor: 7000, diasOffset: -18, status: "pago", categoria: "Pisos", ambiente: "Quarto principal", fornecedor: "Pisos & Pedras Almeida" },
-    { tipo: "saida", descricao: "Piso quarto principal — saldo", valor: 5000, diasOffset: 12, status: "aguardando_pagamento", categoria: "Pisos", ambiente: "Quarto principal", fornecedor: "Pisos & Pedras Almeida" },
-    { tipo: "saida", descricao: "Pintura geral — sinal", valor: 5000, diasOffset: -8, status: "pago", categoria: "Pintura", ambiente: "Apartamento inteiro", fornecedor: "Pintor Renato Souza" },
-    { tipo: "saida", descricao: "Pintura geral — 2ª medição", valor: 4500, diasOffset: 5, status: "vencido", categoria: "Pintura", ambiente: "Apartamento inteiro", fornecedor: "Pintor Renato Souza" },
-    { tipo: "saida", descricao: "Ar-condicionado — sinal 30%", valor: 5400, diasOffset: -5, status: "pago", categoria: "Ar-condicionado", ambiente: "Apartamento inteiro", fornecedor: "Refrigera Clima Ar" },
-    { tipo: "saida", descricao: "Ar-condicionado — saldo na instalação", valor: 12600, diasOffset: 25, status: "aguardando_pagamento", categoria: "Ar-condicionado", ambiente: "Apartamento inteiro", fornecedor: "Refrigera Clima Ar" },
-    { tipo: "saida", descricao: "Louças e metais banheiro social", valor: 9500, diasOffset: 15, status: "contratado", categoria: "Louças", ambiente: "Banheiro social", fornecedor: "Hidro Prime Serviços" },
-    { tipo: "saida", descricao: "Eletrodomésticos cozinha — pedido", valor: 32000, diasOffset: 30, status: "aprovado", categoria: "Eletrodomésticos", ambiente: "Cozinha", fornecedor: "Casa Eletro Distribuidora" },
-    { tipo: "saida", descricao: "Cortinas e persianas — orçamento", valor: 11000, diasOffset: 45, status: "em_cotacao", categoria: "Cortinas", ambiente: "Apartamento inteiro", fornecedor: "Studio Cortinas & Cia" },
-    { tipo: "saida", descricao: "Caçamba de entulho", valor: 1200, diasOffset: -100, status: "pago", categoria: "Caçamba", ambiente: "Apartamento inteiro" },
-    { tipo: "saida", descricao: "Segunda caçamba de entulho", valor: 1200, diasOffset: -55, status: "pago", categoria: "Caçamba", ambiente: "Apartamento inteiro" },
+    { tipo: "saida", descricao: "Revestimento cozinha — material", valor: 9800, diasOffset: -32, status: "pago", categoria: "Revestimentos (execução)", ambiente: "Cozinha", fornecedor: "Pisos & Pedras Almeida", orcamentoItem: "Revestimento cozinha" },
+    { tipo: "saida", descricao: "Revestimento cozinha — mão de obra", valor: 7000, diasOffset: -28, status: "pago", categoria: "Revestimentos (execução)", ambiente: "Cozinha", fornecedor: "Pisos & Pedras Almeida", orcamentoItem: "Revestimento cozinha" },
+    { tipo: "saida", descricao: "Piso porcelanato sala — sinal", valor: 15000, diasOffset: -20, status: "pago", categoria: "Pisos", ambiente: "Sala de estar", fornecedor: "Pisos & Pedras Almeida", orcamentoItem: "Piso porcelanato sala" },
+    { tipo: "saida", descricao: "Piso porcelanato sala — saldo", valor: 7000, diasOffset: 10, status: "aguardando_pagamento", categoria: "Pisos", ambiente: "Sala de estar", fornecedor: "Pisos & Pedras Almeida", orcamentoItem: "Piso porcelanato sala" },
+    { tipo: "saida", descricao: "Piso quarto principal — sinal", valor: 7000, diasOffset: -18, status: "pago", categoria: "Pisos", ambiente: "Quarto principal", fornecedor: "Pisos & Pedras Almeida", orcamentoItem: "Piso quarto principal" },
+    { tipo: "saida", descricao: "Piso quarto principal — saldo", valor: 5000, diasOffset: 12, status: "aguardando_pagamento", categoria: "Pisos", ambiente: "Quarto principal", fornecedor: "Pisos & Pedras Almeida", orcamentoItem: "Piso quarto principal" },
+    { tipo: "saida", descricao: "Pintura geral — sinal", valor: 5000, diasOffset: -8, status: "pago", categoria: "Pintura", ambiente: "Apartamento inteiro", fornecedor: "Pintor Renato Souza", orcamentoItem: "Pintura geral apartamento" },
+    { tipo: "saida", descricao: "Pintura geral — 2ª medição", valor: 4500, diasOffset: 5, status: "vencido", categoria: "Pintura", ambiente: "Apartamento inteiro", fornecedor: "Pintor Renato Souza", orcamentoItem: "Pintura geral apartamento" },
+    { tipo: "saida", descricao: "Ar-condicionado — sinal 30%", valor: 5400, diasOffset: -5, status: "pago", categoria: "Ar-condicionado", ambiente: "Apartamento inteiro", fornecedor: "Refrigera Clima Ar", orcamentoItem: "Ar-condicionado 4 ambientes" },
+    { tipo: "saida", descricao: "Ar-condicionado — saldo na instalação", valor: 12600, diasOffset: 25, status: "aguardando_pagamento", categoria: "Ar-condicionado", ambiente: "Apartamento inteiro", fornecedor: "Refrigera Clima Ar", orcamentoItem: "Ar-condicionado 4 ambientes" },
+    { tipo: "saida", descricao: "Louças e metais banheiro social", valor: 9500, diasOffset: 15, status: "contratado", categoria: "Louças", ambiente: "Banheiro social", fornecedor: "Hidro Prime Serviços", orcamentoItem: "Louças e metais banheiro social" },
+    { tipo: "saida", descricao: "Eletrodomésticos cozinha — pedido", valor: 32000, diasOffset: 30, status: "aprovado", categoria: "Eletrodomésticos", ambiente: "Cozinha", fornecedor: "Casa Eletro Distribuidora", orcamentoItem: "Eletrodomésticos cozinha" },
+    { tipo: "saida", descricao: "Cortinas e persianas — orçamento", valor: 11000, diasOffset: 45, status: "em_cotacao", categoria: "Cortinas", ambiente: "Apartamento inteiro", fornecedor: "Studio Cortinas & Cia", orcamentoItem: "Cortinas e persianas" },
+    { tipo: "saida", descricao: "Caçamba de entulho", valor: 1200, diasOffset: -100, status: "pago", categoria: "Caçamba", ambiente: "Apartamento inteiro", orcamentoItem: "Caçamba e limpeza de obra" },
+    { tipo: "saida", descricao: "Segunda caçamba de entulho", valor: 1200, diasOffset: -55, status: "pago", categoria: "Caçamba", ambiente: "Apartamento inteiro", orcamentoItem: "Caçamba e limpeza de obra" },
     { tipo: "saida", descricao: "Limpeza pós-etapa civil", valor: 1100, diasOffset: -40, status: "pago", categoria: "Limpeza", ambiente: "Apartamento inteiro" },
-    { tipo: "saida", descricao: "Projeto de iluminação", valor: 8000, diasOffset: -110, status: "pago", categoria: "Designer de interiores", ambiente: "Apartamento inteiro" },
+    { tipo: "saida", descricao: "Projeto de iluminação", valor: 8000, diasOffset: -110, status: "pago", categoria: "Designer de interiores", ambiente: "Apartamento inteiro", orcamentoItem: "Projeto de iluminação" },
     { tipo: "saida", descricao: "Condomínio (taxa extra obra)", valor: 1500, diasOffset: -100, status: "pago", categoria: "Condomínio (taxas de obra)", ambiente: "Apartamento inteiro" },
     { tipo: "saida", descricao: "Condomínio mensal", valor: 950, diasOffset: -90, status: "pago", categoria: "Condomínio", ambiente: "Apartamento inteiro" },
     { tipo: "saida", descricao: "Condomínio mensal", valor: 950, diasOffset: -60, status: "pago", categoria: "Condomínio", ambiente: "Apartamento inteiro" },
@@ -450,8 +455,20 @@ async function main() {
       ambiente: "Cozinha",
       fornecedor: "João Marcenaria Fina",
       parcelas: 5,
+      orcamentoItem: "Marcenaria cozinha planejada",
     });
   }
+
+  console.log("Criando conta bancária...");
+  const contaCorrente = await prisma.contaBancaria.create({
+    data: {
+      projetoId: projeto.id,
+      nome: "Conta Corrente — Reforma",
+      saldoInicialCentavos: 0,
+      dataSaldoInicial: addDias(hoje, -125),
+      observacoes: "Conta usada exclusivamente para os aportes e pagamentos da reforma.",
+    },
+  });
 
   for (const l of lancamentosSeed) {
     const data = addDias(hoje, l.diasOffset);
@@ -468,6 +485,8 @@ async function main() {
         categoriaId: l.categoria ? cat(l.categoria).id : undefined,
         ambienteId: l.ambiente ? amb(l.ambiente).id : undefined,
         fornecedorId: l.fornecedor ? forn(l.fornecedor).id : undefined,
+        orcamentoItemId: l.orcamentoItem ? orc(l.orcamentoItem).id : undefined,
+        contaBancariaId: contaCorrente.id,
         formaPagamento: l.formaPagamento ?? "transferência",
         numeroParcelas: l.parcelas ?? 1,
         parcelaAtual: l.parcelas ? Number(l.descricao.match(/(\d+)\/\d+/)?.[1] ?? 1) : 1,

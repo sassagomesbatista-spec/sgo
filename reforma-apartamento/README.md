@@ -36,11 +36,33 @@ então adicionar colaboradores no futuro não exige migração de schema.
 
 ## O que está implementado vs. fora do escopo do MVP
 
-Implementado com CRUD completo e persistência real: Visão Geral (dashboard), Orçamento,
-Lançamentos (com parcelamento, importação/exportação CSV, upload de comprovante), Cronograma
-(lista/kanban/linha do tempo, dependências entre tarefas, cálculo de atraso), Ambientes,
-Categorias, Fornecedores (com páginas de detalhe), Cotações (comparação lado a lado), Compras e
-Contratos, Documentos (com upload), Relatórios (12 exportações em CSV), Configurações.
+Implementado com CRUD completo e persistência real: Visão Geral (dashboard), Orçamento (com
+contratado/pago calculados automaticamente — ver abaixo), Lançamentos (com parcelamento,
+importação/exportação CSV, upload de comprovante, vínculo opcional a um item de orçamento e a
+uma conta bancária), Cronograma (lista/kanban/linha do tempo, dependências entre tarefas, cálculo
+de atraso), Ambientes, Categorias, Fornecedores (com páginas de detalhe), Cotações (comparação
+lado a lado), Compras e Contratos, Documentos (com upload), Contas Bancárias (saldo integrado —
+ver abaixo), Relatórios (12 exportações em CSV), Configurações.
+
+### Orçamento automatizado a partir dos lançamentos
+
+`OrcamentoItem` não guarda mais `valorContratado`/`valorPago` como campos digitados manualmente —
+esses dois valores são **calculados dinamicamente** a partir dos `Lancamento`s vinculados ao item
+(`Lancamento.orcamentoItemId`), usando as mesmas regras de status do restante do app (ver
+`calcularContratadoEPagoDoItem` em `lib/calculos.ts`). Isso elimina o risco de o orçamento
+dessincronizar do extrato financeiro real: para um item refletir contratado/pago, basta vincular
+os lançamentos correspondentes a ele na tela de Lançamentos — não existe mais edição manual desses
+dois campos na tela de Orçamento.
+
+### Contas bancárias com saldo integrado
+
+`ContaBancaria` guarda um saldo inicial numa data de referência; o saldo atual é
+`saldoInicial + entradas pagas − saídas pagas vinculadas à conta desde essa data`
+(`calcularSaldoConta` em `lib/calculos.ts`). Isso evita ter que lançar todo o histórico financeiro
+anterior só para o app saber o saldo real — basta informar o saldo do dia em que você começou a
+usar o sistema. Lançamentos podem opcionalmente ser vinculados a uma conta (`contaBancariaId`);
+quando existe ao menos uma conta cadastrada, o card "Saldo disponível" da Visão Geral passa a usar
+a soma dos saldos das contas em vez do cálculo simples baseado só nos lançamentos.
 
 Deliberadamente fora deste MVP (a especificação original pedia um produto do porte de
 Houzz Pro/Buildertrend inteiro — o que segue é o que ficou de fora para viabilizar uma primeira
@@ -54,7 +76,9 @@ entrega funcional):
   pessimista), mas a simulação interativa (arrastar um atraso e ver o impacto recalculado em
   tempo real) não foi implementada.
 - **Exportação em PDF** dos relatórios (só CSV por enquanto).
-- **Edição em massa** de lançamentos e **conciliação bancária** automática.
+- **Edição em massa** de lançamentos e **conciliação bancária automática** (a integração com
+  conta bancária hoje é um saldo calculado a partir de um saldo inicial informado manualmente —
+  não é open banking/importação de extrato).
 - **Recálculo automático em cascata** de tarefas dependentes quando uma tarefa atrasa (o campo
   `TarefaDependencia` existe e a UI mostra quem depende de quem, mas o recálculo de datas
   propagado ainda é manual).
@@ -68,8 +92,8 @@ entrega funcional):
 
 Ver `prisma/schema.prisma` (comentado). Entidades principais: `Projeto`, `User` +
 `ProjetoUsuario` (junção N:N para multiusuário futuro), `Ambiente`, `Categoria`, `Fornecedor`,
-`OrcamentoItem`, `Lancamento`, `Tarefa` + `TarefaDependencia`, `Cotacao`, `Contrato`,
-`Documento`, `Cenario`.
+`OrcamentoItem`, `Lancamento`, `ContaBancaria`, `Tarefa` + `TarefaDependencia`, `Cotacao`,
+`Contrato`, `Documento`, `Cenario`.
 
 Convenções:
 
@@ -92,6 +116,10 @@ Funções puras, testadas em `src/lib/calculos.test.ts`:
 - **% financeiro comprometido** = valor contratado ÷ orçamento total.
 - **Atraso da tarefa** = data atual − data planejada de término, somente quando a tarefa ainda
   não estiver concluída/cancelada (negativo = adiantada).
+- **Contratado/pago de um item de orçamento** = soma dos lançamentos de saída vinculados a ele,
+  por status (não é mais digitado manualmente).
+- **Saldo de uma conta bancária** = saldo inicial + entradas pagas − saídas pagas vinculadas a
+  ela, a partir da data do saldo inicial.
 - **Progresso físico** = média do % de conclusão das tarefas, ponderada pelo custo previsto de
   cada uma.
 

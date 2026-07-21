@@ -93,6 +93,21 @@ export function totalPrevisto(lancamentos: LancamentoCalc[]): number {
   return totalPorTipoEStatus(lancamentos, "saida", Array.from(STATUS_PREVISTO));
 }
 
+/**
+ * Contratado e pago de um item de orçamento, calculados a partir dos
+ * lançamentos vinculados a ele (nunca digitados manualmente) — garante que
+ * o orçamento nunca dessincroniza do extrato financeiro real.
+ */
+export function calcularContratadoEPagoDoItem(lancamentosDoItem: LancamentoCalc[]): {
+  contratado: number;
+  pago: number;
+} {
+  return {
+    contratado: totalContratado(lancamentosDoItem),
+    pago: totalPago(lancamentosDoItem),
+  };
+}
+
 export function totalEntradas(lancamentos: LancamentoCalc[]): number {
   return lancamentos
     .filter((l) => l.tipo === "entrada" && l.status !== "cancelado")
@@ -155,6 +170,26 @@ export function calcularReservaContingencia(
   percentual: number
 ): number {
   return Math.round(orcamentoTotalCentavos * (percentual / 100));
+}
+
+/**
+ * Saldo atual de uma conta bancária = saldo inicial (numa data de referência)
+ * + entradas pagas - saídas pagas vinculadas a essa conta, com data de
+ * pagamento a partir da data do saldo inicial (evita contar de novo o que já
+ * estava embutido no saldo inicial informado).
+ */
+export function calcularSaldoConta(
+  saldoInicialCentavos: number,
+  dataSaldoInicial: Date,
+  lancamentosDaConta: (LancamentoCalc & { dataPagamento: Date | null })[]
+): number {
+  let saldo = saldoInicialCentavos;
+  for (const l of lancamentosDaConta) {
+    if (!STATUS_PAGO.has(l.status)) continue;
+    if (!l.dataPagamento || l.dataPagamento < dataSaldoInicial) continue;
+    saldo += l.tipo === "entrada" ? l.valorCentavos : -l.valorCentavos;
+  }
+  return saldo;
 }
 
 export function diasEntre(a: Date, b: Date): number {

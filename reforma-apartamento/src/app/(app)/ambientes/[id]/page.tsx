@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getProjetoAtual } from "@/lib/projeto";
 import { prisma } from "@/lib/prisma";
 import { formatarMoeda, formatarData } from "@/lib/money";
-import { calcularProgressoFisico } from "@/lib/calculos";
+import { calcularProgressoFisico, totalContratado, totalPago } from "@/lib/calculos";
 import { Card, CardTitle } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -22,16 +22,13 @@ export default async function AmbienteDetalhePage({ params }: { params: Promise<
       lancamentos: { where: { deletedAt: null }, include: { fornecedor: true }, orderBy: { dataVencimento: "asc" } },
       tarefas: { where: { deletedAt: null }, orderBy: { dataInicioPlanejada: "asc" } },
       documentos: { where: { deletedAt: null } },
-      orcamentoItens: { where: { deletedAt: null } },
     },
   });
 
   if (!ambiente) notFound();
 
-  const pago = ambiente.lancamentos
-    .filter((l) => l.tipo === "saida" && ["pago", "pago_parcialmente"].includes(l.status))
-    .reduce((acc, l) => acc + l.valorCentavos, 0);
-  const contratado = ambiente.orcamentoItens.reduce((acc, i) => acc + i.valorContratadoCentavos, 0);
+  const pago = totalPago(ambiente.lancamentos);
+  const contratado = totalContratado(ambiente.lancamentos);
   const saldo = ambiente.orcamentoCentavos - pago;
   const progresso = calcularProgressoFisico(ambiente.tarefas);
 

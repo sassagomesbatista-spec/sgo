@@ -15,9 +15,14 @@ import { AlertTriangle, TrendingUp, CalendarClock } from "lucide-react";
 export default async function VisaoGeralPage() {
   const { projeto } = await getProjetoAtual();
   const dados = await carregarDadosDashboard(projeto.id);
-  const { metrics, graficos, alertas, proximosPagamentos } = dados;
+  const { metrics, graficos, alertas, proximosPagamentos, contasBancarias } = dados;
 
-  const saldoDisponivel = metrics.valorEntradas - metrics.valorPago;
+  // Quando há conta bancária cadastrada, o saldo disponível vem do saldo real
+  // integrado a ela (mais confiável); sem conta, cai no cálculo simples a
+  // partir dos lançamentos.
+  const saldoDisponivel = metrics.temContasBancarias
+    ? metrics.saldoContasBancarias
+    : metrics.valorEntradas - metrics.valorPago;
 
   return (
     <div className="space-y-6">
@@ -51,6 +56,25 @@ export default async function VisaoGeralPage() {
           tone={metrics.percentualOrcamentoUtilizado > 1 ? "danger" : "gold"}
         />
       </div>
+
+      {/* Contas bancárias */}
+      {contasBancarias.length > 0 && (
+        <Card>
+          <CardTitle>Contas bancárias</CardTitle>
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {contasBancarias.map((c) => (
+              <div key={c.id} className="rounded-xl border border-border p-3">
+                <p className="text-sm text-muted-foreground">{c.nome}</p>
+                <p
+                  className={`mt-1 text-lg font-semibold tabular-nums ${c.saldoAtual < 0 ? "text-danger" : "text-foreground"}`}
+                >
+                  {formatarMoeda(c.saldoAtual)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Panorama da Reforma */}
       <Card>

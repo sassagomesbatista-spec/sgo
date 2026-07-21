@@ -64,6 +64,7 @@ model Projeto {
   contratos    Contrato[]
   documentos   Documento[]
   cenarios     Cenario[]
+  contasBancarias ContaBancaria[]
 }
 
 // ---------- Cadastros de apoio ----------
@@ -139,18 +140,20 @@ model OrcamentoItem {
   etapaId            String?
   valorEstimadoCentavos   Int @default(0)
   valorAprovadoCentavos   Int @default(0)
-  valorContratadoCentavos Int @default(0)
-  valorPagoCentavos       Int @default(0)
+  // valorContratado e valorPago NÃO são mais armazenados aqui: são calculados
+  // dinamicamente a partir dos Lancamentos vinculados a este item (ver
+  // lib/calculos.ts), pra nunca dessincronizar do extrato financeiro real.
   prioridade         String   @default("media") // alta | media | baixa
   observacoes        String?
   deletedAt          DateTime?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  projeto   Projeto    @relation(fields: [projetoId], references: [id], onDelete: Cascade)
-  categoria Categoria? @relation(fields: [categoriaId], references: [id])
-  ambiente  Ambiente?  @relation(fields: [ambienteId], references: [id])
-  etapa     Tarefa?    @relation(fields: [etapaId], references: [id])
+  projeto     Projeto      @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+  categoria   Categoria?   @relation(fields: [categoriaId], references: [id])
+  ambiente    Ambiente?    @relation(fields: [ambienteId], references: [id])
+  etapa       Tarefa?      @relation(fields: [etapaId], references: [id])
+  lancamentos Lancamento[]
 }
 
 // ---------- Lançamentos financeiros ----------
@@ -171,6 +174,8 @@ model Lancamento {
   ambienteId        String?
   etapaId           String?
   fornecedorId      String?
+  orcamentoItemId   String?   // vincula este lançamento a um item de orçamento (automatiza contratado/pago)
+  contaBancariaId   String?   // vincula a uma conta bancária real, pra saldo integrado
   formaPagamento    String?
   contaOrigemDestino String?
   numeroParcelas    Int?      @default(1)
@@ -186,12 +191,34 @@ model Lancamento {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  projeto    Projeto     @relation(fields: [projetoId], references: [id], onDelete: Cascade)
-  categoria  Categoria?  @relation(fields: [categoriaId], references: [id])
-  ambiente   Ambiente?   @relation(fields: [ambienteId], references: [id])
-  etapa      Tarefa?     @relation(fields: [etapaId], references: [id])
-  fornecedor Fornecedor? @relation(fields: [fornecedorId], references: [id])
-  contrato   Contrato?   @relation(fields: [contratoId], references: [id])
+  projeto       Projeto        @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+  categoria     Categoria?     @relation(fields: [categoriaId], references: [id])
+  ambiente      Ambiente?      @relation(fields: [ambienteId], references: [id])
+  etapa         Tarefa?        @relation(fields: [etapaId], references: [id])
+  fornecedor    Fornecedor?    @relation(fields: [fornecedorId], references: [id])
+  contrato      Contrato?      @relation(fields: [contratoId], references: [id])
+  orcamentoItem OrcamentoItem? @relation(fields: [orcamentoItemId], references: [id])
+  contaBancaria ContaBancaria? @relation(fields: [contaBancariaId], references: [id])
+}
+
+// ---------- Contas bancárias ----------
+
+// Saldo integrado a uma conta real: em vez de exigir que TODO histórico de
+// entradas/saídas esteja lançado no sistema pra saber o saldo, a conta guarda
+// um saldo inicial numa data de referência, e o saldo atual = saldo inicial +
+// entradas pagas - saídas pagas vinculadas a essa conta, a partir dessa data.
+model ContaBancaria {
+  id                    String    @id @default(cuid())
+  projetoId             String
+  nome                  String
+  saldoInicialCentavos  Int       @default(0)
+  dataSaldoInicial      DateTime  @default(now())
+  observacoes           String?
+  deletedAt             DateTime?
+  createdAt             DateTime  @default(now())
+
+  projeto     Projeto      @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+  lancamentos Lancamento[]
 }
 
 // ---------- Cronograma ----------

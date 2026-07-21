@@ -1,7 +1,7 @@
 import { getProjetoAtual } from "@/lib/projeto";
 import { prisma } from "@/lib/prisma";
 import { formatarMoeda, formatarPercentual } from "@/lib/money";
-import { calcularReservaContingencia } from "@/lib/calculos";
+import { calcularReservaContingencia, calcularContratadoEPagoDoItem, totalContratado, totalPago } from "@/lib/calculos";
 import { Card, CardTitle } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -22,14 +22,15 @@ function indicador(estimado: number, pago: number): { label: string; color: "neu
 export default async function OrcamentoPage() {
   const { projeto } = await getProjetoAtual();
 
-  const [itens, categorias, ambientes] = await Promise.all([
+  const [itens, categorias, ambientes, lancamentosDoProjeto] = await Promise.all([
     prisma.orcamentoItem.findMany({
       where: { projetoId: projeto.id, deletedAt: null },
-      include: { categoria: true, ambiente: true },
+      include: { categoria: true, ambiente: true, lancamentos: { where: { deletedAt: null, tipo: "saida" } } },
       orderBy: { createdAt: "desc" },
     }),
     prisma.categoria.findMany({ where: { projetoId: projeto.id, deletedAt: null }, orderBy: { nome: "asc" } }),
     prisma.ambiente.findMany({ where: { projetoId: projeto.id, deletedAt: null }, orderBy: { ordem: "asc" } }),
+    prisma.lancamento.findMany({ where: { projetoId: projeto.id, deletedAt: null } }),
   ]);
 
   const reservaCentavos = calcularReservaContingencia(
@@ -39,8 +40,10 @@ export default async function OrcamentoPage() {
 
   const totalEstimado = itens.reduce((a, i) => a + i.valorEstimadoCentavos, 0);
   const totalAprovado = itens.reduce((a, i) => a + i.valorAprovadoCentavos, 0);
-  const totalContratado = itens.reduce((a, i) => a + i.valorContratadoCentavos, 0);
-  const totalPago = itens.reduce((a, i) => a + i.valorPagoCentavos, 0);
+  // Contratado/Pago do projeto inteiro: todos os lançamentos de saída, vinculados
+  // a um item de orçamento ou não — mesma regra usada na Visão Geral.
+  const totalContratadoProjeto = totalContratado(lancamentosDoProjeto);
+  const totalPagoProjeto = totalPago(lancamentosDoProjeto);
 
   return (
     <div className="space-y-6">
@@ -48,6 +51,7 @@ export default async function OrcamentoPage() {
         <h1 className="text-2xl font-semibold text-foreground">Orçamento</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Divisão do orçamento por item, com reserva de contingência de {projeto.reservaContingenciaPercent}%.
+          Contratado e pago são calculados automaticamente a partir dos lançamentos vinculados a cada item.
         </p>
       </div>
 
@@ -56,8 +60,8 @@ export default async function OrcamentoPage() {
         <StatCard label="Reserva de contingência" value={formatarMoeda(reservaCentavos)} tone="gold" />
         <StatCard label="Estimado (itens)" value={formatarMoeda(totalEstimado)} />
         <StatCard label="Aprovado" value={formatarMoeda(totalAprovado)} />
-        <StatCard label="Contratado" value={formatarMoeda(totalContratado)} />
-        <StatCard label="Pago" value={formatarMoeda(totalPago)} tone="accent" />
+        <StatCard label="Contratado" value={formatarMoeda(totalContratadoProjeto)} />
+        <StatCard label="Pago" value={formatarMoeda(totalPagoProjeto)} tone="accent" />
       </div>
 
       <Card>
@@ -100,12 +104,6 @@ export default async function OrcamentoPage() {
             <Field label="Valor aprovado (R$)">
               <TextInput name="valorAprovado" type="number" step="0.01" min="0" defaultValue="0" />
             </Field>
-            <Field label="Valor contratado (R$)">
-              <TextInput name="valorContratado" type="number" step="0.01" min="0" defaultValue="0" />
-            </Field>
-            <Field label="Valor pago (R$)">
-              <TextInput name="valorPago" type="number" step="0.01" min="0" defaultValue="0" />
-            </Field>
             <Field label="Descrição" className="md:col-span-2">
               <TextInput name="descricao" placeholder="Opcional" />
             </Field>
@@ -141,9 +139,9 @@ export default async function OrcamentoPage() {
             </thead>
             <tbody>
               {itens.map((item) => {
-                const ind = indicador(item.valorEstimadoCentavos, item.valorPagoCentavos);
-                const percentualConsumido =
-                  item.valorEstimadoCentavos > 0 ? item.valorPagoCentavos / item.valorEstimadoCentavos : 0;
+                const { contratado, pago } = calcularContratadoEPagoDoItem(item.lancamentos);
+                const ind = indicador(item.valorEstimadoCentavos, pago);
+                const percentualConsumido = item.valorEstimadoCentavos > 0 ? pago / item.valorEstimadoCentavos : 0;
                 const atualizarComId = atualizarItemOrcamento.bind(null, item.id);
                 const excluirComId = excluirItemOrcamento.bind(null, item.id);
                 return (
@@ -153,7 +151,7 @@ export default async function OrcamentoPage() {
                         <summary className="cursor-pointer font-medium text-foreground">{item.nome}</summary>
                         <p className="mt-1 text-xs text-muted-foreground">
                           {item.categoria?.nome ?? "—"} · {item.ambiente?.nome ?? "—"} · Prioridade:{" "}
-                          {PRIORIDADE_LABEL[item.prioridade]}
+                          {PRIORIDADE_LABEL[item.prioridade]} · {item.lancamentos.length} lançamento(s) vinculado(s)
                         </p>
                         <form action={atualizarComId} className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
                           <Field label="Nome do item">
@@ -202,25 +200,13 @@ export default async function OrcamentoPage() {
                               defaultValue={(item.valorAprovadoCentavos / 100).toFixed(2)}
                             />
                           </Field>
-                          <Field label="Valor contratado (R$)">
-                            <TextInput
-                              name="valorContratado"
-                              type="number"
-                              step="0.01"
-                              defaultValue={(item.valorContratadoCentavos / 100).toFixed(2)}
-                            />
-                          </Field>
-                          <Field label="Valor pago (R$)">
-                            <TextInput
-                              name="valorPago"
-                              type="number"
-                              step="0.01"
-                              defaultValue={(item.valorPagoCentavos / 100).toFixed(2)}
-                            />
-                          </Field>
                           <Field label="Observações" className="md:col-span-2">
                             <TextArea name="observacoes" rows={2} defaultValue={item.observacoes ?? ""} />
                           </Field>
+                          <p className="text-xs text-muted-foreground md:col-span-2">
+                            Contratado ({formatarMoeda(contratado)}) e pago ({formatarMoeda(pago)}) não são editáveis
+                            aqui — vincule lançamentos a este item na tela de Lançamentos pra eles aparecerem.
+                          </p>
                           <div className="md:col-span-2">
                             <SubmitButton>Salvar alterações</SubmitButton>
                           </div>
@@ -229,8 +215,8 @@ export default async function OrcamentoPage() {
                     </td>
                     <td className="py-2.5 pr-3 tabular-nums">{formatarMoeda(item.valorEstimadoCentavos)}</td>
                     <td className="py-2.5 pr-3 tabular-nums">{formatarMoeda(item.valorAprovadoCentavos)}</td>
-                    <td className="py-2.5 pr-3 tabular-nums">{formatarMoeda(item.valorContratadoCentavos)}</td>
-                    <td className="py-2.5 pr-3 tabular-nums">{formatarMoeda(item.valorPagoCentavos)}</td>
+                    <td className="py-2.5 pr-3 tabular-nums">{formatarMoeda(contratado)}</td>
+                    <td className="py-2.5 pr-3 tabular-nums">{formatarMoeda(pago)}</td>
                     <td className="py-2.5 pr-3 tabular-nums">{formatarPercentual(percentualConsumido)}</td>
                     <td className="py-2.5 pr-3">
                       <Badge color={ind.color}>{ind.label}</Badge>

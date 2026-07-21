@@ -32,3 +32,54 @@ export async function atualizarProjeto(formData: FormData) {
   revalidatePath("/orcamento");
   revalidatePath("/cronograma");
 }
+
+export async function criarContaBancaria(formData: FormData) {
+  const { projeto } = await getProjetoAtual();
+
+  await prisma.contaBancaria.create({
+    data: {
+      projetoId: projeto.id,
+      nome: String(formData.get("nome") ?? ""),
+      saldoInicialCentavos: reaisParaCentavos(
+        parseFloat(String(formData.get("saldoInicial") ?? "0").replace(",", "."))
+      ),
+      dataSaldoInicial: data(formData, "dataSaldoInicial") ?? new Date(),
+      observacoes: String(formData.get("observacoes") ?? "") || null,
+    },
+  });
+
+  revalidatePath("/configuracoes");
+  revalidatePath("/");
+  revalidatePath("/lancamentos");
+}
+
+export async function atualizarContaBancaria(id: string, formData: FormData) {
+  const { projeto } = await getProjetoAtual();
+
+  await prisma.contaBancaria.update({
+    where: { id, projetoId: projeto.id },
+    data: {
+      nome: String(formData.get("nome") ?? ""),
+      saldoInicialCentavos: reaisParaCentavos(
+        parseFloat(String(formData.get("saldoInicial") ?? "0").replace(",", "."))
+      ),
+      dataSaldoInicial: data(formData, "dataSaldoInicial") ?? new Date(),
+      observacoes: String(formData.get("observacoes") ?? "") || null,
+    },
+  });
+
+  revalidatePath("/configuracoes");
+  revalidatePath("/");
+  revalidatePath("/lancamentos");
+}
+
+export async function excluirContaBancaria(id: string) {
+  const { projeto } = await getProjetoAtual();
+  await prisma.contaBancaria.update({
+    where: { id, projetoId: projeto.id },
+    data: { deletedAt: new Date() },
+  });
+  revalidatePath("/configuracoes");
+  revalidatePath("/");
+  revalidatePath("/lancamentos");
+}

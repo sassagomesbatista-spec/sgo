@@ -26,11 +26,13 @@ export default async function LancamentosPage({
   const { projeto } = await getProjetoAtual();
   const filtros = await searchParams;
 
-  const [categorias, ambientes, fornecedores, tarefas] = await Promise.all([
+  const [categorias, ambientes, fornecedores, tarefas, orcamentoItens, contasBancarias] = await Promise.all([
     prisma.categoria.findMany({ where: { projetoId: projeto.id, deletedAt: null }, orderBy: { nome: "asc" } }),
     prisma.ambiente.findMany({ where: { projetoId: projeto.id, deletedAt: null }, orderBy: { ordem: "asc" } }),
     prisma.fornecedor.findMany({ where: { projetoId: projeto.id, deletedAt: null }, orderBy: { nome: "asc" } }),
     prisma.tarefa.findMany({ where: { projetoId: projeto.id, deletedAt: null }, orderBy: { titulo: "asc" } }),
+    prisma.orcamentoItem.findMany({ where: { projetoId: projeto.id, deletedAt: null }, orderBy: { nome: "asc" } }),
+    prisma.contaBancaria.findMany({ where: { projetoId: projeto.id, deletedAt: null }, orderBy: { nome: "asc" } }),
   ]);
 
   const lancamentos = await prisma.lancamento.findMany({
@@ -44,7 +46,7 @@ export default async function LancamentosPage({
       ...(filtros.fornecedorId ? { fornecedorId: filtros.fornecedorId } : {}),
       ...(filtros.busca ? { descricao: { contains: filtros.busca } } : {}),
     },
-    include: { categoria: true, ambiente: true, fornecedor: true, etapa: true },
+    include: { categoria: true, ambiente: true, fornecedor: true, etapa: true, orcamentoItem: true, contaBancaria: true },
     orderBy: { dataVencimento: "asc" },
   });
 
@@ -145,6 +147,8 @@ export default async function LancamentosPage({
             ambientes={ambientes}
             fornecedores={fornecedores}
             tarefas={tarefas}
+            orcamentoItens={orcamentoItens}
+            contasBancarias={contasBancarias}
           />
         </details>
       </Card>
@@ -202,6 +206,8 @@ export default async function LancamentosPage({
                         </summary>
                         <p className="mt-1 text-xs text-muted-foreground">
                           {l.categoria?.nome ?? "—"} · {l.ambiente?.nome ?? "—"}
+                          {l.orcamentoItem && <> · orçamento: {l.orcamentoItem.nome}</>}
+                          {l.contaBancaria && <> · conta: {l.contaBancaria.nome}</>}
                           {l.comprovanteUrl && (
                             <>
                               {" "}
@@ -218,6 +224,8 @@ export default async function LancamentosPage({
                           ambientes={ambientes}
                           fornecedores={fornecedores}
                           tarefas={tarefas}
+                          orcamentoItens={orcamentoItens}
+                          contasBancarias={contasBancarias}
                           valores={l}
                           modoEdicao
                         />
@@ -283,6 +291,8 @@ type LancamentoValores = {
   ambienteId: string | null;
   etapaId: string | null;
   fornecedorId: string | null;
+  orcamentoItemId: string | null;
+  contaBancariaId: string | null;
   formaPagamento: string | null;
   contaOrigemDestino: string | null;
   numeroParcelas: number | null;
@@ -303,6 +313,8 @@ function FormularioLancamento({
   ambientes,
   fornecedores,
   tarefas,
+  orcamentoItens,
+  contasBancarias,
   valores,
   modoEdicao,
 }: {
@@ -311,6 +323,8 @@ function FormularioLancamento({
   ambientes: { id: string; nome: string }[];
   fornecedores: { id: string; nome: string }[];
   tarefas: { id: string; titulo: string }[];
+  orcamentoItens: { id: string; nome: string }[];
+  contasBancarias: { id: string; nome: string }[];
   valores?: LancamentoValores;
   modoEdicao?: boolean;
 }) {
@@ -401,10 +415,30 @@ function FormularioLancamento({
           ))}
         </SelectInput>
       </Field>
+      <Field label="Item de orçamento (automatiza contratado/pago)">
+        <SelectInput name="orcamentoItemId" defaultValue={valores?.orcamentoItemId ?? ""}>
+          <option value="">Sem item vinculado</option>
+          {orcamentoItens.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.nome}
+            </option>
+          ))}
+        </SelectInput>
+      </Field>
+      <Field label="Conta bancária">
+        <SelectInput name="contaBancariaId" defaultValue={valores?.contaBancariaId ?? ""}>
+          <option value="">Sem conta vinculada</option>
+          {contasBancarias.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nome}
+            </option>
+          ))}
+        </SelectInput>
+      </Field>
       <Field label="Forma de pagamento">
         <TextInput name="formaPagamento" defaultValue={valores?.formaPagamento ?? ""} placeholder="Pix, boleto..." />
       </Field>
-      <Field label="Conta de origem/destino">
+      <Field label="Conta de origem/destino (texto livre)">
         <TextInput name="contaOrigemDestino" defaultValue={valores?.contaOrigemDestino ?? ""} />
       </Field>
       <Field label="Recorrência">

@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getProjetoAtual } from "@/lib/projeto";
 import { paraCsv } from "@/lib/csv";
 import { centavosParaReais } from "@/lib/money";
-import { calcularAtrasoTarefaDias } from "@/lib/calculos";
+import { calcularAtrasoTarefaDias, calcularContratadoEPagoDoItem } from "@/lib/calculos";
 
 function csvResponse(nomeArquivo: string, colunas: string[], linhas: (string | number)[][]) {
   const csv = paraCsv(colunas, linhas);
@@ -45,20 +45,27 @@ export async function GET(_req: Request, { params }: { params: Promise<{ tipo: s
     case "orcamento-vs-realizado": {
       const itens = await prisma.orcamentoItem.findMany({
         where: { projetoId: projeto.id, deletedAt: null },
-        include: { categoria: true, ambiente: true },
+        include: {
+          categoria: true,
+          ambiente: true,
+          lancamentos: { where: { deletedAt: null, tipo: "saida" } },
+        },
       });
       return csvResponse(
         "orcamento-vs-realizado.csv",
         ["item", "categoria", "ambiente", "estimado", "aprovado", "contratado", "pago"],
-        itens.map((i) => [
-          i.nome,
-          i.categoria?.nome ?? "",
-          i.ambiente?.nome ?? "",
-          centavosParaReais(i.valorEstimadoCentavos).toFixed(2),
-          centavosParaReais(i.valorAprovadoCentavos).toFixed(2),
-          centavosParaReais(i.valorContratadoCentavos).toFixed(2),
-          centavosParaReais(i.valorPagoCentavos).toFixed(2),
-        ])
+        itens.map((i) => {
+          const { contratado, pago } = calcularContratadoEPagoDoItem(i.lancamentos);
+          return [
+            i.nome,
+            i.categoria?.nome ?? "",
+            i.ambiente?.nome ?? "",
+            centavosParaReais(i.valorEstimadoCentavos).toFixed(2),
+            centavosParaReais(i.valorAprovadoCentavos).toFixed(2),
+            centavosParaReais(contratado).toFixed(2),
+            centavosParaReais(pago).toFixed(2),
+          ];
+        })
       );
     }
 

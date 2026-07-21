@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { formatarMoeda } from "@/lib/money";
 import {
   calcularSaldoAtual,
   calcularSaldoComprometido,
@@ -7,6 +8,8 @@ import {
   calcularPercentualComprometido,
   calcularProgressoFisico,
   calcularAtrasoTarefaDias,
+  calcularContratadoEPagoDoItem,
+  calcularSaldoConta,
   totalPago,
   totalContratado,
   totalPrevisto,
@@ -15,7 +18,7 @@ import {
 } from "@/lib/calculos";
 
 export async function carregarDadosDashboard(projetoId: string) {
-  const [projeto, lancamentos, tarefas, orcamentoItens] = await Promise.all([
+  const [projeto, lancamentos, tarefas, orcamentoItens, contasBancarias] = await Promise.all([
     prisma.projeto.findUniqueOrThrow({ where: { id: projetoId } }),
     prisma.lancamento.findMany({
       where: { projetoId, deletedAt: null },
@@ -29,7 +32,15 @@ export async function carregarDadosDashboard(projetoId: string) {
     }),
     prisma.orcamentoItem.findMany({
       where: { projetoId, deletedAt: null },
-      include: { categoria: true, ambiente: true },
+      include: {
+        categoria: true,
+        ambiente: true,
+        lancamentos: { where: { deletedAt: null, tipo: "saida" } },
+      },
+    }),
+    prisma.contaBancaria.findMany({
+      where: { projetoId, deletedAt: null },
+      include: { lancamentos: { where: { deletedAt: null } } },
     }),
   ]);
 
@@ -50,6 +61,14 @@ export async function carregarDadosDashboard(projetoId: string) {
     valorContratado,
     projeto.orcamentoTotalCentavos
   );
+
+  const contasComSaldo = contasBancarias.map((conta) => ({
+    id: conta.id,
+    nome: conta.nome,
+    saldoAtual: calcularSaldoConta(conta.saldoInicialCentavos, conta.dataSaldoInicial, conta.lancamentos),
+  }));
+  const temContasBancarias = contasComSaldo.length > 0;
+  const saldoContasBancarias = contasComSaldo.reduce((acc, c) => acc + c.saldoAtual, 0);
 
   const progressoFisico = calcularProgressoFisico(tarefas);
   const progressoFinanceiro = percentualOrcamentoUtilizado;
@@ -148,7 +167,8 @@ export async function carregarDadosDashboard(projetoId: string) {
 
   for (const item of orcamentoItens) {
     if (item.valorEstimadoCentavos <= 0) continue;
-    const consumido = item.valorPagoCentavos / item.valorEstimadoCentavos;
+    const { pago, contratado } = calcularContratadoEPagoDoItem(item.lancamentos);
+    const consumido = pago / item.valorEstimadoCentavos;
     if (consumido > 1) {
       alertas.push({
         titulo: `Item "${item.nome}" acima do orçamento`,
@@ -162,13 +182,10 @@ export async function carregarDadosDashboard(projetoId: string) {
         severidade: "media",
       });
     }
-  }
-
-  for (const item of orcamentoItens) {
-    if (item.valorEstimadoCentavos > 0 && item.valorContratadoCentavos > item.valorEstimadoCentavos * 1.2) {
+    if (contratado > item.valorEstimadoCentavos * 1.2) {
       alertas.push({
         titulo: `Custo contratado muito acima do estimado: ${item.nome}`,
-        detalhe: `Estimado ${item.valorEstimadoCentavos / 100} vs contratado ${item.valorContratadoCentavos / 100}.`,
+        detalhe: `Estimado ${formatarMoeda(item.valorEstimadoCentavos)} vs contratado ${formatarMoeda(contratado)}.`,
         severidade: "alta",
       });
     }
@@ -240,6 +257,8 @@ export async function carregarDadosDashboard(projetoId: string) {
       saldoAtual,
       saldoComprometido,
       saldoProjetado,
+      temContasBancarias,
+      saldoContasBancarias,
       percentualOrcamentoUtilizado,
       percentualComprometido,
       progressoFisico,
@@ -263,6 +282,7 @@ export async function carregarDadosDashboard(projetoId: string) {
       evolucaoAcumulada,
     },
     alertas,
+    contasBancarias: contasComSaldo,
     proximosPagamentos: proximos30
       .slice()
       .sort((a, b) => (a.dataVencimento! < b.dataVencimento! ? -1 : 1))

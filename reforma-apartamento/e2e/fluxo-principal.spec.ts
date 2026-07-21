@@ -41,7 +41,10 @@ test("navega para Lançamentos e cria um novo lançamento", async ({ page }) => 
   await page.fill('input[name="valor"]', "49.90");
   await page.getByRole("button", { name: "Adicionar lançamento" }).click();
 
-  await expect(page.getByText("Teste e2e - compra de parafusos")).toBeVisible();
+  // A tabela de lançamentos já tem muitas linhas (dados de demonstração), cada
+  // uma renderizando um formulário de edição completo — a re-renderização após
+  // o Server Action pode demorar mais que o timeout padrão.
+  await expect(page.getByText("Teste e2e - compra de parafusos")).toBeVisible({ timeout: 15_000 });
 });
 
 test("cronograma alterna entre lista, kanban e linha do tempo", async ({ page }) => {
@@ -60,4 +63,28 @@ test("orçamento mostra indicadores de status por item", async ({ page }) => {
   await login(page);
   await page.goto("/orcamento");
   await expect(page.getByText(/Itens do orçamento/)).toBeVisible();
+});
+
+test("orçamento não permite editar contratado/pago manualmente (calculados dos lançamentos)", async ({ page }) => {
+  await login(page);
+  await page.goto("/orcamento");
+  await expect(page.getByText(/calculados automaticamente/)).toBeVisible();
+  await expect(page.locator('input[name="valorContratado"]')).toHaveCount(0);
+  await expect(page.locator('input[name="valorPago"]')).toHaveCount(0);
+});
+
+test("configurações mostra conta bancária com saldo integrado", async ({ page }) => {
+  await login(page);
+  await page.goto("/configuracoes");
+  await expect(page.getByText("Contas bancárias", { exact: true })).toBeVisible();
+  await expect(page.getByText("Conta Corrente — Reforma")).toBeVisible();
+  await expect(page.getByText("Saldo atual", { exact: true })).toBeVisible();
+});
+
+test("lançamento pode ser vinculado a um item de orçamento e a uma conta bancária", async ({ page }) => {
+  await login(page);
+  await page.goto("/lancamentos");
+  await page.getByText("+ Novo lançamento").click();
+  await expect(page.locator('select[name="orcamentoItemId"]').first()).toBeVisible();
+  await expect(page.locator('select[name="contaBancariaId"]').first()).toBeVisible();
 });
