@@ -40,6 +40,16 @@ Site estático (sem build), hospedado via GitHub Pages a partir da branch `gh-pa
   `painel.samantafashionoffice.com.br/apps.html`. É a página que ela deve favoritar pra
   sempre achar tudo — atualizar sempre que um app novo for criado em qualquer lugar,
   publicado, tirado do ar, ou mudar de status.
+- `moodboard-studio.html` — ferramenta de moodboard (cartela de cores, relatórios,
+  cronograma, exportação em PDF/imagem, OCR de peças). Antes só existia localmente no
+  computador dela (`C:\Users\escri\.claude\moodboard-studio.html`), trazido pra cá em
+  2026-07-28 sem alterar nenhuma linha de lógica, só relocando. Já usa Firestore próprio
+  (projeto `moodboard-studio-38418`, não é o mesmo `painel-referencias-sgo` do resto do
+  repositório) pra salvar moodboards/marcas/usuários — os dados dela já estavam na nuvem,
+  só a página é que estava presa localmente. Acesso:
+  `painel.samantafashionoffice.com.br/moodboard-studio.html`. Pendências levantadas por ela
+  mas ainda não tratadas (aguardando ela listar o que quer mudar): revisar as regras de
+  segurança do Firestore desse projeto (ela pediu explicitamente "um aplicativo seguro").
 
 Este arquivo (`CLAUDE.md`) fica na raiz do repositório, no branch de trabalho (não existe na
 `gh-pages`, que só tem os `.html` publicados). É sempre o primeiro lugar a olhar/atualizar
