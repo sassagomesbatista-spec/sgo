@@ -5,7 +5,14 @@ Site estático (sem build), hospedado via GitHub Pages a partir da branch `gh-pa
 
 ## Domínio
 
-- Domínio da Samanta: `samantafashionoffice.com.br`, registrado e com DNS gerenciado na Locaweb.
+- Domínio da Samanta: `samantafashionoffice.com.br`, registrado na Locaweb, MAS o DNS de
+  verdade (nameservers) está na **Cloudflare** (`vin.ns.cloudflare.com` / `aron.ns.cloudflare.com`
+  — confirmado em 2026-07-28 consultando os nameservers diretamente). O painel de DNS da
+  Locaweb (`painel-dns.locaweb.com.br`) edita uma zona que NINGUÉM consulta — qualquer
+  registro criado lá não tem efeito nenhum, por mais que se espere. Registros de subdomínio
+  (CNAME etc.) precisam ser criados em **dash.cloudflare.com**, não na Locaweb. Ao criar um
+  CNAME lá pra apontar pro GitHub Pages, deixar o proxy como "DNS only" (nuvem cinza), não
+  proxied (laranja), pra não atrapalhar a emissão do certificado HTTPS pelo GitHub.
 - Subdomínio do app de painéis (dashboard.html / quadro-app.html / quadro-referencias.html):
   `painel.samantafashionoffice.com.br` — CNAME apontando para `sassagomesbatista-spec.github.io`.
   Configurado via arquivo `CNAME` na branch `gh-pages` (não existe no branch de trabalho,
