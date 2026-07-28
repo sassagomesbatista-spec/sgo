@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Todos os Aplicativos — Samanta Gomes Fashion Office</title>
+<style>
+  :root{
+    --paper:#eeece4; --surface:#ffffff; --ink:#1c1b19; --ink-2:#56534c; --ink-3:#8a8579;
+    --line:#ded9cd; --indigo:#2d3b66; --indigo-bg:#e7eaf2; --accent:#a13d2f; --accent-bg:#fbe9e6;
+    --ok:#3f6b4a; --ok-bg:#e2ece1; --stop:#8a2f2f; --stop-bg:#f3dede;
+    --radius:14px; --radius-sm:9px;
+    --shadow-card:0 1px 2px rgba(20,18,10,.05),0 8px 20px -6px rgba(20,18,10,.10);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --paper:#17181c; --surface:#202126; --ink:#efeee9; --ink-2:#ababa3; --ink-3:#767269;
+      --line:#34353a; --indigo:#8b9fdb; --indigo-bg:#232a42; --accent:#e08a7a; --accent-bg:#3a2320;
+      --ok:#9adba8; --ok-bg:#22332a; --stop:#ec9d9d; --stop-bg:#3a2323;
+      --shadow-card:0 1px 2px rgba(0,0,0,.3),0 8px 20px -6px rgba(0,0,0,.4); }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font:14.5px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:900px;margin:0 auto;padding:36px 28px 90px}
+  header{border-bottom:2px solid var(--ink);padding-bottom:18px;margin-bottom:30px}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--indigo)}
+  h1{font-family:Georgia,serif;font-size:28px;margin:6px 0 8px;letter-spacing:-.01em}
+  header p{color:var(--ink-2);font-size:13.5px;max-width:62ch;margin:0}
+
+  .group{margin-bottom:34px}
+  .group-title{display:flex;align-items:baseline;gap:10px;margin:0 0 4px}
+  .group-title h2{font-family:Georgia,serif;font-weight:400;font-size:17px;margin:0}
+  .group-title .count{font-size:12px;color:var(--ink-3)}
+  .group-note{margin:2px 0 14px;font-size:12.5px;color:var(--ink-3)}
+
+  .app-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+  .app-card{background:var(--surface);border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow-card);
+    display:flex;flex-direction:column;gap:8px}
+  .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .app-card h3{font-family:Georgia,serif;font-size:16.5px;margin:0;line-height:1.25}
+  .app-card p{margin:0;font-size:13px;color:var(--ink-2)}
+  .app-card .meta{font-size:11.5px;color:var(--ink-3);margin-top:2px}
+  .app-card a.link{color:var(--indigo);text-decoration:none;border-bottom:1px solid var(--indigo-bg);word-break:break-all}
+  .app-card a.link:hover{border-color:var(--indigo)}
+  .repo-tag{display:inline-block;background:var(--indigo-bg);color:var(--indigo);border-radius:6px;
+    padding:1px 7px;font-size:11px;margin-top:4px}
+
+  .pill{flex:0 0 auto;font-size:10.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;
+    padding:3px 9px;border-radius:999px;white-space:nowrap}
+  .pill.ok{color:var(--ok);background:var(--ok-bg)}
+  .pill.warn{color:var(--accent);background:var(--accent-bg)}
+  .pill.stop{color:var(--stop);background:var(--stop-bg)}
+  .pill.idle{color:var(--ink-3);background:var(--line)}
+
+  footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--line);font-size:13px;color:var(--ink-2)}
+  footer strong{color:var(--ink)}
+  a.back{font-size:13px;color:var(--indigo);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Samanta Gomes Fashion Office</p>
+    <h1>Todos os Aplicativos</h1>
+    <p>Índice de tudo que já foi criado. Salve esta página nos favoritos — sempre que quiser mudar algo em qualquer um deles, é só voltar aqui pra achar o link, e pedir a alteração numa conversa com o Claude.</p>
+  </header>
+
+  <div class="group">
+    <div class="group-title"><h2>No ar agora</h2><span class="count">abra direto</span></div>
+    <p class="group-note">O domínio próprio (painel.samantafashionoffice.com.br) está com o DNS
+      instável no momento, então os links abaixo usam o endereço do GitHub, que funciona sempre.</p>
+    <div class="app-grid">
+      <div class="app-card">
+        <div class="card-top"><h3>Dashboard de Painéis</h3><span class="pill ok">No ar</span></div>
+        <p>Lista todos os painéis de referência por cliente, cria painel novo, importa Excel.</p>
+        <a class="link" href="https://sassagomesbatista-spec.github.io/sgo/dashboard.html" target="_blank" rel="noopener">sassagomesbatista-spec.github.io/sgo/dashboard.html</a>
+        <span class="repo-tag">sgo</span>
+      </div>
+      <div class="app-card">
+        <div class="card-top"><h3>Quadro de Referências</h3><span class="pill ok">No ar</span></div>
+        <p>O painel original e fixo do cliente SGO (SS26/27, FW27, FW26).</p>
+        <a class="link" href="https://sassagomesbatista-spec.github.io/sgo/quadro-referencias.html" target="_blank" rel="noopener">sassagomesbatista-spec.github.io/sgo/quadro-referencias.html</a>
+        <span class="repo-tag">sgo</span>
+      </div>
+      <div class="app-card">
+        <div class="card-top"><h3>Revisão de Mix</h3><span class="pill ok">No ar</span></div>
+        <p>Ferramenta de aprovação de mix ligada ao Asana. Abre na página inicial do site do GitHub.</p>
+        <a class="link" href="https://sassagomesbatista-spec.github.io/sgo/" target="_blank" rel="noopener">sassagomesbatista-spec.github.io/sgo/</a>
+        <span class="repo-tag">sgo</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="group-title"><h2>Publicados, verificar se seguem no ar</h2><span class="count">5 apps</span></div>
+    <p class="group-note">Código pronto e guia de publicação no Railway/Cloudflare, mas sem acesso a essas contas daqui pra confirmar o link ao vivo. Avise se algum caiu.</p>
+    <div class="app-grid">
+      <div class="app-card">
+        <div class="card-top"><h3>ERP Fashion Office</h3><span class="pill warn">Verificar</span></div>
+        <p>Sistema de comissões: cadastro de usuários, catálogo de serviços, cálculo de comissão.</p>
+        <span class="meta">endereço esperado: sgo-production.up.railway.app</span>
+        <span class="repo-tag">erp-comissao</span>
+      </div>
+      <div class="app-card">
+        <div class="card-top"><h3>Painel de Atendimento WhatsApp</h3><span class="pill warn">Verificar</span></div>
+        <p>Várias atendentes respondendo pelo mesmo número de WhatsApp, cada uma logada com o próprio nome.</p>
+        <span class="meta">hospedado no Railway</span>
+        <span class="repo-tag">whatsapp-atendimento</span>
+      </div>
+      <div class="app-card">
+        <div class="card-top"><h3>Finanças</h3><span class="pill warn">Verificar</span></div>
+        <p>Controle financeiro da empresa.</p>
+        <span class="meta">hospedado no Railway</span>
+        <span class="repo-tag">financas-app</span>
+      </div>
+      <div class="app-card">
+        <div class="card-top"><h3>CRM Fashion Office</h3><span class="pill warn">Verificar</span></div>
+        <p>CRM da empresa: cadastro de clientes/contatos e acompanhamento.</p>
+        <span class="meta">hospedado no Railway</span>
+        <span class="repo-tag">fitness-crm1</span>
+      </div>
+      <div class="app-card">
+        <div class="card-top"><h3>Cronograma Geral</h3><span class="pill warn">Verificar</span></div>
+        <p>Cronograma geral da fashion office, login por Google, pensado pra compartilhar com cliente.</p>
+        <span class="meta">endereço esperado: cronograma.samantafashionoffice.com.br</span>
+        <span class="repo-tag">cronograma-fashion</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="group-title"><h2>Parado, esperando decisão sua</h2><span class="count">1 app</span></div>
+    <div class="app-grid">
+      <div class="app-card">
+        <div class="card-top"><h3>Pré Consumo</h3><span class="pill stop">Parado</span></div>
+        <p>Cálculo de pré-consumo de tecido com histórico em nuvem. Publicação parou porque o plano gratuito do Railway já está no limite — só continua depois de decidir sobre upgrade (~US$5/mês).</p>
+        <span class="meta">endereço planejado: preconsumo.samantagomes.com.br</span>
+        <span class="repo-tag">preconsumo-app</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="group-title"><h2>Não publicados</h2><span class="count">3 apps</span></div>
+    <p class="group-note">Existem só como código, nunca colocados num endereço da internet.</p>
+    <div class="app-grid">
+      <div class="app-card">
+        <div class="card-top"><h3>Painel da Reforma do Apartamento</h3><span class="pill idle">Não publicado</span></div>
+        <p>Controle de orçamento, cronograma, fornecedores e contratos de uma reforma de apartamento (uso pessoal).</p>
+        <span class="repo-tag">sgo · branch apartment-renovation-expense-manager-pifo2i</span>
+      </div>
+      <div class="app-card">
+        <div class="card-top"><h3>Pilotagem</h3><span class="pill idle">Não publicado</span></div>
+        <p>Controle de peças enviadas para pilotagem, preços por tipo/nível e relatório mensal. Só roda no computador.</p>
+        <span class="repo-tag">sgo · branch simple-clean-design-tvzkd0</span>
+      </div>
+      <div class="app-card">
+        <div class="card-top"><h3>Moodboard Studio</h3><span class="pill idle">Só no seu PC</span></div>
+        <p>Salvo apenas no seu computador (C:\Users\escri\.claude\moodboard-studio.html), nunca foi enviado pra nuvem. Precisa que você envie o conteúdo pra ser recriado aqui como app de verdade.</p>
+        <span class="repo-tag">arquivo local — sem repositório</span>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p><strong>10 aplicativos ao todo</strong> (mais 2 repositórios que só guardam backups: financas-app-backups e preconsumo-backups) — e 1 arquivo local ainda fora da nuvem.</p>
+    <p>Peça qualquer alteração numa conversa com o Claude sobre o projeto <code>sgo</code> — ele já sabe onde cada um está.</p>
+  </footer>
+</div>
+</body>
+</html>
