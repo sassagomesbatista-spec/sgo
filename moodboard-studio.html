@@ -4629,6 +4629,12 @@ const _FB_PROJECT = 'moodboard-studio-38418';
 const _FB_KEY     = 'AIzaSyBu9fWW6pLrIj7yH9KH1kMgC9fOH6Lx8BI';
 const _FS_BASE    = `https://firestore.googleapis.com/v1/projects/${_FB_PROJECT}/databases/(default)/documents`;
 
+// Proxy (Cloudflare Worker) que baixa imagens externas (Pinterest/Cosmos.so) por
+// trás, sem o bloqueio de CORS do navegador — usado por fetchAndStoreReferenceImage
+// pra transformar um link colado numa cópia própria permanente, em vez de deixar
+// a referência dependendo pra sempre do link original (que pode expirar/quebrar).
+const IMG_PROXY_BASE = 'PENDENTE_URL_DO_WORKER';
+
 // Remove data URLs antes de salvar (limite 1MB do Firestore)
 function _stripDataUrls(mb) {
   const m = JSON.parse(JSON.stringify(mb));
@@ -10446,23 +10452,54 @@ function sanitizeUrl(url) {
   } catch { return ''; }
 }
 
-function addReference() {
+// Baixa a imagem de uma URL externa através do proxy (contorna o bloqueio de CORS
+// que impede o navegador de ler os bytes direto de Pinterest/Cosmos.so) e devolve
+// uma data: URL permanente — a mesma forma confiável em que imagens de upload já
+// são guardadas. Se o proxy falhar (fora do ar, URL realmente inválida), devolve
+// null e quem chamou decide o que fazer.
+async function fetchAndStoreReferenceImage(url) {
+  try {
+    const proxied = `${IMG_PROXY_BASE}?url=${encodeURIComponent(url)}`;
+    const res = await fetch(proxied);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    if (!blob.type.startsWith('image/')) return null;
+    return await new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = e => resolve(e.target.result);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch (e) { console.error('fetchAndStoreReferenceImage error', e); return null; }
+}
+
+async function addReference() {
   const rawUrl = document.getElementById('cosmos-img-url')?.value.trim();
   const caption = document.getElementById('cosmos-img-caption')?.value.trim() || '';
   if (!rawUrl) { showNotification('Cole uma URL de imagem.', 'error'); return; }
 
   const urls = rawUrl.split('\n').map(u => u.trim()).filter(u => u.length > 10);
   if (!APP.current.references) APP.current.references = [];
-  let added = 0;
-  urls.forEach(url => {
+  let added = 0, failed = 0;
+  showNotification('Baixando imagem(ns)... isso guarda uma cópia própria, pra não depender do link original.', 'info', 4000);
+  for (const url of urls) {
     const safe = sanitizeUrl(url);
-    if (!safe) return;
-    if (!APP.current.references.find(r => r.url === safe)) {
-      APP.current.references.push({ id: 'ref_' + Date.now() + Math.random(), url: safe, caption, source: detectSource(safe) });
+    if (!safe) continue;
+    if (APP.current.references.find(r => r.originalUrl === safe || r.url === safe)) continue;
+    const stored = await fetchAndStoreReferenceImage(safe);
+    const id = 'ref_' + Date.now() + Math.random();
+    if (stored) {
+      APP.current.references.push({ id, url: stored, originalUrl: safe, caption, source: detectSource(safe) });
+      saveImgIDB('ref_img_' + id, stored);
       added++;
+    } else {
+      // Não conseguiu baixar (proxy fora do ar ou link realmente quebrado) —
+      // guarda o link direto como antes, mas avisa que pode não ser permanente.
+      APP.current.references.push({ id, url: safe, originalUrl: safe, caption, source: detectSource(safe) });
+      failed++;
     }
-  });
-  if (!added) { showNotification('URL já adicionada ou inválida.', 'error'); return; }
+  }
+  if (!added && !failed) { showNotification('URL já adicionada ou inválida.', 'error'); return; }
 
   document.getElementById('cosmos-img-url').value = '';
   document.getElementById('cosmos-img-caption').value = '';
@@ -10471,7 +10508,10 @@ function addReference() {
   updateCosmosCounter();
   renderCosmosGrid();
   schedulePreviewUpdate();
-  showNotification(`${added} imagem(ns) adicionada(s) ao moodboard!`, 'success');
+  updateImgSaveIndicator();
+  autoSaveWIP();
+  if (failed) showNotification(`${added} imagem(ns) guardada(s) de vez. ${failed} não deu pra baixar — ficou só com o link, pode quebrar depois.`, failed && !added ? 'error' : 'warning', 6000);
+  else showNotification(`${added} imagem(ns) adicionada(s) e guardada(s) permanentemente!`, 'success');
   setCosmosTab('saved');
 }
 
