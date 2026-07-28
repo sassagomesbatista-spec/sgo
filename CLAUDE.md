@@ -15,6 +15,12 @@ Site estático (sem build), hospedado via GitHub Pages a partir da branch `gh-pa
 - `index.html` na `gh-pages` é uma cópia de `painel-revisao-mix.html` (ferramenta de aprovação
   ligada ao Asana) — é o que abre na raiz do domínio. Não sobrescrever sem confirmar com ela,
   já que pode estar em uso por outras pessoas.
+- Status do CNAME (verificado em 2026-07-28): o arquivo `CNAME` foi removido de novo do
+  `gh-pages` ("domínio novo ainda não resolve, estava quebrando o link github.io") — ou seja,
+  `painel.samantafashionoffice.com.br` pode não estar respondendo agora. Enquanto isso, o
+  endereço que sempre funciona é `https://sassagomesbatista-spec.github.io/sgo/` (+ nome do
+  arquivo). Conferir se o arquivo `CNAME` existe em `gh-pages` antes de assumir que o domínio
+  próprio está ativo.
 
 ## Apps neste repositório
 
