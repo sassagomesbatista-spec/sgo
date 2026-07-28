@@ -29,10 +29,39 @@ Site estático (sem build), hospedado via GitHub Pages a partir da branch `gh-pa
 - `painel-revisao-mix.html` — ferramenta separada de aprovação de mix ligada ao Asana,
   não relacionada aos painéis de referência/modelagem.
   Acesso: raiz do domínio, `samantafashionoffice.com.br` (é o `index.html` da `gh-pages`).
+- `apps.html` — índice de TODOS os aplicativos da Samanta, não só os deste repositório
+  (inclui os de outros repositórios GitHub e os que ainda não foram publicados). Acesso:
+  `painel.samantafashionoffice.com.br/apps.html`. É a página que ela deve favoritar pra
+  sempre achar tudo — atualizar sempre que um app novo for criado em qualquer lugar,
+  publicado, tirado do ar, ou mudar de status.
 
 Este arquivo (`CLAUDE.md`) fica na raiz do repositório, no branch de trabalho (não existe na
 `gh-pages`, que só tem os `.html` publicados). É sempre o primeiro lugar a olhar/atualizar
 quando um app novo for criado ou um existente mudar de comportamento.
+
+## Outros aplicativos da Samanta (fora deste repositório)
+
+Além dos apps acima, a Samanta tem mais aplicativos espalhados em outros repositórios
+GitHub (conta `sassagomesbatista-spec`) e em 2 branches deste mesmo repositório que nunca
+foram mescladas à branch de trabalho. Lista completa e sempre atualizada: `apps.html`
+(seção anterior). Resumo rápido pra contexto de chat:
+
+- `erp-comissao` — ERP Fashion Office (comissões, catálogo de serviços). Railway.
+- `whatsapp-atendimento` — painel de atendimento multi-atendente pelo WhatsApp (Baileys). Railway.
+- `financas-app` — controle financeiro. Railway. (backups em `financas-app-backups`)
+- `preconsumo-app` — cálculo de pré-consumo de tecido. Publicação parada, aguardando
+  decisão dela sobre upgrade de plano no Railway. (backups em `preconsumo-backups`)
+- `fitness-crm1` — CRM Fashion Office. Railway. (`fitness-crm` é repo antigo, vazio, ignorar)
+- `cronograma-fashion` — cronograma geral, Firebase + Cloudflare. Domínio pretendido:
+  `cronograma.samantafashionoffice.com.br`.
+- Branch `claude/apartment-renovation-expense-manager-pifo2i` (neste repo, `sgo`) — app
+  Next.js de reforma de apartamento (`reforma-apartamento/`), uso pessoal, nunca mesclado
+  nem publicado.
+- Branch `claude/simple-clean-design-tvzkd0` (neste repo, `sgo`) — app "Pilotagem"
+  (controle de peças/preços de pilotagem), nunca mesclado, só rodava localmente.
+- `moodboard-studio.html` — existe só no computador local dela (Windows,
+  `C:\Users\escri\.claude\moodboard-studio.html`), nunca foi enviado a nenhum repositório.
+  Precisa do conteúdo dela pra ser recriado como app publicado.
 
 ## Firebase
 
