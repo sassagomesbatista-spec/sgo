@@ -19,11 +19,20 @@ Site estático (sem build), hospedado via GitHub Pages a partir da branch `gh-pa
 ## Apps neste repositório
 
 - `dashboard.html` — lista de painéis (multi-cliente), cria painel novo, importa Excel.
+  Acesso: `painel.samantafashionoffice.com.br/dashboard.html`
 - `quadro-app.html` — editor de painel individual, parametrizado por `?board=<id>` (Firestore).
+  Acesso: `painel.samantafashionoffice.com.br/quadro-app.html?board=<id>` (link gerado a partir
+  do dashboard, não se acessa direto sem o `?board=`).
 - `quadro-referencias.html` — painel original/fixo do cliente SGO (SS26/27, FW27, FW26
   hardcoded). Era o único painel antes do app multi-cliente existir.
+  Acesso: `painel.samantafashionoffice.com.br/quadro-referencias.html`
 - `painel-revisao-mix.html` — ferramenta separada de aprovação de mix ligada ao Asana,
   não relacionada aos painéis de referência/modelagem.
+  Acesso: raiz do domínio, `samantafashionoffice.com.br` (é o `index.html` da `gh-pages`).
+
+Este arquivo (`CLAUDE.md`) fica na raiz do repositório, no branch de trabalho (não existe na
+`gh-pages`, que só tem os `.html` publicados). É sempre o primeiro lugar a olhar/atualizar
+quando um app novo for criado ou um existente mudar de comportamento.
 
 ## Firebase
 
