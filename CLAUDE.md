@@ -72,19 +72,24 @@ foram mescladas à branch de trabalho. Lista completa e sempre atualizada: `apps
 - `erp-comissao` — ERP Fashion Office (comissões, catálogo de serviços). Railway.
 - `whatsapp-atendimento` — painel de atendimento multi-atendente pelo WhatsApp (Baileys). Railway.
 - `financas-app` — controle financeiro. Railway. (backups em `financas-app-backups`)
-- `preconsumo-app` — cálculo de pré-consumo de tecido. Publicação parada, aguardando
-  decisão dela sobre upgrade de plano no Railway. (backups em `preconsumo-backups`)
+- `preconsumo-app` — cálculo de pré-consumo de tecido (React/Vite + Express/tRPC + MySQL via
+  Drizzle, NÃO é um app estático — não dá pra hospedar no GitHub Pages deste repo). Publicação
+  parada, aguardando decisão dela sobre upgrade de plano no Railway (repo público — ver
+  `DEPLOY.md` de lá: tem credenciais de banco em texto puro commitadas, precisa rotacionar
+  assim que possível). (backups em `preconsumo-backups`)
 - `fitness-crm1` — CRM Fashion Office. Railway. (`fitness-crm` é repo antigo, vazio, ignorar)
 - `cronograma-fashion` — cronograma geral, Firebase + Cloudflare. Domínio pretendido:
   `cronograma.samantafashionoffice.com.br`.
-- Branch `claude/apartment-renovation-expense-manager-pifo2i` (neste repo, `sgo`) — app
-  Next.js de reforma de apartamento (`reforma-apartamento/`), uso pessoal, nunca mesclado
-  nem publicado.
-- Branch `claude/simple-clean-design-tvzkd0` (neste repo, `sgo`) — app "Pilotagem"
-  (controle de peças/preços de pilotagem), nunca mesclado, só rodava localmente.
-- `moodboard-studio.html` — existe só no computador local dela (Windows,
-  `C:\Users\escri\.claude\moodboard-studio.html`), nunca foi enviado a nenhum repositório.
-  Precisa do conteúdo dela pra ser recriado como app publicado.
+- `reforma-apartamento/` — app Next.js de reforma de apartamento, uso pessoal. Trazido em
+  2026-07-30 de uma branch (`claude/apartment-renovation-expense-manager-pifo2i`) que nunca
+  tinha sido mesclada; agora vive nesta pasta na branch de trabalho. Ainda não publicado —
+  é um app com build (Next.js/Prisma), não serve pro deploy estático deste repo.
+- `pilotagem/` — app Next.js "Pilotagem" (controle de peças/preços enviadas para pilotagem).
+  Trazido em 2026-07-30 de uma branch (`claude/simple-clean-design-tvzkd0`) que nunca tinha
+  sido mesclada — CUIDADO: essa branch original apagava/reescrevia dashboard.html,
+  quadro-app.html, quadro-referencias.html e apps.html com o próprio código; só os arquivos
+  do app em si foram trazidos, isolados nesta pasta. Ainda não publicado; também tem build
+  próprio (Next.js), não serve pro deploy estático.
 
 ## Firebase
 
