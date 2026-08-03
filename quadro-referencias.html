@@ -58,15 +58,37 @@
   .storage-warning.hidden{display:none}
   .storage-warning .btn-download-now{margin-left:10px;font-weight:700;background:var(--bad,#a13a3a);
     color:#fff;border:none;border-radius:8px;padding:7px 14px;cursor:pointer;font-size:12.5px}
-  .col.delivered, .category-group.delivered{box-shadow:var(--shadow-card),inset 3px 0 0 var(--good)}
+  /* Finalizado = trabalho encerrado nesse card (aprovado ou reprovado, tanto faz) — some
+     discreto pro fundo em vez de se destacar, já que não precisa mais de atenção. */
+  .col.delivered, .category-group.delivered{opacity:.55;filter:saturate(.7)}
+  .col.delivered:hover, .category-group.delivered:hover{opacity:1;filter:none}
+  .molde-card.molde-done{opacity:.55;filter:saturate(.7)}
+  .molde-card.molde-done:hover{opacity:1;filter:none}
   .just-moved{animation:justMovedFlash 1.2s ease-out}
   @keyframes justMovedFlash{
     0%{outline:3px solid var(--indigo); outline-offset:2px}
     100%{outline:3px solid transparent; outline-offset:2px}
   }
-  .cat-header{display:flex;flex-direction:column;align-items:flex-start;gap:12px;
+  .cat-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
     padding-bottom:14px;margin-bottom:16px;border-bottom:1px solid var(--line)}
   .cat-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .hide-btn{font-size:11px;font-weight:600;padding:5px 10px;text-transform:none;
+    color:var(--ink-3);background:transparent;border:1px dashed var(--line);white-space:nowrap}
+  .hide-btn:hover{color:var(--ink);border-color:var(--ink)}
+  .hide-btn.restore{color:var(--indigo);border-color:var(--indigo);border-style:solid}
+  .molde-card h4{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  /* Categoria/molde ocultado só aparece quando "Mostrar ocultados" está ligado — visual
+     bem discreto (tracejado + apagado) pra ficar óbvio que não é conteúdo normal do quadro. */
+  .hidden-preview{opacity:.45;border:1.5px dashed var(--ink-3) !important;box-shadow:none !important}
+  .hidden-preview:hover{opacity:.8}
+  .all-moldes-hidden{color:var(--ink-3);font-size:12.5px;font-style:italic;margin:0}
+  .obs-row{margin-top:10px;margin-bottom:12px}
+  .obs-label{display:block;font-size:10.5px;font-weight:700;color:var(--ink-3);margin-bottom:4px;
+    text-transform:uppercase;letter-spacing:.05em}
+  .observacao-input{width:100%;font:inherit;font-size:12.5px;color:var(--ink);background:var(--surface);
+    border:1px solid var(--line);border-radius:var(--radius-sm);padding:8px 10px;resize:vertical;min-height:44px}
+  .observacao-input:focus{outline:2px solid var(--indigo);outline-offset:1px}
+  .observacao-input:placeholder-shown{font-style:italic}
   .cat-header h3{font-size:16px;font-weight:700;margin:0;color:var(--ink);letter-spacing:-.005em}
   .cat-header .pilotos-row{margin-bottom:0}
   .seg-badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
@@ -76,7 +98,6 @@
   .seg-badge.seg-premium{background:var(--premium-bg);color:var(--premium)}
   .moldes-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px}
   .molde-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-sm);padding:14px}
-  .molde-card.molde-done{border-color:var(--good);box-shadow:inset 0 0 0 1px var(--good)}
   .molde-card h4{font-size:10px;font-weight:700;color:var(--ink-3);margin:0 0 10px;
     text-transform:uppercase;letter-spacing:.06em}
   .col{background:var(--surface);border-radius:var(--radius);padding:18px 20px;
@@ -287,6 +308,7 @@
       <button id="btnHistory" title="Salva sozinho, a cada poucos minutos, uma cópia de segurança na nuvem — veja e restaure versões anteriores aqui">🕐 Histórico</button>
       <button id="btnReset">↺ Resetar sugestão original</button>
       <button id="btnSyncPilotos" title="Traz de volta os números de pilotos contratados do Asana, sem mexer no que você já preencheu em 'feitos'">🔄 Sincronizar contratados</button>
+      <button id="btnToggleHidden" title="Mostra as categorias/moldes que você ocultou, pra poder trazer de volta">🙈 Mostrar ocultados</button>
       <button id="btnLogout" title="Sair da conta" style="display:none">Sair</button>
     </div>
   </header>
@@ -690,6 +712,9 @@ const LS_FINALIZADO_KEY = "quadroEditavel.finalizado.v1";
 const LS_REPROVADO_KEY = "quadroEditavel.reprovado.v1";
 const LS_CANCELADO_KEY = "quadroEditavel.cancelado.v1";
 const LS_REPROVADO_MOTIVO_KEY = "quadroEditavel.reprovadoMotivo.v1";
+const LS_OBSERVACOES_KEY = "quadroEditavel.observacoes.v1";
+const LS_HIDDEN_CATS_KEY = "quadroEditavel.hiddenCats.v1";
+const LS_HIDDEN_BINS_KEY = "quadroEditavel.hiddenBins.v1";
 const LS_FS_BOOTSTRAPPED_KEY = "quadroEditavel.fsBootstrapped.v1";
 const MOTIVOS_REPROVACAO = {criacao: "Criação", modelagem: "Modelagem", custo: "Custo"};
 
@@ -703,8 +728,13 @@ let lastSyncedAssignment = {};
 let lastSyncedImportedIds = new Set();
 let lastSyncedPilotos = {};
 let lastSyncedModelagem = {};
-let lastSyncedSets = {approved: new Set(), hidden: new Set(), finalizado: new Set(), reprovado: new Set(), cancelado: new Set()};
+let lastSyncedSets = {approved: new Set(), hidden: new Set(), finalizado: new Set(), reprovado: new Set(), cancelado: new Set(),
+  hiddenCats: new Set(), hiddenBins: new Set()};
 let lastSyncedReprovadoMotivo = {};
+let lastSyncedObservacoes = {};
+// Timer por card pra não mandar uma escrita pro Firestore a cada letra digitada na observação —
+// só sincroniza a nuvem um pouco depois de parar de digitar (o localStorage salva na hora).
+let obsDebounceTimers = {};
 
 function normalizeAssignment(a){
   const validBins = new Set(BINS.map(b => b.id));
@@ -870,6 +900,39 @@ function fsSyncReprovadoMotivo(map){
   lastSyncedReprovadoMotivo = Object.assign({}, map);
   if(Object.keys(updates).length) fsWrite(fsFns.updateDoc(metaRef, updates));
 }
+function loadObservacoes(){
+  const parsed = safeLSGetParsed(LS_OBSERVACOES_KEY);
+  return (parsed.value && typeof parsed.value === "object") ? parsed.value : {};
+}
+function saveObservacoes(map){
+  safeLSSet(LS_OBSERVACOES_KEY, JSON.stringify(map));
+  fsSyncObservacoes(map);
+}
+function fsSyncObservacoes(map){
+  if(!fsReady) return;
+  const updates = {};
+  Object.keys(map).forEach(binId => {
+    if(map[binId] !== lastSyncedObservacoes[binId]) updates["observacoes." + binId] = map[binId];
+  });
+  lastSyncedObservacoes = Object.assign({}, map);
+  if(Object.keys(updates).length) fsWrite(fsFns.updateDoc(metaRef, updates));
+}
+function loadHiddenCats(){
+  const parsed = safeLSGetParsed(LS_HIDDEN_CATS_KEY);
+  return new Set(Array.isArray(parsed.value) ? parsed.value : []);
+}
+function saveHiddenCats(set){
+  safeLSSet(LS_HIDDEN_CATS_KEY, JSON.stringify([...set]));
+  fsSyncSet("hiddenCats", set);
+}
+function loadHiddenBins(){
+  const parsed = safeLSGetParsed(LS_HIDDEN_BINS_KEY);
+  return new Set(Array.isArray(parsed.value) ? parsed.value : []);
+}
+function saveHiddenBins(set){
+  safeLSSet(LS_HIDDEN_BINS_KEY, JSON.stringify([...set]));
+  fsSyncSet("hiddenBins", set);
+}
 
 let assignment = loadAssignment();
 let imported = loadImported();
@@ -881,6 +944,11 @@ let finalizado = loadFinalizado();
 let reprovado = loadReprovado();
 let cancelado = loadCancelado();
 let reprovadoMotivo = loadReprovadoMotivo();
+let observacoes = loadObservacoes();
+let hiddenCats = loadHiddenCats();
+let hiddenBins = loadHiddenBins();
+// Só controla o que aparece NESTA sessão/aba — não precisa ser salvo nem sincronizado.
+let showHiddenCards = false;
 
 // Se o painel estiver aberto em mais de uma aba/janela ao mesmo tempo (ex: uma aba com o
 // painel e outra com o site de referência pra copiar imagem), cada aba só carrega o estado
@@ -901,6 +969,9 @@ window.addEventListener("storage", ev => {
     case LS_REPROVADO_KEY: reprovado = loadReprovado(); break;
     case LS_CANCELADO_KEY: cancelado = loadCancelado(); break;
     case LS_REPROVADO_MOTIVO_KEY: reprovadoMotivo = loadReprovadoMotivo(); break;
+    case LS_OBSERVACOES_KEY: observacoes = loadObservacoes(); break;
+    case LS_HIDDEN_CATS_KEY: hiddenCats = loadHiddenCats(); break;
+    case LS_HIDDEN_BINS_KEY: hiddenBins = loadHiddenBins(); break;
     default: return;
   }
   render();
@@ -950,6 +1021,9 @@ function renderCollectionTabs(){
   });
 }
 
+function escapeHtml(s){
+  return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
 function parseCategoryLabel(label){
   const parts = label.split(" · ");
   return {collection: parts[0], segment: parts[1], piece: parts[2]};
@@ -1030,10 +1104,11 @@ function updateModelagemPill(binId){
   renderPilotosSummary();
 }
 
-function categoriesInActiveCollection(){
+function categoriesInActiveCollection(includeHidden){
   // Ordem fixa (a mesma sempre) — marcar como finalizado só muda a cor/selo do card,
-  // ele nunca troca de lugar na tela.
-  return CATEGORIES.filter(cat => cat.id.split("_")[0] === activeCollection);
+  // ele nunca troca de lugar na tela. Categoria oculta não entra nos totais/pendências,
+  // só volta a aparecer quando "Mostrar ocultados" está ligado.
+  return CATEGORIES.filter(cat => cat.id.split("_")[0] === activeCollection && (includeHidden || !hiddenCats.has(cat.id)));
 }
 
 function renderPilotosSummary(){
@@ -1135,32 +1210,52 @@ function render(){
         <input type="number" min="0" class="modelagem-contratado" data-bin="${binId}" value="${modelagemInfo(binId).contratado}">
         ${modelagemPillHtml(binId)}
       </div>
-      ${statusRowHtml(binId)}`;
+      ${statusRowHtml(binId)}
+      ${observacaoRowHtml(binId)}`;
+  }
+  function observacaoRowHtml(binId){
+    const val = observacoes[binId] || "";
+    return `
+      <div class="obs-row">
+        <label class="obs-label" for="obs-${binId}">📝 Observação</label>
+        <textarea class="observacao-input" id="obs-${binId}" data-bin="${binId}" rows="2"
+          placeholder="Ex: cliente pediu ajuste na manga...">${escapeHtml(val)}</textarea>
+      </div>`;
+  }
+  // Botão de ocultar/restaurar — mesmo botão nos dois níveis (categoria inteira ou um
+  // molde só), só muda qual atributo data-* carrega e qual Set (hiddenCats/hiddenBins) olha.
+  function hideToggleBtnHtml(kind, id, isHidden){
+    return isHidden
+      ? `<button class="hide-btn restore" title="Mostrar de novo" data-unhide-${kind}="${id}">👁️ Restaurar</button>`
+      : `<button class="hide-btn" title="Ocultar (some da tela, mas dá pra trazer de volta em 'Mostrar ocultados')" data-hide-${kind}="${id}">🙈 Ocultar</button>`;
   }
 
   boardEl.innerHTML = "";
-  categoriesInActiveCollection().forEach(cat => {
-    const catBins = BINS.filter(b => b.categoryId === cat.id);
+  categoriesInActiveCollection(showHiddenCards).forEach(cat => {
+    const catIsHidden = hiddenCats.has(cat.id);
+    const catBinsAll = BINS.filter(b => b.categoryId === cat.id);
+    const catBins = showHiddenCards ? catBinsAll : catBinsAll.filter(b => !hiddenBins.has(b.id));
 
     if(cat.moldes <= 1){
-      const bin = catBins[0];
+      const bin = catBinsAll[0];
       const isFinal = finalizado.has(bin.id);
       const isReprovado = reprovado.has(bin.id);
       const isCancelado = cancelado.has(bin.id);
       const deliveredBadgeHtml = isFinal
         ? `<div class="delivered-badge">✅ Finalizado / entregue ao cliente</div>` : "";
       const col = document.createElement("div");
-      col.className = "col" + (isFinal ? " delivered" : "") + (isReprovado ? " reprovado" : "") + (isCancelado ? " cancelado" : "");
+      col.className = "col" + (isFinal ? " delivered" : "") + (isReprovado ? " reprovado" : "") + (isCancelado ? " cancelado" : "") + (catIsHidden ? " hidden-preview" : "");
       col.dataset.catId = cat.id;
       const count = images.filter(im => assignment[im.id] === bin.id).length;
-      col.innerHTML = `${deliveredBadgeHtml}${catTitleHtml(bin.label, count, bin.id, false)}
+      col.innerHTML = `${deliveredBadgeHtml}
+        <div class="cat-header">${catTitleHtml(bin.label, count, bin.id, false)}${hideToggleBtnHtml("cat", cat.id, catIsHidden)}</div>
         ${pilotosRowHtml(bin.id)}
         <div class="dropzone tiles" data-bin="${bin.id}"></div>`;
       boardEl.appendChild(col);
     }else{
-      const allMoldesFinal = catBins.every(b => finalizado.has(b.id));
+      const allMoldesFinal = catBins.length > 0 && catBins.every(b => finalizado.has(b.id));
       const group = document.createElement("div");
-      group.className = "category-group" + (allMoldesFinal ? " delivered" : "");
+      group.className = "category-group" + (allMoldesFinal ? " delivered" : "") + (catIsHidden ? " hidden-preview" : "");
       group.dataset.catId = cat.id;
       const totalCount = images.filter(im => catBins.some(b => b.id === assignment[im.id])).length;
       const deliveredBadgeHtml = allMoldesFinal
@@ -1170,9 +1265,12 @@ function render(){
         const moldeFinal = finalizado.has(b.id);
         const moldeReprovado = reprovado.has(b.id);
         const moldeCancelado = cancelado.has(b.id);
-        const moldeClass = (moldeFinal ? ' molde-done' : '') + (moldeReprovado ? ' molde-reprovado' : '') + (moldeCancelado ? ' molde-cancelado' : '');
+        const moldeIsHidden = hiddenBins.has(b.id);
+        const moldeClass = (moldeFinal ? ' molde-done' : '') + (moldeReprovado ? ' molde-reprovado' : '') +
+          (moldeCancelado ? ' molde-cancelado' : '') + (moldeIsHidden ? ' hidden-preview' : '');
         return `<div class="molde-card${moldeClass}">
-          <h4>Molde ${b.moldeIndex} de ${b.moldes} <span class="count" data-count-for="${b.id}">(${mcount})</span></h4>
+          <h4>Molde ${b.moldeIndex} de ${b.moldes} <span class="count" data-count-for="${b.id}">(${mcount})</span>
+            ${hideToggleBtnHtml("bin", b.id, moldeIsHidden)}</h4>
           ${pilotosRowHtml(b.id)}
           <div class="dropzone tiles" data-bin="${b.id}"></div>
         </div>`;
@@ -1180,9 +1278,9 @@ function render(){
       group.innerHTML = `
         ${deliveredBadgeHtml}
         <div class="cat-header">
-          ${catTitleHtml(cat.label, totalCount + " no total", cat.id, true)}
+          ${catTitleHtml(cat.label, totalCount + " no total", cat.id, true)}${hideToggleBtnHtml("cat", cat.id, catIsHidden)}
         </div>
-        <div class="moldes-row">${moldesHtml}</div>`;
+        <div class="moldes-row">${moldesHtml || '<p class="all-moldes-hidden">Todos os moldes desta categoria estão ocultos.</p>'}</div>`;
       boardEl.appendChild(group);
     }
   });
@@ -1313,6 +1411,51 @@ function render(){
     });
   });
 
+  document.querySelectorAll(".observacao-input").forEach(ta => {
+    ta.addEventListener("input", () => {
+      const binId = ta.dataset.bin;
+      if(ta.value) observacoes[binId] = ta.value; else delete observacoes[binId];
+      // Salva local na hora (não perde nada se fechar a aba); a nuvem só recebe
+      // um pouco depois de parar de digitar, pra não gerar uma escrita por letra.
+      safeLSSet(LS_OBSERVACOES_KEY, JSON.stringify(observacoes));
+      clearTimeout(obsDebounceTimers[binId]);
+      obsDebounceTimers[binId] = setTimeout(() => fsSyncObservacoes(observacoes), 600);
+    });
+  });
+
+  document.querySelectorAll("[data-hide-cat]").forEach(btn => {
+    btn.addEventListener("click", ev => {
+      ev.stopPropagation();
+      hiddenCats.add(btn.dataset.hideCat);
+      saveHiddenCats(hiddenCats);
+      render();
+    });
+  });
+  document.querySelectorAll("[data-unhide-cat]").forEach(btn => {
+    btn.addEventListener("click", ev => {
+      ev.stopPropagation();
+      hiddenCats.delete(btn.dataset.unhideCat);
+      saveHiddenCats(hiddenCats);
+      render();
+    });
+  });
+  document.querySelectorAll("[data-hide-bin]").forEach(btn => {
+    btn.addEventListener("click", ev => {
+      ev.stopPropagation();
+      hiddenBins.add(btn.dataset.hideBin);
+      saveHiddenBins(hiddenBins);
+      render();
+    });
+  });
+  document.querySelectorAll("[data-unhide-bin]").forEach(btn => {
+    btn.addEventListener("click", ev => {
+      ev.stopPropagation();
+      hiddenBins.delete(btn.dataset.unhideBin);
+      saveHiddenBins(hiddenBins);
+      render();
+    });
+  });
+
   renderPilotosSummary();
   renderPendenciasReport();
   wireDragEvents();
@@ -1430,6 +1573,12 @@ document.getElementById("btnSyncPilotos").onclick = () => {
     pilotos[b.id].contratado = defaultPilotosForBin(b.id).contratado;
   });
   savePilotos(pilotos);
+  render();
+};
+
+document.getElementById("btnToggleHidden").onclick = () => {
+  showHiddenCards = !showHiddenCards;
+  document.getElementById("btnToggleHidden").textContent = showHiddenCards ? "🙈 Esconder ocultados" : "🙈 Mostrar ocultados";
   render();
 };
 
@@ -1652,7 +1801,7 @@ document.getElementById("btnExportPdf").onclick = async () => {
 document.getElementById("btnBackupDownload").onclick = () => {
   const payload = {
     tipo: "quadroEditavel.backup",
-    versao: 4,
+    versao: 5,
     salvoEm: new Date().toISOString(),
     assignment,
     imported,
@@ -1663,7 +1812,10 @@ document.getElementById("btnBackupDownload").onclick = () => {
     finalizado: [...finalizado],
     reprovado: [...reprovado],
     cancelado: [...cancelado],
-    reprovadoMotivo
+    reprovadoMotivo,
+    observacoes,
+    hiddenCats: [...hiddenCats],
+    hiddenBins: [...hiddenBins]
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type: "application/json"});
   const url = URL.createObjectURL(blob);
@@ -1708,6 +1860,9 @@ document.getElementById("backupFileInput").addEventListener("change", ev => {
     reprovado = new Set(Array.isArray(data.reprovado) ? data.reprovado : []);
     cancelado = new Set(Array.isArray(data.cancelado) ? data.cancelado : []);
     reprovadoMotivo = data.reprovadoMotivo && typeof data.reprovadoMotivo === "object" ? data.reprovadoMotivo : {};
+    observacoes = data.observacoes && typeof data.observacoes === "object" ? data.observacoes : {};
+    hiddenCats = new Set(Array.isArray(data.hiddenCats) ? data.hiddenCats : []);
+    hiddenBins = new Set(Array.isArray(data.hiddenBins) ? data.hiddenBins : []);
     saveAssignment(assignment);
     saveImported(imported);
     savePilotos(pilotos);
@@ -1718,6 +1873,9 @@ document.getElementById("backupFileInput").addEventListener("change", ev => {
     saveReprovado(reprovado);
     saveCancelado(cancelado);
     saveReprovadoMotivo(reprovadoMotivo);
+    saveObservacoes(observacoes);
+    saveHiddenCats(hiddenCats);
+    saveHiddenBins(hiddenBins);
     render();
     setBackupMsg(data.modelagem ? "Backup restaurado com sucesso." :
       "Backup restaurado. Aviso: esse arquivo é de uma versão antiga e não tinha modelagem/status salvos nele — esses campos ficaram vazios.");
@@ -1779,7 +1937,8 @@ document.getElementById("btnMigrate").onclick = async () => {
     await f.setDoc(f.doc(db, "boards", boardId, "meta", "main"), {
       pilotos, modelagem,
       approved: [...approved], hidden: [...hidden], finalizado: [...finalizado],
-      reprovado: [...reprovado], cancelado: [...cancelado], reprovadoMotivo
+      reprovado: [...reprovado], cancelado: [...cancelado], reprovadoMotivo,
+      observacoes, hiddenCats: [...hiddenCats], hiddenBins: [...hiddenBins]
     });
     await f.setDoc(f.doc(db, "boards", boardId, "assignment", "main"), assignment);
 
@@ -1813,7 +1972,8 @@ async function saveHistorySnapshot(){
       salvoEm: fsFns.serverTimestamp(),
       assignment, imported, pilotos, modelagem,
       approved: [...approved], hidden: [...hidden], finalizado: [...finalizado],
-      reprovado: [...reprovado], cancelado: [...cancelado], reprovadoMotivo
+      reprovado: [...reprovado], cancelado: [...cancelado], reprovadoMotivo,
+      observacoes, hiddenCats: [...hiddenCats], hiddenBins: [...hiddenBins]
     };
     await fsFns.addDoc(historyCol, payload);
     const snap = await fsFns.getDocs(fsFns.query(historyCol, fsFns.orderBy("salvoEm", "desc")));
@@ -1876,6 +2036,9 @@ async function restoreHistorySnapshot(id){
     reprovado = new Set(Array.isArray(data.reprovado) ? data.reprovado : []);
     cancelado = new Set(Array.isArray(data.cancelado) ? data.cancelado : []);
     reprovadoMotivo = data.reprovadoMotivo && typeof data.reprovadoMotivo === "object" ? data.reprovadoMotivo : {};
+    observacoes = data.observacoes && typeof data.observacoes === "object" ? data.observacoes : {};
+    hiddenCats = new Set(Array.isArray(data.hiddenCats) ? data.hiddenCats : []);
+    hiddenBins = new Set(Array.isArray(data.hiddenBins) ? data.hiddenBins : []);
     saveAssignment(assignment);
     saveImported(imported);
     savePilotos(pilotos);
@@ -1886,6 +2049,9 @@ async function restoreHistorySnapshot(id){
     saveReprovado(reprovado);
     saveCancelado(cancelado);
     saveReprovadoMotivo(reprovadoMotivo);
+    saveObservacoes(observacoes);
+    saveHiddenCats(hiddenCats);
+    saveHiddenBins(hiddenBins);
     render();
     document.getElementById("historyModal").classList.add("hidden");
     setBackupMsg("Versão restaurada com sucesso.");
@@ -1981,11 +2147,15 @@ function applyRemoteMeta(data){
   reprovado = new Set(data.reprovado || []);
   cancelado = new Set(data.cancelado || []);
   reprovadoMotivo = data.reprovadoMotivo || {};
+  observacoes = data.observacoes || {};
+  hiddenCats = new Set(data.hiddenCats || []);
+  hiddenBins = new Set(data.hiddenBins || []);
   lastSyncedPilotos = JSON.parse(JSON.stringify(pilotos));
   lastSyncedModelagem = JSON.parse(JSON.stringify(modelagem));
   lastSyncedSets = {approved: new Set(approved), hidden: new Set(hidden), finalizado: new Set(finalizado),
-    reprovado: new Set(reprovado), cancelado: new Set(cancelado)};
+    reprovado: new Set(reprovado), cancelado: new Set(cancelado), hiddenCats: new Set(hiddenCats), hiddenBins: new Set(hiddenBins)};
   lastSyncedReprovadoMotivo = Object.assign({}, reprovadoMotivo);
+  lastSyncedObservacoes = Object.assign({}, observacoes);
   safeLSSet(LS_PILOTOS_KEY, JSON.stringify(pilotos));
   safeLSSet(LS_MODELAGEM_KEY, JSON.stringify(modelagem));
   safeLSSet(LS_APPROVED_KEY, JSON.stringify([...approved]));
@@ -1994,6 +2164,9 @@ function applyRemoteMeta(data){
   safeLSSet(LS_REPROVADO_KEY, JSON.stringify([...reprovado]));
   safeLSSet(LS_CANCELADO_KEY, JSON.stringify([...cancelado]));
   safeLSSet(LS_REPROVADO_MOTIVO_KEY, JSON.stringify(reprovadoMotivo));
+  safeLSSet(LS_OBSERVACOES_KEY, JSON.stringify(observacoes));
+  safeLSSet(LS_HIDDEN_CATS_KEY, JSON.stringify([...hiddenCats]));
+  safeLSSet(LS_HIDDEN_BINS_KEY, JSON.stringify([...hiddenBins]));
   render();
 }
 function applyRemoteAssignment(data){
@@ -2063,12 +2236,14 @@ async function bootstrapFirestore(){
   const metaSnap = await f.getDoc(metaRef);
   if(!metaSnap.exists()){
     await f.setDoc(metaRef, {pilotos, modelagem, approved:[...approved], hidden:[...hidden], finalizado:[...finalizado],
-      reprovado:[...reprovado], cancelado:[...cancelado], reprovadoMotivo});
+      reprovado:[...reprovado], cancelado:[...cancelado], reprovadoMotivo, observacoes,
+      hiddenCats:[...hiddenCats], hiddenBins:[...hiddenBins]});
     lastSyncedPilotos = JSON.parse(JSON.stringify(pilotos));
     lastSyncedModelagem = JSON.parse(JSON.stringify(modelagem));
     lastSyncedSets = {approved: new Set(approved), hidden: new Set(hidden), finalizado: new Set(finalizado),
-      reprovado: new Set(reprovado), cancelado: new Set(cancelado)};
+      reprovado: new Set(reprovado), cancelado: new Set(cancelado), hiddenCats: new Set(hiddenCats), hiddenBins: new Set(hiddenBins)};
     lastSyncedReprovadoMotivo = Object.assign({}, reprovadoMotivo);
+    lastSyncedObservacoes = Object.assign({}, observacoes);
   }else if(!firstSync){
     applyRemoteMeta(metaSnap.data());
   }else{
@@ -2078,7 +2253,10 @@ async function bootstrapFirestore(){
     const mergedFinalizado = mergeSetSafe([...finalizado], cloudMeta.finalizado);
     const mergedReprovado = mergeSetSafe([...reprovado], cloudMeta.reprovado);
     const mergedCancelado = mergeSetSafe([...cancelado], cloudMeta.cancelado);
+    const mergedHiddenCats = mergeSetSafe([...hiddenCats], cloudMeta.hiddenCats);
+    const mergedHiddenBins = mergeSetSafe([...hiddenBins], cloudMeta.hiddenBins);
     const mergedReprovadoMotivo = Object.assign({}, reprovadoMotivo, cloudMeta.reprovadoMotivo || {});
+    const mergedObservacoes = Object.assign({}, observacoes, cloudMeta.observacoes || {});
     const mergedPilotos = Object.assign({}, cloudMeta.pilotos || {});
     Object.keys(pilotos).forEach(binId => {
       const l = pilotos[binId] || {feito:0, contratado:0};
@@ -2093,7 +2271,8 @@ async function bootstrapFirestore(){
       mergedModelagem[binId] = {feito: Math.max(l.feito||0, c.feito||0), contratado: (c.contratado || l.contratado || 0)};
     });
     const mergedMeta = {pilotos: mergedPilotos, modelagem: mergedModelagem, approved: mergedApproved, hidden: mergedHidden,
-      finalizado: mergedFinalizado, reprovado: mergedReprovado, cancelado: mergedCancelado, reprovadoMotivo: mergedReprovadoMotivo};
+      finalizado: mergedFinalizado, reprovado: mergedReprovado, cancelado: mergedCancelado, reprovadoMotivo: mergedReprovadoMotivo,
+      observacoes: mergedObservacoes, hiddenCats: mergedHiddenCats, hiddenBins: mergedHiddenBins};
     applyRemoteMeta(mergedMeta);
     await f.setDoc(metaRef, mergedMeta);
   }
