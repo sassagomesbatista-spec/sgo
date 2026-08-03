@@ -690,6 +690,7 @@ const LS_FINALIZADO_KEY = "quadroEditavel.finalizado.v1";
 const LS_REPROVADO_KEY = "quadroEditavel.reprovado.v1";
 const LS_CANCELADO_KEY = "quadroEditavel.cancelado.v1";
 const LS_REPROVADO_MOTIVO_KEY = "quadroEditavel.reprovadoMotivo.v1";
+const LS_FS_BOOTSTRAPPED_KEY = "quadroEditavel.fsBootstrapped.v1";
 const MOTIVOS_REPROVACAO = {criacao: "Criação", modelagem: "Modelagem", custo: "Custo"};
 
 // Estado da sincronização com a nuvem (Firestore) — declarado aqui em cima, antes de
@@ -2046,6 +2047,16 @@ async function bootstrapFirestore(){
   fsBootstrapping = true;
   const f = fsFns;
 
+  // A mesclagem "segura" abaixo (nunca perder dado que só existia neste navegador) só faz
+  // sentido na PRIMEIRA vez que este navegador sincroniza com a nuvem. Se rodasse de novo a
+  // cada F5/login, um valor antigo parado no localStorage deste aparelho (ex: uma contagem que
+  // já foi corrigida, ou uma imagem que já foi movida de categoria) voltaria a "ganhar" da nuvem
+  // pra sempre e ainda seria escrito de volta nela — fazendo a edição de outra pessoa nunca
+  // aparecer aqui, e a correção sumir pra quem também estiver vendo. Depois da primeira vez,
+  // cada carregamento só lê o que está na nuvem.
+  let firstSync = true;
+  try{ firstSync = localStorage.getItem(LS_FS_BOOTSTRAPPED_KEY) !== "1"; }catch(e){}
+
   // meta (pilotos/aprovados/ocultos/finalizados) — a nuvem pode já existir mas estar mais
   // "vazia" que esse navegador (ex: alguém logou antes noutro aparelho que nunca teve esses
   // dados). Nunca sobrescreve o que já está aqui sem antes juntar os dois lados.
@@ -2058,6 +2069,8 @@ async function bootstrapFirestore(){
     lastSyncedSets = {approved: new Set(approved), hidden: new Set(hidden), finalizado: new Set(finalizado),
       reprovado: new Set(reprovado), cancelado: new Set(cancelado)};
     lastSyncedReprovadoMotivo = Object.assign({}, reprovadoMotivo);
+  }else if(!firstSync){
+    applyRemoteMeta(metaSnap.data());
   }else{
     const cloudMeta = metaSnap.data();
     const mergedApproved = mergeSetSafe([...approved], cloudMeta.approved);
@@ -2092,6 +2105,8 @@ async function bootstrapFirestore(){
   if(!assignSnap.exists()){
     await f.setDoc(assignmentRef, assignment);
     lastSyncedAssignment = Object.assign({}, assignment);
+  }else if(!firstSync){
+    applyRemoteAssignment(assignSnap.data());
   }else{
     const merged = mergeAssignmentSafe(assignment, assignSnap.data());
     applyRemoteAssignment(merged);
@@ -2101,12 +2116,18 @@ async function bootstrapFirestore(){
   // imagens importadas — nunca substitui a lista local pela da nuvem: sempre junta pelo id
   // (união), e sobe pra nuvem qualquer imagem que só existia aqui.
   const imagesSnap = await f.getDocs(imagesCol);
-  const mergedImages = mergeImagesSafe(imported, imagesSnap.docs);
-  const cloudImageIds = new Set(imagesSnap.docs.map(d => d.id));
-  for(const im of mergedImages){
-    if(!cloudImageIds.has(im.id)) await f.setDoc(f.doc(imagesCol, im.id), {src: im.src, imported: true});
+  if(!firstSync){
+    applyRemoteImages(imagesSnap.docs);
+  }else{
+    const mergedImages = mergeImagesSafe(imported, imagesSnap.docs);
+    const cloudImageIds = new Set(imagesSnap.docs.map(d => d.id));
+    for(const im of mergedImages){
+      if(!cloudImageIds.has(im.id)) await f.setDoc(f.doc(imagesCol, im.id), {src: im.src, imported: true});
+    }
+    applyRemoteImagesList(mergedImages);
   }
-  applyRemoteImagesList(mergedImages);
+
+  try{ localStorage.setItem(LS_FS_BOOTSTRAPPED_KEY, "1"); }catch(e){}
 
   fsReady = true;
   updateSyncStatus();
