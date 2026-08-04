@@ -4,6 +4,7 @@
     --paper:#eeece4; --surface:#ffffff; --ink:#1c1b19; --ink-2:#56534c; --ink-3:#8a8579;
     --line:#ded9cd; --indigo:#2d3b66; --indigo-bg:#e7eaf2; --accent:#a13d2f; --accent-bg:#fbe9e6;
     --gold:#7a5a17; --gold-bg:#f7ecd6; --terra:#a13d2f; --terra-bg:#fbe9e6;
+    --teal:#1f6f66; --teal-bg:#dcf0ec; --plum:#6b4a7a; --plum-bg:#ede2f0; --olive:#5f6b2f; --olive-bg:#eef1de;
     --good:#0ca30c; --good-bg:#e6f6e3; --warn:#c98500; --warn-bg:#fdf1de;
     --radius:14px; --radius-sm:9px;
     --shadow-card:0 1px 2px rgba(20,18,10,.05),0 8px 20px -6px rgba(20,18,10,.10);
@@ -11,6 +12,8 @@
   @media (prefers-color-scheme: dark){
     :root{ --paper:#17181c; --surface:#202126; --ink:#efeee9; --ink-2:#ababa3; --ink-3:#767269;
       --line:#34353a; --indigo:#8b9fdb; --indigo-bg:#232a42; --accent:#e08a7a; --accent-bg:#3a2320;
+      --gold:#d9b25f; --gold-bg:#3a3013; --terra:#e08a7a; --terra-bg:#3a2320;
+      --teal:#6fc9bb; --teal-bg:#153431; --plum:#c6a4d6; --plum-bg:#332339; --olive:#b8c47f; --olive-bg:#2c3116;
       --good:#5fce93; --good-bg:#12281a; --warn:#e0a256; --warn-bg:#302408;
       --shadow-card:0 1px 2px rgba(0,0,0,.3),0 8px 20px -6px rgba(0,0,0,.4); }
   }
@@ -168,6 +171,92 @@
   .addcat-actions{display:flex;gap:8px;margin-top:18px;justify-content:flex-end}
   #printView{display:none}
 
+  /* -------- preços / orçamento -------- */
+  #precosModal,#orcamentoModal{position:fixed;inset:0;background:rgba(20,18,10,.55);display:flex;
+    align-items:center;justify-content:center;z-index:40;padding:20px}
+  #precosModal.hidden,#orcamentoModal.hidden{display:none}
+  .bigmodal-box{background:var(--surface);border-radius:var(--radius);padding:26px 28px;max-width:880px;
+    width:100%;box-shadow:var(--shadow-card);max-height:88vh;overflow-y:auto}
+  .bigmodal-box h2{font-family:Georgia,serif;margin:0 0 4px;font-size:19px}
+  .bigmodal-sub{font-size:12.5px;color:var(--ink-2);margin:0 0 18px;max-width:60ch}
+  .bigmodal-close{float:right;background:none;border:none;color:var(--ink-3);font-size:20px;
+    cursor:pointer;padding:2px 6px;line-height:1}
+  .bigmodal-close:hover{color:var(--ink)}
+
+  .seg-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+  .seg-chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.03em;padding:4px 6px 4px 11px;border-radius:999px}
+  .seg-chip .rm{background:none;border:none;cursor:pointer;font-size:13px;line-height:1;
+    padding:2px 5px;color:inherit;opacity:.6}
+  .seg-chip .rm:hover{opacity:1}
+  .seg-add{display:flex;gap:6px;margin-bottom:18px}
+  .seg-add input{font:inherit;font-size:12.5px;padding:6px 10px;border-radius:8px;
+    border:1px solid var(--line);background:var(--paper);color:var(--ink);width:180px}
+  .seg-add button{font:inherit;font-size:12.5px}
+
+  .price-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+  .price-search{position:relative;flex:1 1 200px;min-width:160px}
+  .price-search input{width:100%;font:inherit;font-size:13px;padding:8px 11px 8px 30px;border-radius:8px;
+    border:1px solid var(--line);background:var(--paper);color:var(--ink)}
+  .price-search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:13px;height:13px;color:var(--ink-3)}
+  .price-pills{display:flex;flex-wrap:wrap;gap:6px}
+  .price-pill{font:inherit;font-size:11.5px;font-weight:700;padding:6px 12px;border-radius:999px;
+    border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer}
+  .price-pill:hover{border-color:var(--ink)}
+  .price-pill.on{background:var(--indigo);border-color:var(--indigo);color:#fff}
+  .price-row-count{font-size:11px;color:var(--ink-3);margin:0 0 10px}
+
+  table.price-table{width:100%;border-collapse:collapse;font-size:13px}
+  .price-table thead th{text-align:left;font-size:10px;font-weight:700;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--ink-3);padding:0 8px 8px;border-bottom:1px solid var(--line)}
+  .price-table th.price-h{text-align:right}
+  .price-table td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+  .price-table td.pcell-prod input{width:100%;min-width:100px}
+  .price-table select,.price-table input[type=text],.price-table input[type=number]{
+    font:inherit;font-size:12.5px;padding:6px 8px;border-radius:7px;border:1px solid var(--line);
+    background:var(--paper);color:var(--ink)}
+  .price-table input[type=number]{width:88px;text-align:right}
+  .price-table .del-row{background:none;border:none;color:var(--ink-3);cursor:pointer;font-size:15px;
+    padding:2px 6px;line-height:1}
+  .price-table .del-row:hover{color:var(--accent)}
+  .price-newrow td{padding-top:12px}
+  .price-newrow input[type=text]{min-width:120px}
+
+  .orc-cols{display:grid;grid-template-columns:1.25fr 1fr;gap:20px}
+  @media (max-width:640px){.orc-cols{grid-template-columns:1fr}}
+  .orc-col-title{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--ink-3);margin:0 0 10px}
+  .orc-list{display:flex;flex-direction:column;gap:7px;max-height:360px;overflow-y:auto}
+  .orc-item{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:9px 11px;border:1px solid var(--line);border-radius:var(--radius-sm);background:var(--surface)}
+  .orc-item .meta{display:flex;align-items:center;gap:8px;min-width:0}
+  .orc-item .price{font-variant-numeric:tabular-nums;font-weight:700;font-size:12.5px;white-space:nowrap}
+  .orc-addbtn{font:inherit;cursor:pointer;border-radius:7px;border:1px solid var(--line);background:var(--surface);
+    color:var(--ink-2);width:24px;height:24px;display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;font-size:14px;line-height:1}
+  .orc-addbtn:hover{border-color:var(--indigo);color:var(--indigo)}
+  .orc-draft-box{background:var(--paper);border-radius:var(--radius-sm);padding:14px;
+    display:flex;flex-direction:column;min-height:200px}
+  .orc-draft-line{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 0;
+    border-bottom:1px solid var(--line);font-size:12.5px}
+  .orc-draft-line:last-of-type{border-bottom:none}
+  .orc-draft-line .meta{display:flex;align-items:center;gap:7px;min-width:0}
+  .orc-draft-line .rm{font:inherit;background:none;border:none;color:var(--ink-3);cursor:pointer;
+    font-size:15px;line-height:1;padding:2px 4px}
+  .orc-draft-line .rm:hover{color:var(--accent)}
+  .orc-draft-total{display:flex;justify-content:space-between;margin-top:auto;padding-top:10px;
+    font-weight:700;font-size:13.5px;border-top:2px solid var(--ink)}
+  .orc-save-row{display:flex;justify-content:flex-end;margin-top:12px}
+  .empty-hint{font-size:12.5px;color:var(--ink-3);padding:16px 4px;text-align:center;
+    border:1px dashed var(--line);border-radius:var(--radius-sm)}
+
+  .orc-saved-list{margin-top:26px;border-top:1px solid var(--line);padding-top:18px}
+  .orc-saved-item{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:10px 4px;border-bottom:1px solid var(--line);font-size:13px}
+  .orc-saved-item:last-child{border-bottom:none}
+  .orc-saved-item .meta{color:var(--ink-2)}
+  .orc-saved-item .meta b{color:var(--ink)}
+
   @media print{
     @page{ margin: 12mm; }
     html, body{background:#fff}
@@ -224,6 +313,18 @@
     .print-img-empty{width:76px;height:95px;border:1.2px dashed #c9c3b6;border-radius:4px;
       display:flex;align-items:center;justify-content:center;font-size:6px;color:#a39d8f;
       text-align:center;padding:2px;line-height:1.15}
+
+    .print-orc-title{font-family:Georgia,serif;font-size:16px;border-bottom:2px solid #1c1b19;
+      padding-bottom:6px;margin:0 0 4px}
+    .print-orc-date{font-size:9px;color:#8a8579;margin-bottom:14px}
+    .print-orc-line{display:flex;align-items:center;justify-content:space-between;gap:8px;
+      padding:7px 2px;border-bottom:1px solid #e5e0d8;font-size:10px}
+    .print-orc-line .prod{font-weight:700}
+    .print-orc-seg{display:inline-block;font-size:7.5px;font-weight:700;text-transform:uppercase;
+      letter-spacing:.04em;background:#e8eaf6;color:#2d3b66;border-radius:4px;padding:2px 6px;margin-left:6px}
+    .print-orc-price{font-variant-numeric:tabular-nums;font-weight:700}
+    .print-orc-total{display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;
+      border-top:2px solid #1c1b19;font-size:12px;font-weight:700}
   }
 </style>
 
@@ -239,6 +340,8 @@
       <span id="syncStatus" class="sync-status" style="display:none"></span>
       <a class="ghost" href="dashboard.html">← Todos os painéis</a>
       <button id="btnAddCat" title="Adicionar um produto/categoria novo a este painel">+ Adicionar produto</button>
+      <button id="btnPrecos" title="Tabela de preços por segmento (Activewear, Beachwear, Lingerie...)">💰 Preços</button>
+      <button id="btnOrcamento" title="Montar um orçamento pro cliente a partir da tabela de preços">🧾 Orçamento</button>
       <button id="btnExportPdf" title="Gera um PDF com todas as coleções, pronto pra enviar ao cliente">🖨️ Exportar PDF</button>
       <button id="btnBackupDownload" title="Baixa um arquivo com todo o arranjo atual">⇓ Baixar backup</button>
       <button id="btnBackupRestore" title="Restaura um arquivo de backup baixado antes">⇧ Restaurar backup</button>
@@ -279,6 +382,76 @@
       <div class="addcat-actions">
         <button id="btnAddCatCancel">Cancelar</button>
         <button id="btnAddCatConfirm" class="primary" style="width:auto;background:var(--indigo);color:#fff;border:none;padding:9px 16px;border-radius:8px;font-weight:700;cursor:pointer">Adicionar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="precosModal" class="hidden">
+    <div class="bigmodal-box">
+      <button class="bigmodal-close" id="btnPrecosClose" title="Fechar">×</button>
+      <h2>Tabela de preços</h2>
+      <p class="bigmodal-sub">Cada linha é um produto + segmento + preço. O mesmo produto pode aparecer em
+        mais de um segmento, com preços diferentes.</p>
+
+      <div class="seg-chips" id="precosSegChips"></div>
+      <div class="seg-add">
+        <input type="text" id="newSegmentInput" placeholder="Novo segmento...">
+        <button id="btnAddSegment">+ Adicionar segmento</button>
+      </div>
+
+      <div class="price-toolbar">
+        <div class="price-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input type="text" id="precosSearch" placeholder="Buscar produto...">
+        </div>
+        <div class="price-pills" id="precosFilterPills"></div>
+      </div>
+      <p class="price-row-count" id="precosRowCount"></p>
+
+      <table class="price-table">
+        <thead><tr><th>Produto</th><th>Segmento</th><th class="price-h">Preço</th><th></th></tr></thead>
+        <tbody id="precosTableBody"></tbody>
+        <tfoot>
+          <tr class="price-newrow">
+            <td class="pcell-prod"><input type="text" id="newPriceProd" placeholder="Nome do produto"></td>
+            <td><select id="newPriceSeg"></select></td>
+            <td class="price-h"><input type="number" id="newPricePreco" min="0" step="0.01" placeholder="0,00"></td>
+            <td><button id="btnAddPriceItem" title="Adicionar" style="background:var(--indigo);color:#fff;border:none">+ Adicionar</button></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <div id="orcamentoModal" class="hidden">
+    <div class="bigmodal-box">
+      <button class="bigmodal-close" id="btnOrcamentoClose" title="Fechar">×</button>
+      <h2>Montar orçamento</h2>
+      <p class="bigmodal-sub">Marca o(s) segmento(s) desse orçamento e vai adicionando os itens. Ao salvar, o
+        orçamento guarda uma cópia própria de produto/segmento/preço — mudanças futuras na tabela de preços
+        não afetam orçamentos já salvos.</p>
+
+      <div class="price-pills" id="orcSegPills" style="margin-bottom:16px"></div>
+      <div class="orc-cols">
+        <div>
+          <p class="orc-col-title">Produtos do(s) segmento(s) marcado(s)</p>
+          <div class="orc-list" id="orcCatalogList"></div>
+        </div>
+        <div>
+          <p class="orc-col-title">Orçamento em montagem</p>
+          <div class="orc-draft-box">
+            <div id="orcDraftLines"></div>
+            <div class="orc-draft-total"><span>Total</span><span id="orcDraftTotal">R$ 0,00</span></div>
+          </div>
+          <div class="orc-save-row">
+            <button id="btnSaveOrcamento" style="background:var(--indigo);color:#fff;border:none">💾 Salvar orçamento</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="orc-saved-list">
+        <p class="orc-col-title">Orçamentos salvos deste painel</p>
+        <div id="orcSavedList"></div>
       </div>
     </div>
   </div>
@@ -409,6 +582,8 @@ const LS_ACTIVE_COLLECTION_KEY = LS_PREFIX + "activeCollection.v1";
 let fsReady = false;
 let fsBootstrapping = false;
 let fsFns = null, db = null, boardRef = null, metaRef = null, assignmentRef = null, imagesCol = null;
+let precosRef = null, orcamentosCol = null;
+let precosReady = false, orcamentosReady = false;
 let lastSyncedAssignment = {};
 let lastSyncedImagesIds = new Set();
 let lastSyncedPilotos = {};
@@ -530,6 +705,17 @@ let reprovado = new Set(), cancelado = new Set();
 let reprovadoMotivo = {};
 const MOTIVOS_REPROVACAO = {criacao: "Criação", modelagem: "Modelagem", custo: "Custo"};
 let activeCollection = null;
+
+// -------- preços / orçamento (globais, não dependem do painel) --------
+const PRICE_SEGMENT_PALETTE = ["indigo", "gold", "terra", "teal", "plum", "olive"];
+const DEFAULT_PRICE_SEGMENTS = ["Activewear", "Beachwear", "Lingerie", "Lingerie Masculina", "Sleepwear", "Loungewear"]
+  .map(label => ({key: slugify(label), label}));
+let PRICE_SEGMENTS = [];
+let PRICE_ITEMS = [];
+let SAVED_ORCAMENTOS = [];
+let orcamentoDraft = [];
+const precosFilterActive = new Set();
+const orcFilterActive = new Set();
 
 function loadActiveCollection(){
   try{ return localStorage.getItem(LS_ACTIVE_COLLECTION_KEY) || null; }catch(e){ return null; }
@@ -1231,6 +1417,352 @@ document.getElementById("backupFileInput").addEventListener("change", ev => {
   reader.readAsText(file);
 });
 
+// -------- preços / orçamento (globais — não dependem do painel) --------
+function escHtml(s){ return String(s == null ? "" : s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function escAttr(s){ return String(s == null ? "" : s).replace(/"/g,"&quot;"); }
+function fmtPreco(v){ return "R$ " + (Number(v) || 0).toFixed(2).replace(".", ","); }
+function segColor(index){
+  const token = PRICE_SEGMENT_PALETTE[((index % PRICE_SEGMENT_PALETTE.length) + PRICE_SEGMENT_PALETTE.length) % PRICE_SEGMENT_PALETTE.length];
+  return {bg: `var(--${token}-bg)`, fg: `var(--${token})`};
+}
+function segIndex(key){
+  const i = PRICE_SEGMENTS.findIndex(s => s.key === key);
+  return i === -1 ? 0 : i;
+}
+function segLabelFor(key){
+  const s = PRICE_SEGMENTS.find(s => s.key === key);
+  return s ? s.label : key;
+}
+// colorIdx, quando informado, é o índice "congelado" no momento em que o item entrou num
+// orçamento — garante que o badge de um orçamento já salvo nunca muda, mesmo que a lista
+// de segmentos seja editada depois.
+function segBadgeHtml(key, label, colorIdx){
+  const c = segColor(colorIdx != null ? colorIdx : segIndex(key));
+  const text = label != null ? label : segLabelFor(key);
+  return `<span class="seg-badge" style="background:${c.bg};color:${c.fg}">${escHtml(text)}</span>`;
+}
+
+async function bootstrapPrecos(){
+  if(precosReady) return;
+  const f = fsFns;
+  const snap = await f.getDoc(precosRef);
+  if(!snap.exists()){
+    PRICE_SEGMENTS = DEFAULT_PRICE_SEGMENTS.slice();
+    PRICE_ITEMS = [];
+    await f.setDoc(precosRef, {segments: PRICE_SEGMENTS, items: PRICE_ITEMS});
+  }else{
+    const data = snap.data();
+    PRICE_SEGMENTS = Array.isArray(data.segments) && data.segments.length ? data.segments : DEFAULT_PRICE_SEGMENTS.slice();
+    PRICE_ITEMS = Array.isArray(data.items) ? data.items : [];
+  }
+  precosReady = true;
+  renderPrecosModal();
+  renderOrcamentoModal();
+  f.onSnapshot(precosRef, snap2 => {
+    if(!snap2.exists()) return;
+    const d = snap2.data();
+    PRICE_SEGMENTS = Array.isArray(d.segments) && d.segments.length ? d.segments : PRICE_SEGMENTS;
+    PRICE_ITEMS = Array.isArray(d.items) ? d.items : PRICE_ITEMS;
+    renderPrecosModal();
+    renderOrcamentoModal();
+  });
+}
+function persistPriceSegments(){ fsWrite(fsFns.updateDoc(precosRef, {segments: PRICE_SEGMENTS})); }
+function persistPriceItems(){ fsWrite(fsFns.updateDoc(precosRef, {items: PRICE_ITEMS})); }
+
+function bootstrapOrcamentos(){
+  if(orcamentosReady || !orcamentosCol) return;
+  orcamentosReady = true;
+  const f = fsFns;
+  f.onSnapshot(f.query(orcamentosCol, f.orderBy("criadoEm", "desc")), snap => {
+    SAVED_ORCAMENTOS = snap.docs.map(d => Object.assign({id: d.id}, d.data()));
+    renderSavedOrcamentos();
+  }, err => console.error("Erro ao carregar orçamentos:", err));
+}
+
+// ---- tela "Tabela de preços" ----
+function ensurePrecosFilterDefaults(){
+  PRICE_SEGMENTS.forEach(s => precosFilterActive.add(s.key));
+}
+function renderPrecosModal(){
+  ensurePrecosFilterDefaults();
+  renderPrecosSegChips();
+  renderPrecosFilterPills();
+  renderPrecosTable();
+  refreshNewPriceSegSelect();
+}
+function renderPrecosSegChips(){
+  const wrap = document.getElementById("precosSegChips");
+  if(!wrap) return;
+  wrap.innerHTML = PRICE_SEGMENTS.map((s, i) => {
+    const c = segColor(i);
+    return `<span class="seg-chip" style="background:${c.bg};color:${c.fg}">${escHtml(s.label)}
+      <button class="rm" data-key="${escAttr(s.key)}" title="Remover segmento">×</button></span>`;
+  }).join("");
+  wrap.querySelectorAll(".rm").forEach(btn => { btn.onclick = () => deleteSegment(btn.dataset.key); });
+}
+function renderPrecosFilterPills(){
+  const wrap = document.getElementById("precosFilterPills");
+  if(!wrap) return;
+  wrap.innerHTML = PRICE_SEGMENTS.map(s => {
+    const on = precosFilterActive.has(s.key);
+    return `<button type="button" class="price-pill${on ? " on" : ""}" data-key="${escAttr(s.key)}">${escHtml(s.label)}</button>`;
+  }).join("");
+  wrap.querySelectorAll(".price-pill").forEach(btn => {
+    btn.onclick = () => {
+      const k = btn.dataset.key;
+      if(precosFilterActive.has(k)) precosFilterActive.delete(k); else precosFilterActive.add(k);
+      btn.classList.toggle("on");
+      renderPrecosTable();
+    };
+  });
+}
+function renderPrecosTable(){
+  const searchEl = document.getElementById("precosSearch");
+  const q = (searchEl ? searchEl.value : "").trim().toLowerCase();
+  const rows = PRICE_ITEMS.filter(it => precosFilterActive.has(it.segmento) && it.produto.toLowerCase().includes(q));
+  const counts = {};
+  PRICE_ITEMS.forEach(it => { counts[it.produto] = (counts[it.produto] || 0) + 1; });
+  const body = document.getElementById("precosTableBody");
+  if(!body) return;
+  if(!rows.length){
+    body.innerHTML = `<tr><td colspan="4"><div class="empty-hint">Nenhum preço cadastrado com esse filtro ainda.</div></td></tr>`;
+  }else{
+    body.innerHTML = rows.map(it => {
+      const dup = counts[it.produto] > 1;
+      const segOptions = PRICE_SEGMENTS.map(s => `<option value="${escAttr(s.key)}"${s.key===it.segmento?" selected":""}>${escHtml(s.label)}</option>`).join("");
+      return `<tr${dup ? ' style="background:var(--paper)"' : ""}>
+        <td class="pcell-prod"><input type="text" value="${escAttr(it.produto)}" data-id="${it.id}" data-field="produto"></td>
+        <td><select data-id="${it.id}" data-field="segmento">${segOptions}</select></td>
+        <td class="price-h"><input type="number" min="0" step="0.01" value="${it.preco}" data-id="${it.id}" data-field="preco"></td>
+        <td><button class="del-row" data-id="${it.id}" title="Excluir">×</button></td>
+      </tr>`;
+    }).join("");
+  }
+  body.querySelectorAll("input,select").forEach(el => {
+    el.addEventListener("change", () => updatePriceItem(el.dataset.id, el.dataset.field, el.value));
+  });
+  body.querySelectorAll(".del-row").forEach(btn => { btn.onclick = () => deletePriceItem(btn.dataset.id); });
+  const countEl = document.getElementById("precosRowCount");
+  if(countEl) countEl.textContent = `Mostrando ${rows.length} de ${PRICE_ITEMS.length} preços cadastrados`;
+}
+function refreshNewPriceSegSelect(){
+  const sel = document.getElementById("newPriceSeg");
+  if(!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = PRICE_SEGMENTS.map(s => `<option value="${escAttr(s.key)}">${escHtml(s.label)}</option>`).join("");
+  if(PRICE_SEGMENTS.some(s => s.key === prev)) sel.value = prev;
+}
+function addSegment(){
+  const input = document.getElementById("newSegmentInput");
+  const label = input.value.trim();
+  if(!label) return;
+  const key = slugify(label);
+  if(PRICE_SEGMENTS.some(s => s.key === key)){ alert("Esse segmento já existe."); return; }
+  PRICE_SEGMENTS.push({key, label});
+  persistPriceSegments();
+  input.value = "";
+  renderPrecosModal();
+  renderOrcamentoModal();
+}
+function deleteSegment(key){
+  const inUse = PRICE_ITEMS.some(it => it.segmento === key);
+  if(inUse){ alert("Não dá pra remover: ainda tem produtos cadastrados nesse segmento."); return; }
+  PRICE_SEGMENTS = PRICE_SEGMENTS.filter(s => s.key !== key);
+  precosFilterActive.delete(key);
+  orcFilterActive.delete(key);
+  persistPriceSegments();
+  renderPrecosModal();
+  renderOrcamentoModal();
+}
+function addPriceItem(){
+  const prodEl = document.getElementById("newPriceProd");
+  const segEl = document.getElementById("newPriceSeg");
+  const precoEl = document.getElementById("newPricePreco");
+  const produto = prodEl.value.trim();
+  const segmento = segEl.value;
+  const preco = parseFloat(precoEl.value);
+  if(!produto){ alert("Digita o nome do produto."); return; }
+  if(!segmento){ alert("Escolhe um segmento."); return; }
+  if(!(preco >= 0)){ alert("Digita um preço válido."); return; }
+  const id = "p_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,7);
+  PRICE_ITEMS.push({id, produto, segmento, preco});
+  persistPriceItems();
+  prodEl.value = ""; precoEl.value = "";
+  renderPrecosTable();
+  renderOrcamentoModal();
+}
+function updatePriceItem(id, field, value){
+  const it = PRICE_ITEMS.find(x => x.id === id);
+  if(!it) return;
+  if(field === "preco"){ const n = parseFloat(value); it.preco = n >= 0 ? n : 0; }
+  else if(field === "produto"){ it.produto = value.trim() || it.produto; }
+  else if(field === "segmento"){ it.segmento = value; }
+  persistPriceItems();
+  renderPrecosTable();
+  renderOrcamentoModal();
+}
+function deletePriceItem(id){
+  if(!confirm("Excluir esse preço da tabela? Isso não muda orçamentos já salvos.")) return;
+  PRICE_ITEMS = PRICE_ITEMS.filter(x => x.id !== id);
+  persistPriceItems();
+  renderPrecosTable();
+  renderOrcamentoModal();
+}
+
+// ---- tela "Montar orçamento" ----
+let orcDraftSeq = 0;
+function renderOrcamentoModal(){
+  renderOrcSegPills();
+  renderOrcCatalogList();
+  renderOrcDraft();
+}
+function renderOrcSegPills(){
+  const wrap = document.getElementById("orcSegPills");
+  if(!wrap) return;
+  wrap.innerHTML = PRICE_SEGMENTS.map(s => {
+    const on = orcFilterActive.has(s.key);
+    return `<button type="button" class="price-pill${on ? " on" : ""}" data-key="${escAttr(s.key)}">${escHtml(s.label)}</button>`;
+  }).join("");
+  wrap.querySelectorAll(".price-pill").forEach(btn => {
+    btn.onclick = () => {
+      const k = btn.dataset.key;
+      if(orcFilterActive.has(k)) orcFilterActive.delete(k); else orcFilterActive.add(k);
+      btn.classList.toggle("on");
+      renderOrcCatalogList();
+    };
+  });
+}
+function renderOrcCatalogList(){
+  const wrap = document.getElementById("orcCatalogList");
+  if(!wrap) return;
+  if(!orcFilterActive.size){
+    wrap.innerHTML = '<div class="empty-hint">Marca pelo menos um segmento acima pra ver os produtos.</div>';
+    return;
+  }
+  const rows = PRICE_ITEMS.filter(it => orcFilterActive.has(it.segmento));
+  if(!rows.length){
+    wrap.innerHTML = '<div class="empty-hint">Nenhum preço cadastrado nesse(s) segmento(s) ainda.</div>';
+    return;
+  }
+  wrap.innerHTML = rows.map(it => `<div class="orc-item">
+      <div class="meta"><span class="prod">${escHtml(it.produto)}</span>${segBadgeHtml(it.segmento)}</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="price">${fmtPreco(it.preco)}</span>
+        <button class="orc-addbtn" data-id="${it.id}" title="Adicionar ao orçamento">+</button>
+      </div>
+    </div>`).join("");
+  wrap.querySelectorAll(".orc-addbtn").forEach(btn => {
+    btn.onclick = () => {
+      const it = PRICE_ITEMS.find(x => x.id === btn.dataset.id);
+      if(it) addToDraft(it);
+    };
+  });
+}
+// Copia produto/segmento/preço (e a cor do badge) pro item do rascunho — a partir daqui ele
+// não depende mais da tabela de preços, nem pra exibir nem pro valor.
+function addToDraft(it){
+  orcamentoDraft.push({
+    _line: orcDraftSeq++,
+    produto: it.produto,
+    segmento: it.segmento,
+    segmentoLabel: segLabelFor(it.segmento),
+    segColorIdx: segIndex(it.segmento),
+    preco: it.preco
+  });
+  renderOrcDraft();
+}
+function removeFromDraft(line){
+  orcamentoDraft = orcamentoDraft.filter(o => o._line !== line);
+  renderOrcDraft();
+}
+function renderOrcDraft(){
+  const wrap = document.getElementById("orcDraftLines");
+  if(!wrap) return;
+  if(!orcamentoDraft.length){
+    wrap.innerHTML = '<div class="empty-hint" style="border:none;padding:20px 4px">Nenhum item ainda — adiciona pela lista ao lado.</div>';
+  }else{
+    wrap.innerHTML = orcamentoDraft.map(o => `<div class="orc-draft-line">
+        <span class="meta"><span class="prod">${escHtml(o.produto)}</span>${segBadgeHtml(o.segmento, o.segmentoLabel, o.segColorIdx)}</span>
+        <span style="display:flex;align-items:center;gap:8px">
+          <span class="price">${fmtPreco(o.preco)}</span>
+          <button class="rm" data-line="${o._line}" title="Remover">×</button>
+        </span>
+      </div>`).join("");
+    wrap.querySelectorAll(".rm").forEach(btn => { btn.onclick = () => removeFromDraft(Number(btn.dataset.line)); });
+  }
+  const total = orcamentoDraft.reduce((s,o) => s + (o.preco || 0), 0);
+  const totalEl = document.getElementById("orcDraftTotal");
+  if(totalEl) totalEl.textContent = fmtPreco(total);
+}
+function saveOrcamento(){
+  if(!orcamentoDraft.length){ alert("Adiciona pelo menos um item antes de salvar."); return; }
+  const itens = orcamentoDraft.map(o => ({
+    produto: o.produto, segmento: o.segmento, segmentoLabel: o.segmentoLabel, segColorIdx: o.segColorIdx, preco: o.preco
+  }));
+  const total = itens.reduce((s,o) => s + (o.preco || 0), 0);
+  fsWrite(fsFns.addDoc(orcamentosCol, {itens, total, criadoEm: fsFns.serverTimestamp()}));
+  orcamentoDraft = [];
+  renderOrcDraft();
+}
+function renderSavedOrcamentos(){
+  const wrap = document.getElementById("orcSavedList");
+  if(!wrap) return;
+  if(!SAVED_ORCAMENTOS.length){
+    wrap.innerHTML = '<div class="empty-hint">Nenhum orçamento salvo ainda neste painel.</div>';
+    return;
+  }
+  wrap.innerHTML = SAVED_ORCAMENTOS.map(o => {
+    const data = (o.criadoEm && o.criadoEm.toDate) ? o.criadoEm.toDate().toLocaleDateString("pt-BR") : "salvando...";
+    const qtd = (o.itens || []).length;
+    return `<div class="orc-saved-item">
+      <span class="meta"><b>${escHtml(data)}</b> — ${qtd} ${qtd === 1 ? "item" : "itens"} — ${fmtPreco(o.total)}</span>
+      <button class="print-orc-btn" data-id="${o.id}">🖨️ Baixar PDF</button>
+    </div>`;
+  }).join("");
+  wrap.querySelectorAll(".print-orc-btn").forEach(btn => { btn.onclick = () => printOrcamento(btn.dataset.id); });
+}
+function buildOrcamentoPrintHtml(o){
+  const data = (o.criadoEm && o.criadoEm.toDate) ? o.criadoEm.toDate().toLocaleDateString("pt-BR") : new Date().toLocaleDateString("pt-BR");
+  const linhas = (o.itens || []).map(it => `<div class="print-orc-line">
+      <span class="prod">${escHtml(it.produto)}<span class="print-orc-seg">${escHtml(it.segmentoLabel)}</span></span>
+      <span class="print-orc-price">${fmtPreco(it.preco)}</span>
+    </div>`).join("");
+  return `<div class="print-cover">
+      <div class="print-cover-eyebrow">Storm · Painel Criativo</div>
+      <h1 class="print-cover-title">${escHtml(boardName || "Orçamento")}</h1>
+      <div class="print-cover-date">Orçamento gerado em ${data}</div>
+    </div>
+    <div class="print-orc-title">Orçamento</div>
+    <div class="print-orc-date">${data}</div>
+    ${linhas}
+    <div class="print-orc-total"><span>Total</span><span>${fmtPreco(o.total)}</span></div>`;
+}
+function printOrcamento(id){
+  const o = SAVED_ORCAMENTOS.find(x => x.id === id);
+  if(!o) return;
+  const printView = document.getElementById("printView");
+  printView.innerHTML = buildOrcamentoPrintHtml(o);
+  window.print();
+}
+
+document.getElementById("btnPrecos").onclick = () => {
+  renderPrecosModal();
+  document.getElementById("precosModal").classList.remove("hidden");
+};
+document.getElementById("btnPrecosClose").onclick = () => document.getElementById("precosModal").classList.add("hidden");
+document.getElementById("btnAddSegment").onclick = addSegment;
+document.getElementById("newSegmentInput").addEventListener("keydown", ev => { if(ev.key === "Enter") addSegment(); });
+document.getElementById("precosSearch").addEventListener("input", renderPrecosTable);
+document.getElementById("btnAddPriceItem").onclick = addPriceItem;
+
+document.getElementById("btnOrcamento").onclick = () => {
+  renderOrcamentoModal();
+  document.getElementById("orcamentoModal").classList.remove("hidden");
+};
+document.getElementById("btnOrcamentoClose").onclick = () => document.getElementById("orcamentoModal").classList.add("hidden");
+document.getElementById("btnSaveOrcamento").onclick = saveOrcamento;
+
 // -------- PDF --------
 function buildPrintHtml(){
   const imgs = allImages();
@@ -1544,6 +2076,8 @@ async function initFirebase(){
     metaRef = fsMod.doc(db, "boards", BOARD_ID, "meta", "main");
     assignmentRef = fsMod.doc(db, "boards", BOARD_ID, "assignment", "main");
     imagesCol = fsMod.collection(db, "boards", BOARD_ID, "images");
+    precosRef = fsMod.doc(db, "precos", "catalogo");
+    orcamentosCol = fsMod.collection(db, "boards", BOARD_ID, "orcamentos");
 
     try{ await fsMod.enableIndexedDbPersistence(db); }catch(e){}
 
@@ -1565,6 +2099,10 @@ async function initFirebase(){
         showLoginGate(false);
         try{ await bootstrapFirestore(); }
         catch(e){ console.error("Erro ao sincronizar com a nuvem:", e); showCloudWarning(); }
+        try{ await bootstrapPrecos(); }
+        catch(e){ console.error("Erro ao sincronizar tabela de preços:", e); }
+        try{ bootstrapOrcamentos(); }
+        catch(e){ console.error("Erro ao sincronizar orçamentos:", e); }
       }else{
         fsReady = false; fsBootstrapping = false; updateSyncStatus();
         showLoginGate(true);
