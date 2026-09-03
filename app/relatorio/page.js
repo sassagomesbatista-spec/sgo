@@ -19,10 +19,11 @@ export default function RelatorioPage({ searchParams }) {
   const pilotistas = db.prepare('SELECT * FROM pilotistas ORDER BY nome').all();
 
   let query = `
-    SELECT l.*, t.nome AS tipo_nome, p.nome AS pilotista_nome
+    SELECT l.*, t.nome AS tipo_nome, p.nome AS pilotista_nome, m.nome AS modelista_nome
     FROM lancamentos l
     LEFT JOIN tipos_peca t ON t.id = l.tipo_peca_id
     LEFT JOIN pilotistas p ON p.id = l.pilotista_id
+    LEFT JOIN modelistas m ON m.id = l.modelista_id
     WHERE l.mes_ano = ?
   `;
   const args = [mes];
@@ -39,6 +40,13 @@ export default function RelatorioPage({ searchParams }) {
   for (const r of rows) {
     const nome = r.pilotista_nome || 'Sem pilotista';
     porPilotista[nome] = (porPilotista[nome] || 0) + (r.valor || 0);
+  }
+  const totalModelistaGeral = rows.reduce((s, r) => s + (r.valor_modelista || 0), 0);
+  const porModelista = {};
+  for (const r of rows) {
+    if (r.valor_modelista == null) continue;
+    const nome = r.modelista_nome || r.nome_modelista || 'Sem modelista';
+    porModelista[nome] = (porModelista[nome] || 0) + (r.valor_modelista || 0);
   }
   const pilotistaSelecionada = pilotistas.find((p) => String(p.id) === String(pilotistaId));
 
@@ -93,9 +101,11 @@ export default function RelatorioPage({ searchParams }) {
                 <th>Tipo</th>
                 <th>Tam.</th>
                 <th>Nível</th>
+                <th>Modelista</th>
                 <th>Pilotista</th>
                 <th>Aprovação</th>
-                <th>Valor</th>
+                <th>Valor Pilotista</th>
+                <th>Valor Modelista</th>
               </tr>
             </thead>
             <tbody>
@@ -108,11 +118,13 @@ export default function RelatorioPage({ searchParams }) {
                   <td>{r.tipo_nome}</td>
                   <td>{r.tamanho}</td>
                   <td>{r.nivel}</td>
+                  <td>{r.modelista_nome || r.nome_modelista}</td>
                   <td>{r.pilotista_nome}</td>
                   <td>
                     <AprovacaoBadge status={r.aprovacao} />
                   </td>
                   <td>R$ {(r.valor || 0).toFixed(2)}</td>
+                  <td>{r.valor_modelista != null ? `R$ ${r.valor_modelista.toFixed(2)}` : '-'}</td>
                 </tr>
               ))}
             </tbody>
@@ -131,8 +143,26 @@ export default function RelatorioPage({ searchParams }) {
         {rows.length === 0 && <li>-</li>}
       </ul>
       <p className="total-geral">
-        Total Geral: <strong>R$ {totalGeral.toFixed(2)}</strong>
+        Total Geral Pilotistas: <strong>R$ {totalGeral.toFixed(2)}</strong>
       </p>
+
+      {Object.keys(porModelista).length > 0 && (
+        <>
+          <h2>Total por Modelista</h2>
+          <p className="subtitle">Só aparece aqui quem tem uma tabela de preço vinculada.</p>
+          <ul className="totals">
+            {Object.entries(porModelista).map(([nome, total]) => (
+              <li key={nome}>
+                <span>{nome}</span>
+                <strong>R$ {total.toFixed(2)}</strong>
+              </li>
+            ))}
+          </ul>
+          <p className="total-geral">
+            Total Geral Modelistas: <strong>R$ {totalModelistaGeral.toFixed(2)}</strong>
+          </p>
+        </>
+      )}
     </div>
   );
 }

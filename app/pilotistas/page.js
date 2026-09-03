@@ -9,6 +9,7 @@ export default function PilotistasPage() {
   if (session.role !== 'admin') redirect('/lancar');
 
   const pilotistas = db.prepare('SELECT * FROM pilotistas ORDER BY ativo DESC, nome').all();
+  const tabelas = db.prepare('SELECT * FROM tabelas_preco ORDER BY nome').all();
 
   return (
     <div className="card">
@@ -25,6 +26,7 @@ export default function PilotistasPage() {
             <tr>
               <th>Nome</th>
               <th>Contato</th>
+              <th>Tabela de Preço</th>
               <th>Ativo</th>
               <th></th>
             </tr>
@@ -32,11 +34,17 @@ export default function PilotistasPage() {
           <tbody>
             {pilotistas.map((p) => (
               <tr key={p.id}>
-                <td colSpan={4}>
+                <td colSpan={5}>
                   <form action={salvarPilotistaAction} className="inline-form">
                     <input type="hidden" name="id" value={p.id} />
                     <input name="nome" defaultValue={p.nome} required />
                     <input name="contato" defaultValue={p.contato || ''} placeholder="Whatsapp/telefone" />
+                    <select name="tabela_preco_id" defaultValue={p.tabela_preco_id || ''}>
+                      <option value="">Regra padrão</option>
+                      {tabelas.map((t) => (
+                        <option key={t.id} value={t.id}>{t.nome}</option>
+                      ))}
+                    </select>
                     <label className="checkbox">
                       <input type="checkbox" name="ativo" defaultChecked={!!p.ativo} /> Ativo
                     </label>
@@ -60,6 +68,15 @@ export default function PilotistasPage() {
         <label>
           Contato
           <input name="contato" placeholder="Whatsapp/telefone" />
+        </label>
+        <label>
+          Tabela de Preço
+          <select name="tabela_preco_id" defaultValue="">
+            <option value="">Regra padrão</option>
+            {tabelas.map((t) => (
+              <option key={t.id} value={t.id}>{t.nome}</option>
+            ))}
+          </select>
         </label>
         <label className="checkbox">
           <input type="checkbox" name="ativo" defaultChecked /> Ativo

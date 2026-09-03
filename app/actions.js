@@ -86,20 +86,23 @@ export async function salvarPilotistaAction(formData) {
   const nome = formData.get('nome')?.toString().trim();
   const contato = formData.get('contato')?.toString().trim() || '';
   const ativo = formData.get('ativo') ? 1 : 0;
+  const tabelaPrecoId = Number(formData.get('tabela_preco_id')) || null;
   if (!nome) return;
 
   if (id) {
-    db.prepare('UPDATE pilotistas SET nome=?, contato=?, ativo=? WHERE id=?').run(
+    db.prepare('UPDATE pilotistas SET nome=?, contato=?, ativo=?, tabela_preco_id=? WHERE id=?').run(
       nome,
       contato,
       ativo,
+      tabelaPrecoId,
       id
     );
   } else {
-    db.prepare('INSERT INTO pilotistas (nome, contato, ativo) VALUES (?,?,?)').run(
+    db.prepare('INSERT INTO pilotistas (nome, contato, ativo, tabela_preco_id) VALUES (?,?,?,?)').run(
       nome,
       contato,
-      ativo
+      ativo,
+      tabelaPrecoId
     );
   }
   revalidatePath('/pilotistas');
@@ -143,6 +146,52 @@ function syncLookup(table, nome) {
   db.prepare(`INSERT OR IGNORE INTO ${table} (nome) VALUES (?)`).run(nome);
 }
 
+// ---------- Cálculo de valor (Regra de Preços padrão + tabelas por profissional) ----------
+
+const NIVEL_COL = { Simples: 'preco_simples', Médio: 'preco_medio', Difícil: 'preco_dificil' };
+
+function precoPadrao(tipoPecaId, nivel) {
+  const col = NIVEL_COL[nivel];
+  if (!tipoPecaId || !col) return null;
+  const tipo = db.prepare(`SELECT ${col} AS preco FROM tipos_peca WHERE id = ?`).get(tipoPecaId);
+  return tipo?.preco ?? null;
+}
+
+// Preço na tabela custom da modelista/pilotista, com fallback pra Regra de
+// Preços padrão em qualquer campo que ela não tenha preenchido (tabela nasce
+// como cópia da padrão, mas tipos de peça criados depois não entram sozinhos).
+function precoComFallback(tabelaPrecoId, tipoPecaId, nivel) {
+  const col = NIVEL_COL[nivel];
+  if (!tabelaPrecoId || !tipoPecaId || !col) return precoPadrao(tipoPecaId, nivel);
+  const item = db
+    .prepare(`SELECT ${col} AS preco FROM tabela_preco_itens WHERE tabela_id = ? AND tipo_peca_id = ?`)
+    .get(tabelaPrecoId, tipoPecaId);
+  return item?.preco ?? precoPadrao(tipoPecaId, nivel);
+}
+
+// Pilotista sempre tem valor calculado (comportamento de sempre): usa a
+// tabela dela se tiver uma vinculada, senão a Regra de Preços padrão.
+function calcularValorPilotista(pilotistaId, tipoPecaId, nivel) {
+  if (!pilotistaId) return null;
+  const pilotista = db.prepare('SELECT tabela_preco_id FROM pilotistas WHERE id = ?').get(pilotistaId);
+  return precoComFallback(pilotista?.tabela_preco_id, tipoPecaId, nivel);
+}
+
+// Modelista só tem valor calculado se a admin vinculou uma tabela de preço a
+// ela — modelista nunca foi paga automaticamente por esse app antes, então
+// sem tabela vinculada o campo continua null (não passa a cobrar sozinho).
+function calcularValorModelista(modelistaId, tipoPecaId, nivel) {
+  if (!modelistaId) return null;
+  const modelista = db.prepare('SELECT tabela_preco_id FROM modelistas WHERE id = ?').get(modelistaId);
+  if (!modelista?.tabela_preco_id) return null;
+  return precoComFallback(modelista.tabela_preco_id, tipoPecaId, nivel);
+}
+
+function resolverModelistaId(nome) {
+  if (!nome) return null;
+  return db.prepare('SELECT id FROM modelistas WHERE nome = ?').get(nome)?.id ?? null;
+}
+
 export async function salvarClienteAction(formData) {
   requireLogin();
   const id = formData.get('id');
@@ -157,16 +206,90 @@ export async function salvarClienteAction(formData) {
 }
 
 export async function salvarModelistaAction(formData) {
-  requireLogin();
+  const session = requireLogin();
   const id = formData.get('id');
   const nome = formData.get('nome')?.toString().trim();
+  // Vincular tabela de preço mexe em valor calculado — só a admin decide isso,
+  // mesmo que assistente também possa cadastrar/renomear modelista.
+  const isAdmin = session.role === 'admin';
   if (!nome) return;
   if (id) {
-    db.prepare('UPDATE modelistas SET nome=? WHERE id=?').run(nome, id);
+    if (isAdmin) {
+      const tabelaPrecoId = Number(formData.get('tabela_preco_id')) || null;
+      db.prepare('UPDATE modelistas SET nome=?, tabela_preco_id=? WHERE id=?').run(nome, tabelaPrecoId, id);
+    } else {
+      db.prepare('UPDATE modelistas SET nome=? WHERE id=?').run(nome, id);
+    }
   } else {
-    db.prepare('INSERT OR IGNORE INTO modelistas (nome) VALUES (?)').run(nome);
+    const tabelaPrecoId = isAdmin ? Number(formData.get('tabela_preco_id')) || null : null;
+    db.prepare('INSERT OR IGNORE INTO modelistas (nome, tabela_preco_id) VALUES (?,?)').run(nome, tabelaPrecoId);
   }
   revalidatePath('/modelistas');
+}
+
+// ---------- TABELAS DE PREÇO (por modelista/pilotista) ----------
+
+export async function criarTabelaPrecoAction(formData) {
+  requireAdmin();
+  const nome = formData.get('nome')?.toString().trim();
+  if (!nome) return;
+
+  const info = db.prepare('INSERT INTO tabelas_preco (nome) VALUES (?)').run(nome);
+  // Começa com os mesmos valores da Regra de Preços padrão, pra não nascer
+  // zerada — a admin só ajusta o que for diferente pra essa modelista/pilotista.
+  const tipos = db.prepare('SELECT * FROM tipos_peca').all();
+  const insertItem = db.prepare(
+    'INSERT INTO tabela_preco_itens (tabela_id, tipo_peca_id, preco_simples, preco_medio, preco_dificil) VALUES (?,?,?,?,?)'
+  );
+  for (const t of tipos) {
+    insertItem.run(info.lastInsertRowid, t.id, t.preco_simples, t.preco_medio, t.preco_dificil);
+  }
+  revalidatePath('/precos');
+  redirect(`/precos/tabela/${info.lastInsertRowid}`);
+}
+
+export async function renomearTabelaPrecoAction(formData) {
+  requireAdmin();
+  const id = Number(formData.get('id'));
+  const nome = formData.get('nome')?.toString().trim();
+  if (!id || !nome) return;
+  db.prepare('UPDATE tabelas_preco SET nome=? WHERE id=?').run(nome, id);
+  revalidatePath('/precos');
+  revalidatePath(`/precos/tabela/${id}`);
+}
+
+export async function excluirTabelaPrecoAction(formData) {
+  requireAdmin();
+  const id = Number(formData.get('id'));
+  if (!id) return;
+  const emUso =
+    db.prepare('SELECT COUNT(*) AS n FROM pilotistas WHERE tabela_preco_id = ?').get(id).n +
+    db.prepare('SELECT COUNT(*) AS n FROM modelistas WHERE tabela_preco_id = ?').get(id).n;
+  if (emUso > 0) {
+    throw new Error('Essa tabela está em uso por uma modelista/pilotista. Troque a tabela dela antes de excluir.');
+  }
+  db.prepare('DELETE FROM tabela_preco_itens WHERE tabela_id = ?').run(id);
+  db.prepare('DELETE FROM tabelas_preco WHERE id = ?').run(id);
+  revalidatePath('/precos');
+}
+
+export async function salvarTabelaPrecoItemAction(formData) {
+  requireAdmin();
+  const tabelaId = Number(formData.get('tabela_id'));
+  const tipoPecaId = Number(formData.get('tipo_peca_id'));
+  const parse = (v) => (v === null || v === '' ? null : Number(v));
+  const preco_simples = parse(formData.get('preco_simples'));
+  const preco_medio = parse(formData.get('preco_medio'));
+  const preco_dificil = parse(formData.get('preco_dificil'));
+  if (!tabelaId || !tipoPecaId) return;
+
+  db.prepare(
+    `INSERT INTO tabela_preco_itens (tabela_id, tipo_peca_id, preco_simples, preco_medio, preco_dificil)
+     VALUES (?,?,?,?,?)
+     ON CONFLICT(tabela_id, tipo_peca_id) DO UPDATE SET
+       preco_simples=excluded.preco_simples, preco_medio=excluded.preco_medio, preco_dificil=excluded.preco_dificil`
+  ).run(tabelaId, tipoPecaId, preco_simples, preco_medio, preco_dificil);
+  revalidatePath(`/precos/tabela/${tabelaId}`);
 }
 
 export async function salvarTamanhoAction(formData) {
@@ -201,17 +324,18 @@ export async function criarLancamentoAction(formData) {
 
   if (!data || !tipo_peca_id || !pilotista_id || !nivel) return;
 
-  let valor = null;
-  const tipo = db.prepare('SELECT * FROM tipos_peca WHERE id = ?').get(tipo_peca_id);
-  if (tipo) {
-    const map = { Simples: tipo.preco_simples, Médio: tipo.preco_medio, Difícil: tipo.preco_dificil };
-    valor = map[nivel] ?? null;
-  }
+  syncLookup('clientes', cliente);
+  syncLookup('tamanhos', tamanho);
+  syncLookup('modelistas', nome_modelista);
+  const modelista_id = resolverModelistaId(nome_modelista);
+
+  const valor = calcularValorPilotista(pilotista_id, tipo_peca_id, nivel);
+  const valor_modelista = calcularValorModelista(modelista_id, tipo_peca_id, nivel);
 
   db.prepare(
     `INSERT INTO lancamentos
-      (data, referencia, cliente, descricao_produto, tipo_peca_id, tamanho, nivel, nome_modelista, pilotista_id, aprovacao, observacoes, valor, mes_ano)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
+      (data, referencia, cliente, descricao_produto, tipo_peca_id, tamanho, nivel, nome_modelista, modelista_id, pilotista_id, aprovacao, observacoes, valor, valor_modelista, mes_ano)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   ).run(
     data,
     referencia,
@@ -221,16 +345,14 @@ export async function criarLancamentoAction(formData) {
     tamanho,
     nivel,
     nome_modelista,
+    modelista_id,
     pilotista_id,
     aprovacao,
     observacoes,
     valor,
+    valor_modelista,
     data.slice(0, 7)
   );
-
-  syncLookup('clientes', cliente);
-  syncLookup('tamanhos', tamanho);
-  syncLookup('modelistas', nome_modelista);
 
   revalidatePath('/lancamentos');
   redirect('/lancamentos');
@@ -258,20 +380,27 @@ export async function atualizarLancamentoAction(formData) {
   const aprovacao = formData.get('aprovacao')?.toString() || 'Pendente';
   const observacoes = formData.get('observacoes')?.toString() || '';
 
+  syncLookup('clientes', cliente);
+  syncLookup('tamanhos', tamanho);
+  syncLookup('modelistas', nome_modelista);
+  const modelista_id = resolverModelistaId(nome_modelista);
+
   let valor = existente.valor;
+  let valor_modelista = existente.valor_modelista;
   if (session.role === 'admin') {
     const valorForm = formData.get('valor');
-    if (valorForm !== null && valorForm !== '') {
-      valor = Number(valorForm);
-    } else {
-      const tipo = db.prepare('SELECT * FROM tipos_peca WHERE id = ?').get(tipo_peca_id);
-      const map = { Simples: tipo?.preco_simples, Médio: tipo?.preco_medio, Difícil: tipo?.preco_dificil };
-      valor = map[nivel] ?? null;
-    }
+    valor = valorForm !== null && valorForm !== ''
+      ? Number(valorForm)
+      : calcularValorPilotista(pilotista_id, tipo_peca_id, nivel);
+
+    const valorModelistaForm = formData.get('valor_modelista');
+    valor_modelista = valorModelistaForm !== null && valorModelistaForm !== ''
+      ? Number(valorModelistaForm)
+      : calcularValorModelista(modelista_id, tipo_peca_id, nivel);
   }
 
   db.prepare(
-    `UPDATE lancamentos SET data=?, referencia=?, cliente=?, descricao_produto=?, tipo_peca_id=?, tamanho=?, nivel=?, nome_modelista=?, pilotista_id=?, aprovacao=?, observacoes=?, valor=?, mes_ano=?
+    `UPDATE lancamentos SET data=?, referencia=?, cliente=?, descricao_produto=?, tipo_peca_id=?, tamanho=?, nivel=?, nome_modelista=?, modelista_id=?, pilotista_id=?, aprovacao=?, observacoes=?, valor=?, valor_modelista=?, mes_ano=?
      WHERE id=?`
   ).run(
     data,
@@ -282,17 +411,15 @@ export async function atualizarLancamentoAction(formData) {
     tamanho,
     nivel,
     nome_modelista,
+    modelista_id,
     pilotista_id,
     aprovacao,
     observacoes,
     valor,
+    valor_modelista,
     data.slice(0, 7),
     id
   );
-
-  syncLookup('clientes', cliente);
-  syncLookup('tamanhos', tamanho);
-  syncLookup('modelistas', nome_modelista);
 
   revalidatePath('/lancamentos');
   redirect('/lancamentos');

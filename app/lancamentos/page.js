@@ -49,7 +49,8 @@ export default function LancamentosPage() {
                 <th>Modelista</th>
                 <th>Pilotista</th>
                 <th>Aprovação</th>
-                {isAdmin && <th>Valor</th>}
+                {isAdmin && <th>Valor Pilotista</th>}
+                {isAdmin && <th>Valor Modelista</th>}
                 <th></th>
               </tr>
             </thead>
@@ -69,6 +70,7 @@ export default function LancamentosPage() {
                     <AprovacaoBadge status={r.aprovacao} />
                   </td>
                   {isAdmin && <td>{r.valor != null ? `R$ ${r.valor.toFixed(2)}` : '-'}</td>}
+                  {isAdmin && <td>{r.valor_modelista != null ? `R$ ${r.valor_modelista.toFixed(2)}` : '-'}</td>}
                   <td>
                     <Link href={`/lancamentos/${r.id}`}>Editar</Link>
                   </td>
