@@ -114,8 +114,20 @@ export default function EditarLancamentoPage({ params }) {
         </label>
         {isAdmin && (
           <label>
-            Valor (R$)
+            Valor Pilotista (R$)
             <input type="number" step="0.01" name="valor" defaultValue={row.valor ?? ''} />
+          </label>
+        )}
+        {isAdmin && (
+          <label>
+            Valor Modelista (R$)
+            <input
+              type="number"
+              step="0.01"
+              name="valor_modelista"
+              defaultValue={row.valor_modelista ?? ''}
+              placeholder="vazio = recalcula pela tabela dela, se tiver"
+            />
           </label>
         )}
         <label className="field-full">
