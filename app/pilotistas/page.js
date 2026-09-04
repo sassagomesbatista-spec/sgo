@@ -13,6 +13,21 @@ export default function PilotistasPage() {
 
   return (
     <div className="card">
+      {/* DEBUG TEMPORÁRIO — remover depois de resolver o sumiço da tabela no seletor */}
+      <pre
+        style={{
+          background: '#ffe0e0',
+          border: '3px solid red',
+          padding: 12,
+          fontSize: 12,
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-all',
+        }}
+      >
+        DEBUG tabelas_preco vistas por esta página agora ({new Date().toISOString()}):{'\n'}
+        {JSON.stringify(tabelas, null, 2)}
+      </pre>
+
       <h1>
         <span className="card-icon">
           <Icon name="scissors" />
