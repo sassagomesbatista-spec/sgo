@@ -244,7 +244,12 @@ export async function criarTabelaPrecoAction(formData) {
   for (const t of tipos) {
     insertItem.run(info.lastInsertRowid, t.id, t.preco_simples, t.preco_medio, t.preco_dificil);
   }
+  // Também precisa revalidar Pilotistas/Modelistas — o seletor "Tabela de
+  // Preço" deles lê a lista de tabelas_preco, e sem isso ficava mostrando a
+  // versão antiga (sem essa tabela nova) até um refresh manual da página.
   revalidatePath('/precos');
+  revalidatePath('/pilotistas');
+  revalidatePath('/modelistas');
   redirect(`/precos/tabela/${info.lastInsertRowid}`);
 }
 
@@ -256,6 +261,8 @@ export async function renomearTabelaPrecoAction(formData) {
   db.prepare('UPDATE tabelas_preco SET nome=? WHERE id=?').run(nome, id);
   revalidatePath('/precos');
   revalidatePath(`/precos/tabela/${id}`);
+  revalidatePath('/pilotistas');
+  revalidatePath('/modelistas');
 }
 
 export async function excluirTabelaPrecoAction(formData) {
@@ -271,6 +278,8 @@ export async function excluirTabelaPrecoAction(formData) {
   db.prepare('DELETE FROM tabela_preco_itens WHERE tabela_id = ?').run(id);
   db.prepare('DELETE FROM tabelas_preco WHERE id = ?').run(id);
   revalidatePath('/precos');
+  revalidatePath('/pilotistas');
+  revalidatePath('/modelistas');
 }
 
 export async function salvarTabelaPrecoItemAction(formData) {
