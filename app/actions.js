@@ -282,6 +282,44 @@ export async function excluirTabelaPrecoAction(formData) {
   revalidatePath('/modelistas');
 }
 
+// Vincula/desvincula pilotistas e modelistas a uma tabela, tudo de uma vez,
+// direto na tela da própria tabela — antes só dava pra vincular indo em
+// Pilotistas/Modelistas separadamente, o que fazia parecer que nada estava
+// conectado com nada.
+export async function vincularTabelaPrecoAction(formData) {
+  requireAdmin();
+  const tabelaId = Number(formData.get('tabela_id'));
+  if (!tabelaId) return;
+
+  const pilotistaIds = formData.getAll('pilotista_ids').map(Number);
+  const modelistaIds = formData.getAll('modelista_ids').map(Number);
+
+  const todosPilotistas = db.prepare('SELECT id, tabela_preco_id FROM pilotistas').all();
+  for (const p of todosPilotistas) {
+    const marcada = pilotistaIds.includes(p.id);
+    if (marcada && p.tabela_preco_id !== tabelaId) {
+      db.prepare('UPDATE pilotistas SET tabela_preco_id=? WHERE id=?').run(tabelaId, p.id);
+    } else if (!marcada && p.tabela_preco_id === tabelaId) {
+      db.prepare('UPDATE pilotistas SET tabela_preco_id=NULL WHERE id=?').run(p.id);
+    }
+  }
+
+  const todosModelistas = db.prepare('SELECT id, tabela_preco_id FROM modelistas').all();
+  for (const m of todosModelistas) {
+    const marcada = modelistaIds.includes(m.id);
+    if (marcada && m.tabela_preco_id !== tabelaId) {
+      db.prepare('UPDATE modelistas SET tabela_preco_id=? WHERE id=?').run(tabelaId, m.id);
+    } else if (!marcada && m.tabela_preco_id === tabelaId) {
+      db.prepare('UPDATE modelistas SET tabela_preco_id=NULL WHERE id=?').run(m.id);
+    }
+  }
+
+  revalidatePath(`/precos/tabela/${tabelaId}`);
+  revalidatePath('/precos');
+  revalidatePath('/pilotistas');
+  revalidatePath('/modelistas');
+}
+
 export async function salvarTabelaPrecoItemAction(formData) {
   requireAdmin();
   const tabelaId = Number(formData.get('tabela_id'));

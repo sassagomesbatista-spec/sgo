@@ -6,6 +6,7 @@ import {
   salvarTabelaPrecoItemAction,
   renomearTabelaPrecoAction,
   excluirTabelaPrecoAction,
+  vincularTabelaPrecoAction,
 } from '@/app/actions';
 import ConfirmForm from '@/app/ConfirmForm';
 import Icon from '@/app/icons';
@@ -23,12 +24,12 @@ export default function TabelaPrecoPage({ params }) {
     .all(tabela.id);
   const itemPorTipo = Object.fromEntries(itens.map((i) => [i.tipo_peca_id, i]));
 
-  const pilotistas = db
-    .prepare('SELECT nome FROM pilotistas WHERE tabela_preco_id = ? ORDER BY nome')
-    .all(tabela.id);
-  const modelistas = db
-    .prepare('SELECT nome FROM modelistas WHERE tabela_preco_id = ? ORDER BY nome')
-    .all(tabela.id);
+  const todosPilotistas = db.prepare('SELECT * FROM pilotistas ORDER BY nome').all();
+  const todosModelistas = db.prepare('SELECT * FROM modelistas ORDER BY nome').all();
+  const nomesVinculados = [
+    ...todosPilotistas.filter((p) => p.tabela_preco_id === tabela.id).map((p) => p.nome),
+    ...todosModelistas.filter((m) => m.tabela_preco_id === tabela.id).map((m) => m.nome),
+  ];
 
   return (
     <div className="card">
@@ -46,12 +47,76 @@ export default function TabelaPrecoPage({ params }) {
         padrão pra aquele tipo de peça/nível.
       </p>
 
-      {(pilotistas.length > 0 || modelistas.length > 0) && (
-        <p className="subtitle">
-          Vinculada a:{' '}
-          {[...pilotistas.map((p) => p.nome), ...modelistas.map((m) => m.nome)].join(', ')}
+      <div
+        style={{
+          background: 'var(--surface, #faf8f5)',
+          border: '1px solid var(--border, #e5ded4)',
+          borderRadius: 12,
+          padding: '16px 18px',
+          marginBottom: 20,
+        }}
+      >
+        <h2 style={{ marginTop: 0 }}>Quem usa essa tabela</h2>
+        <p className="subtitle" style={{ marginTop: -4 }}>
+          Marca quem deve usar os preços daqui em vez da Regra padrão. Já salva ao clicar.
         </p>
-      )}
+        {nomesVinculados.length > 0 && (
+          <p style={{ fontWeight: 600, marginBottom: 8 }}>Vinculada a: {nomesVinculados.join(', ')}</p>
+        )}
+        {todosPilotistas.length === 0 && todosModelistas.length === 0 && (
+          <p className="subtitle">Nenhuma pilotista/modelista cadastrada ainda.</p>
+        )}
+        <form action={vincularTabelaPrecoAction} className="inline-form" style={{ flexWrap: 'wrap', gap: 16 }}>
+          <input type="hidden" name="tabela_id" value={tabela.id} />
+          {todosPilotistas.length > 0 && (
+            <div>
+              <p style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-light)', marginBottom: 4 }}>
+                Pilotistas
+              </p>
+              {todosPilotistas.map((p) => (
+                <label key={p.id} className="checkbox" style={{ display: 'block', marginBottom: 4 }}>
+                  <input
+                    type="checkbox"
+                    name="pilotista_ids"
+                    value={p.id}
+                    defaultChecked={p.tabela_preco_id === tabela.id}
+                  />{' '}
+                  {p.nome}
+                  {p.tabela_preco_id && p.tabela_preco_id !== tabela.id && (
+                    <span style={{ fontSize: 11, color: 'var(--text-light)' }}> (em outra tabela)</span>
+                  )}
+                </label>
+              ))}
+            </div>
+          )}
+          {todosModelistas.length > 0 && (
+            <div>
+              <p style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-light)', marginBottom: 4 }}>
+                Modelistas
+              </p>
+              {todosModelistas.map((m) => (
+                <label key={m.id} className="checkbox" style={{ display: 'block', marginBottom: 4 }}>
+                  <input
+                    type="checkbox"
+                    name="modelista_ids"
+                    value={m.id}
+                    defaultChecked={m.tabela_preco_id === tabela.id}
+                  />{' '}
+                  {m.nome}
+                  {m.tabela_preco_id && m.tabela_preco_id !== tabela.id && (
+                    <span style={{ fontSize: 11, color: 'var(--text-light)' }}> (em outra tabela)</span>
+                  )}
+                </label>
+              ))}
+            </div>
+          )}
+          {(todosPilotistas.length > 0 || todosModelistas.length > 0) && (
+            <button className="btn-sm" type="submit" style={{ alignSelf: 'flex-start' }}>
+              Salvar Vínculos
+            </button>
+          )}
+        </form>
+      </div>
 
       <div className="table-wrap">
         <table>
