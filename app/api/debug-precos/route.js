@@ -37,3 +37,4 @@ export async function GET() {
 
   return NextResponse.json({ pilotistas, modelistas, tabelas, itens, ultimosLancamentos });
 }
+// retrigger
