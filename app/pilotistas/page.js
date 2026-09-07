@@ -41,6 +41,7 @@ export default function PilotistasPage({ searchParams }) {
               <th>Nome</th>
               <th>Contato</th>
               <th>Tabela de Preço</th>
+              <th>Carga horária/dia (min)</th>
               <th>Login de acesso</th>
               <th>Ativo</th>
               <th></th>
@@ -49,7 +50,7 @@ export default function PilotistasPage({ searchParams }) {
           <tbody>
             {pilotistas.map((p) => (
               <tr key={p.id}>
-                <td colSpan={6}>
+                <td colSpan={7}>
                   <form action={salvarPilotistaAction} className="inline-form">
                     <input type="hidden" name="id" value={p.id} />
                     <input name="nome" defaultValue={p.nome} required />
@@ -60,6 +61,12 @@ export default function PilotistasPage({ searchParams }) {
                         <option key={t.id} value={t.id}>{t.nome}</option>
                       ))}
                     </select>
+                    <input
+                      type="number"
+                      name="carga_horaria_diaria_min"
+                      defaultValue={p.carga_horaria_diaria_min ?? 480}
+                      title="Carga horária diária (minutos) — usada pra calcular a eficiência do dia"
+                    />
                     <input
                       name="login_usuario"
                       defaultValue={p.login_usuario || ''}
@@ -102,6 +109,10 @@ export default function PilotistasPage({ searchParams }) {
               <option key={t.id} value={t.id}>{t.nome}</option>
             ))}
           </select>
+        </label>
+        <label>
+          Carga horária diária (min)
+          <input type="number" name="carga_horaria_diaria_min" defaultValue={480} />
         </label>
         <label>
           Usuário de acesso (celular)

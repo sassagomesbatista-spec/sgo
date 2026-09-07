@@ -14,6 +14,15 @@ function fmtTempo(segundos) {
   return h > 0 ? `${h}:${pad(m)}:${pad(ss)}` : `${pad(m)}:${pad(ss)}`;
 }
 
+// Faixas de eficiência (SAM): peças produzidas x tempo padrão / carga
+// horária do dia x 100 — método padrão da indústria de confecção.
+function corEficiencia(pct) {
+  if (pct == null) return '';
+  if (pct >= 100) return 'efic-boa';
+  if (pct >= 75) return 'efic-media';
+  return 'efic-baixa';
+}
+
 export default function DashboardLive({ initial }) {
   const [status, setStatus] = useState(initial);
   const [tick, setTick] = useState(Date.now());
@@ -65,6 +74,9 @@ export default function DashboardLive({ initial }) {
             <div className="live-card-bottom">
               <span>{l.hoje.pecas} peça(s) hoje</span>
               <span>R$ {l.hoje.valor.toFixed(2)}</span>
+              <span className={corEficiencia(l.hoje.eficienciaPct)}>
+                {l.hoje.eficienciaPct != null ? `${l.hoje.eficienciaPct}% efic.` : ''}
+              </span>
             </div>
           </div>
         );
@@ -81,6 +93,9 @@ export default function DashboardLive({ initial }) {
               <span className="subtitle" style={{ margin: 0 }}>
                 {l.filaRestante > 0 ? `${l.filaRestante} na fila` : 'fila vazia'} · {l.hoje.pecas} hoje · R${' '}
                 {l.hoje.valor.toFixed(2)}
+                {l.hoje.eficienciaPct != null && (
+                  <span className={corEficiencia(l.hoje.eficienciaPct)}> · {l.hoje.eficienciaPct}% efic.</span>
+                )}
               </span>
             </div>
           ))}

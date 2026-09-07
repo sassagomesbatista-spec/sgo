@@ -19,6 +19,9 @@ const ALIASES = {
   preco_simples: ['preco simples', 'simples'],
   preco_medio: ['preco medio', 'medio'],
   preco_dificil: ['preco dificil', 'dificil'],
+  tempo_padrao_simples: ['tempo padrao simples', 'tempo simples', 'sam simples'],
+  tempo_padrao_medio: ['tempo padrao medio', 'tempo medio', 'sam medio'],
+  tempo_padrao_dificil: ['tempo padrao dificil', 'tempo dificil', 'sam dificil'],
 };
 
 function mapLinha(row) {
@@ -35,6 +38,9 @@ function mapLinha(row) {
     preco_simples: num(achar(ALIASES.preco_simples)),
     preco_medio: num(achar(ALIASES.preco_medio)),
     preco_dificil: num(achar(ALIASES.preco_dificil)),
+    tempo_padrao_simples: num(achar(ALIASES.tempo_padrao_simples)),
+    tempo_padrao_medio: num(achar(ALIASES.tempo_padrao_medio)),
+    tempo_padrao_dificil: num(achar(ALIASES.tempo_padrao_dificil)),
   };
 }
 

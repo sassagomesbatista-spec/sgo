@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition, useRef } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import Icon from '@/app/icons';
 import {
   iniciarExecucaoAction,
@@ -21,12 +21,26 @@ function fmtTempo(segundos) {
   return h > 0 ? `${h}:${pad(m)}:${pad(ss)}` : `${pad(m)}:${pad(ss)}`;
 }
 
+function fmtMin(min) {
+  if (min == null) return null;
+  return min < 60 ? `${min.toFixed(min % 1 ? 1 : 0)} min` : fmtTempo(min * 60);
+}
+
+// Faixas de eficiência inspiradas no padrão da indústria de confecção
+// (SAM: peças produzidas x tempo padrão / tempo trabalhado x 100).
+function corEficiencia(pct) {
+  if (pct == null) return '';
+  if (pct >= 100) return 'efic-boa';
+  if (pct >= 75) return 'efic-media';
+  return 'efic-baixa';
+}
+
 export default function PilotagemLive({ initial }) {
   const [status, setStatus] = useState(initial);
   const [tick, setTick] = useState(Date.now());
   const [motivoPausa, setMotivoPausa] = useState('');
+  const [resumoFinalizado, setResumoFinalizado] = useState(null);
   const [pending, startTransition] = useTransition();
-  const abortRef = useRef(null);
 
   async function recarregar() {
     try {
@@ -54,10 +68,19 @@ export default function PilotagemLive({ initial }) {
     });
   }
 
+  function finalizar() {
+    startTransition(async () => {
+      const resultado = await finalizarExecucaoAction();
+      if (resultado) setResumoFinalizado(resultado);
+      await recarregar();
+    });
+  }
+
   const exec = status.execucaoAtual;
   const proxima = status.proximaOrdem;
 
   let elapsedLabel = null;
+  let decorridoSeg = 0;
   if (exec) {
     const inicioMs = new Date(exec.iniciado_em).getTime();
     let pausadoMs = exec.segundos_pausados * 1000;
@@ -65,8 +88,10 @@ export default function PilotagemLive({ initial }) {
       pausadoMs += tick - new Date(exec.pausa_iniciada_em).getTime();
     }
     const decorridoMs = Math.max(0, tick - inicioMs - pausadoMs);
-    elapsedLabel = fmtTempo(decorridoMs / 1000);
+    decorridoSeg = decorridoMs / 1000;
+    elapsedLabel = fmtTempo(decorridoSeg);
   }
+  const acimaDaMeta = exec?.tempo_padrao_min != null && decorridoSeg / 60 > exec.tempo_padrao_min;
 
   return (
     <div>
@@ -87,12 +112,57 @@ export default function PilotagemLive({ initial }) {
         </div>
         <div className="stat-card">
           <div className="stat-icon">
+            <Icon name="clock" />
+          </div>
+          <span className="stat-label">Eficiência hoje</span>
+          <span className={`stat-value ${corEficiencia(status.hoje.eficienciaPct)}`}>
+            {status.hoje.eficienciaPct != null ? `${status.hoje.eficienciaPct}%` : '—'}
+          </span>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">
             <Icon name="boxes" />
           </div>
           <span className="stat-label">Na fila</span>
           <span className="stat-value">{status.filaRestante}</span>
         </div>
       </div>
+
+      {resumoFinalizado && (
+        <div className="card resumo-card">
+          <div className="form-section-label">Peça finalizada</div>
+          <h2 style={{ margin: '10px 0 2px' }}>{resumoFinalizado.tipo_nome}</h2>
+          <div className="resumo-grid">
+            <div>
+              <span className="stat-label">Tempo gasto</span>
+              <div className="resumo-valor">{fmtTempo(resumoFinalizado.segundosTrabalhados)}</div>
+            </div>
+            {resumoFinalizado.tempoPadraoMin != null && (
+              <div>
+                <span className="stat-label">Tempo padrão</span>
+                <div className="resumo-valor">{fmtMin(resumoFinalizado.tempoPadraoMin)}</div>
+              </div>
+            )}
+            {resumoFinalizado.eficienciaPct != null && (
+              <div>
+                <span className="stat-label">Eficiência</span>
+                <div className={`resumo-valor ${corEficiencia(resumoFinalizado.eficienciaPct)}`}>
+                  {resumoFinalizado.eficienciaPct}%
+                </div>
+              </div>
+            )}
+            {resumoFinalizado.valor != null && (
+              <div>
+                <span className="stat-label">Valor</span>
+                <div className="resumo-valor">R$ {resumoFinalizado.valor.toFixed(2)}</div>
+              </div>
+            )}
+          </div>
+          <button type="button" className="btn-sm" style={{ marginTop: 14 }} onClick={() => setResumoFinalizado(null)}>
+            OK
+          </button>
+        </div>
+      )}
 
       {exec && (
         <div className="card timer-card">
@@ -101,7 +171,14 @@ export default function PilotagemLive({ initial }) {
           <p className="subtitle" style={{ marginBottom: 4 }}>
             {[exec.referencia, exec.cliente, exec.tamanho, exec.nivel].filter(Boolean).join(' · ')}
           </p>
-          <div className={`timer-display ${exec.pausada ? 'timer-paused' : ''}`}>{elapsedLabel}</div>
+          <div className={`timer-display ${exec.pausada ? 'timer-paused' : ''} ${acimaDaMeta ? 'timer-over' : ''}`}>
+            {elapsedLabel}
+          </div>
+          {exec.tempo_padrao_min != null && (
+            <p className="subtitle" style={{ marginTop: -8, marginBottom: 10 }}>
+              Meta: {fmtMin(exec.tempo_padrao_min)} {acimaDaMeta && '· acima do tempo padrão'}
+            </p>
+          )}
           {exec.pausada && (
             <p className="subtitle" style={{ margin: '0 0 8px', color: 'var(--accent-dark)' }}>
               Pausado — {exec.pausa_motivo}
@@ -149,12 +226,7 @@ export default function PilotagemLive({ initial }) {
                 <Icon name="play" /> Retomar
               </button>
             )}
-            <button
-              type="button"
-              className="btn btn-finalizar"
-              disabled={pending}
-              onClick={() => rodar(finalizarExecucaoAction)}
-            >
+            <button type="button" className="btn btn-finalizar" disabled={pending} onClick={finalizar}>
               <Icon name="check" /> Finalizar
             </button>
           </div>
@@ -181,6 +253,7 @@ export default function PilotagemLive({ initial }) {
           </p>
           <p className="subtitle">
             {proxima.quantidade_feita} de {proxima.quantidade} feitas nesse lote
+            {proxima.tempo_padrao_min != null && ` · meta ${fmtMin(proxima.tempo_padrao_min)}`}
           </p>
           <button
             type="button"

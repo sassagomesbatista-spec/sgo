@@ -14,11 +14,22 @@ export async function POST(request) {
   }
 
   const existente = db.prepare('SELECT id FROM tipos_peca WHERE nome = ?');
+  // COALESCE(novo, existente): uma planilha só de preços (sem colunas de
+  // tempo padrão) não apaga o tempo padrão já cadastrado antes, e vice-versa.
   const atualizar = db.prepare(
-    'UPDATE tipos_peca SET preco_simples=?, preco_medio=?, preco_dificil=? WHERE nome=?'
+    `UPDATE tipos_peca SET
+      preco_simples=COALESCE(?, preco_simples),
+      preco_medio=COALESCE(?, preco_medio),
+      preco_dificil=COALESCE(?, preco_dificil),
+      tempo_padrao_simples=COALESCE(?, tempo_padrao_simples),
+      tempo_padrao_medio=COALESCE(?, tempo_padrao_medio),
+      tempo_padrao_dificil=COALESCE(?, tempo_padrao_dificil)
+     WHERE nome=?`
   );
   const inserir = db.prepare(
-    'INSERT INTO tipos_peca (nome, preco_simples, preco_medio, preco_dificil) VALUES (?,?,?,?)'
+    `INSERT INTO tipos_peca
+      (nome, preco_simples, preco_medio, preco_dificil, tempo_padrao_simples, tempo_padrao_medio, tempo_padrao_dificil)
+     VALUES (?,?,?,?,?,?,?)`
   );
 
   let atualizados = 0;
@@ -28,10 +39,26 @@ export async function POST(request) {
       if (!r.nome) continue;
       const jaExiste = existente.get(r.nome);
       if (jaExiste) {
-        atualizar.run(r.preco_simples, r.preco_medio, r.preco_dificil, r.nome);
+        atualizar.run(
+          r.preco_simples,
+          r.preco_medio,
+          r.preco_dificil,
+          r.tempo_padrao_simples,
+          r.tempo_padrao_medio,
+          r.tempo_padrao_dificil,
+          r.nome
+        );
         atualizados += 1;
       } else {
-        inserir.run(r.nome, r.preco_simples, r.preco_medio, r.preco_dificil);
+        inserir.run(
+          r.nome,
+          r.preco_simples,
+          r.preco_medio,
+          r.preco_dificil,
+          r.tempo_padrao_simples,
+          r.tempo_padrao_medio,
+          r.tempo_padrao_dificil
+        );
         criados += 1;
       }
     }

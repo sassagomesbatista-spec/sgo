@@ -38,13 +38,16 @@ export default function PrecosPage() {
               <th>Simples</th>
               <th>Médio</th>
               <th>Difícil</th>
+              <th>Tempo Simples (min)</th>
+              <th>Tempo Médio (min)</th>
+              <th>Tempo Difícil (min)</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             {tipos.map((t) => (
               <tr key={t.id}>
-                <td colSpan={5}>
+                <td colSpan={8}>
                   <form action={salvarTipoPecaAction} className="inline-form">
                     <input type="hidden" name="id" value={t.id} />
                     <input name="nome" defaultValue={t.nome} required />
@@ -69,6 +72,30 @@ export default function PrecosPage() {
                       defaultValue={t.preco_dificil ?? ''}
                       placeholder="R$"
                     />
+                    <input
+                      type="number"
+                      step="0.01"
+                      name="tempo_padrao_simples"
+                      defaultValue={t.tempo_padrao_simples ?? ''}
+                      placeholder="min"
+                      title="Tempo padrão (SAM) — Simples"
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      name="tempo_padrao_medio"
+                      defaultValue={t.tempo_padrao_medio ?? ''}
+                      placeholder="min"
+                      title="Tempo padrão (SAM) — Médio"
+                    />
+                    <input
+                      type="number"
+                      step="0.01"
+                      name="tempo_padrao_dificil"
+                      defaultValue={t.tempo_padrao_dificil ?? ''}
+                      placeholder="min"
+                      title="Tempo padrão (SAM) — Difícil"
+                    />
                     <button className="btn-sm" type="submit">
                       Salvar
                     </button>
@@ -83,8 +110,10 @@ export default function PrecosPage() {
       <h2>Importar Tabela de Preços (Excel)</h2>
       <p className="subtitle">
         Colunas: <strong>Tipo de Peça</strong>, <strong>Preço Simples</strong>,{' '}
-        <strong>Preço Médio</strong>, <strong>Preço Difícil</strong>. Tipo já cadastrado tem os
-        preços atualizados; tipo novo é criado.
+        <strong>Preço Médio</strong>, <strong>Preço Difícil</strong> e, opcionalmente,{' '}
+        <strong>Tempo Padrão Simples/Médio/Difícil</strong> (em minutos — usado pra calcular a
+        eficiência da pilotista). Tipo já cadastrado tem os valores atualizados; tipo novo é
+        criado.
       </p>
       <ImportarPrecosExcel />
 
@@ -105,6 +134,19 @@ export default function PrecosPage() {
         <label>
           Preço Difícil (R$)
           <input type="number" step="0.01" name="preco_dificil" />
+        </label>
+        <div className="form-section-label">Tempo padrão (SAM) — em minutos</div>
+        <label>
+          Tempo Simples (min)
+          <input type="number" step="0.01" name="tempo_padrao_simples" placeholder="ex: 50" />
+        </label>
+        <label>
+          Tempo Médio (min)
+          <input type="number" step="0.01" name="tempo_padrao_medio" placeholder="auto: +20%" />
+        </label>
+        <label>
+          Tempo Difícil (min)
+          <input type="number" step="0.01" name="tempo_padrao_dificil" placeholder="auto: +20%" />
         </label>
         <button className="btn" type="submit">
           Adicionar

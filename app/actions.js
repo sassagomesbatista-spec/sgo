@@ -109,21 +109,20 @@ export async function salvarPilotistaAction(formData) {
   const contato = formData.get('contato')?.toString().trim() || '';
   const ativo = formData.get('ativo') ? 1 : 0;
   const tabelaPrecoId = Number(formData.get('tabela_preco_id')) || null;
+  const cargaHoraria = Number(formData.get('carga_horaria_diaria_min')) || 480;
   if (!nome) return;
 
   let pilotistaId = id ? Number(id) : null;
   if (pilotistaId) {
-    db.prepare('UPDATE pilotistas SET nome=?, contato=?, ativo=?, tabela_preco_id=? WHERE id=?').run(
-      nome,
-      contato,
-      ativo,
-      tabelaPrecoId,
-      pilotistaId
-    );
+    db.prepare(
+      'UPDATE pilotistas SET nome=?, contato=?, ativo=?, tabela_preco_id=?, carga_horaria_diaria_min=? WHERE id=?'
+    ).run(nome, contato, ativo, tabelaPrecoId, cargaHoraria, pilotistaId);
   } else {
     const info = db
-      .prepare('INSERT INTO pilotistas (nome, contato, ativo, tabela_preco_id) VALUES (?,?,?,?)')
-      .run(nome, contato, ativo, tabelaPrecoId);
+      .prepare(
+        'INSERT INTO pilotistas (nome, contato, ativo, tabela_preco_id, carga_horaria_diaria_min) VALUES (?,?,?,?,?)'
+      )
+      .run(nome, contato, ativo, tabelaPrecoId, cargaHoraria);
     pilotistaId = info.lastInsertRowid;
   }
 
@@ -171,6 +170,9 @@ export async function salvarTipoPecaAction(formData) {
   let preco_simples = parse(formData.get('preco_simples'));
   const preco_medio = parse(formData.get('preco_medio'));
   let preco_dificil = parse(formData.get('preco_dificil'));
+  let tempo_simples = parse(formData.get('tempo_padrao_simples'));
+  let tempo_medio = parse(formData.get('tempo_padrao_medio'));
+  let tempo_dificil = parse(formData.get('tempo_padrao_dificil'));
   if (!nome) return;
 
   // Se só o preço Médio for informado, calcula Simples (-5%) e Difícil
@@ -180,14 +182,25 @@ export async function salvarTipoPecaAction(formData) {
     if (preco_dificil == null) preco_dificil = Math.round(preco_medio * 1.2);
   }
 
+  // Tempo padrão (SAM): Simples é a base informada; Médio e Difícil, se não
+  // preenchidos, sobem 20% em cadeia (Médio = Simples +20%, Difícil = Médio
+  // +20%) — mesma lógica que a Samanta descreveu pra pilotagem.
+  if (tempo_simples != null) {
+    if (tempo_medio == null) tempo_medio = Math.round(tempo_simples * 1.2 * 10) / 10;
+    if (tempo_dificil == null) tempo_dificil = Math.round(tempo_medio * 1.2 * 10) / 10;
+  }
+
   if (id) {
     db.prepare(
-      'UPDATE tipos_peca SET nome=?, preco_simples=?, preco_medio=?, preco_dificil=? WHERE id=?'
-    ).run(nome, preco_simples, preco_medio, preco_dificil, id);
+      `UPDATE tipos_peca SET nome=?, preco_simples=?, preco_medio=?, preco_dificil=?,
+        tempo_padrao_simples=?, tempo_padrao_medio=?, tempo_padrao_dificil=? WHERE id=?`
+    ).run(nome, preco_simples, preco_medio, preco_dificil, tempo_simples, tempo_medio, tempo_dificil, id);
   } else {
     db.prepare(
-      'INSERT INTO tipos_peca (nome, preco_simples, preco_medio, preco_dificil) VALUES (?,?,?,?)'
-    ).run(nome, preco_simples, preco_medio, preco_dificil);
+      `INSERT INTO tipos_peca
+        (nome, preco_simples, preco_medio, preco_dificil, tempo_padrao_simples, tempo_padrao_medio, tempo_padrao_dificil)
+       VALUES (?,?,?,?,?,?,?)`
+    ).run(nome, preco_simples, preco_medio, preco_dificil, tempo_simples, tempo_medio, tempo_dificil);
   }
   revalidatePath('/precos');
 }
@@ -202,12 +215,26 @@ function syncLookup(table, nome) {
 // ---------- Cálculo de valor (Regra de Preços padrão + tabelas por profissional) ----------
 
 const NIVEL_COL = { Simples: 'preco_simples', Médio: 'preco_medio', Difícil: 'preco_dificil' };
+const NIVEL_TEMPO_COL = {
+  Simples: 'tempo_padrao_simples',
+  Médio: 'tempo_padrao_medio',
+  Difícil: 'tempo_padrao_dificil',
+};
 
 function precoPadrao(tipoPecaId, nivel) {
   const col = NIVEL_COL[nivel];
   if (!tipoPecaId || !col) return null;
   const tipo = db.prepare(`SELECT ${col} AS preco FROM tipos_peca WHERE id = ?`).get(tipoPecaId);
   return tipo?.preco ?? null;
+}
+
+// SAM (Standard Allowed Minutes) da peça nesse nível — tempo padrão em
+// minutos usado pra calcular eficiência. NULL se ninguém preencheu ainda.
+function tempoPadraoMinutos(tipoPecaId, nivel) {
+  const col = NIVEL_TEMPO_COL[nivel];
+  if (!tipoPecaId || !col) return null;
+  const tipo = db.prepare(`SELECT ${col} AS tempo FROM tipos_peca WHERE id = ?`).get(tipoPecaId);
+  return tipo?.tempo ?? null;
 }
 
 // Preço na tabela custom da modelista/pilotista, com fallback pra Regra de
@@ -722,11 +749,20 @@ export async function finalizarExecucaoAction() {
   const valor = calcularValorPilotista(session.pilotista_id, ordem.tipo_peca_id, ordem.nivel);
   const hoje = fim.slice(0, 10);
 
+  // Eficiência dessa peça (SAM), método padrão da indústria de confecção:
+  // % = (peças produzidas x SAM) / minutos trabalhados x 100 — aqui é 1 peça.
+  const tempoPadraoMin = tempoPadraoMinutos(ordem.tipo_peca_id, ordem.nivel);
+  const minutosTrabalhados = segundosTrabalhados / 60;
+  const eficienciaPct =
+    tempoPadraoMin != null && minutosTrabalhados > 0
+      ? Math.round((tempoPadraoMin / minutosTrabalhados) * 1000) / 10
+      : null;
+
   const info = db
     .prepare(
       `INSERT INTO lancamentos
-        (data, referencia, cliente, descricao_produto, tipo_peca_id, tamanho, nivel, nome_modelista, pilotista_id, aprovacao, observacoes, valor, mes_ano, ordem_id, execucao_id, segundos_trabalhados, segundos_pausados)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+        (data, referencia, cliente, descricao_produto, tipo_peca_id, tamanho, nivel, nome_modelista, pilotista_id, aprovacao, observacoes, valor, mes_ano, ordem_id, execucao_id, segundos_trabalhados, segundos_pausados, tempo_padrao_min, eficiencia_pct)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
     )
     .run(
       hoje,
@@ -745,7 +781,9 @@ export async function finalizarExecucaoAction() {
       ordem.id,
       exec.id,
       segundosTrabalhados,
-      atualizado.segundos_pausados
+      atualizado.segundos_pausados,
+      tempoPadraoMin,
+      eficienciaPct
     );
 
   db.prepare("UPDATE execucoes SET status='finalizada', finalizado_em=?, lancamento_id=? WHERE id=?").run(
@@ -766,6 +804,14 @@ export async function finalizarExecucaoAction() {
   revalidatePath('/dashboard');
   revalidatePath('/lancamentos');
   revalidatePath('/ordens');
+
+  return {
+    tipo_nome: db.prepare('SELECT nome FROM tipos_peca WHERE id = ?').get(ordem.tipo_peca_id)?.nome,
+    segundosTrabalhados,
+    valor,
+    tempoPadraoMin,
+    eficienciaPct,
+  };
 }
 
 // Ela iniciou por engano e quer desfazer — nenhum lançamento existe ainda

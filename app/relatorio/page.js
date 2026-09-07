@@ -50,6 +50,24 @@ export default function RelatorioPage({ searchParams }) {
   }
   const pilotistaSelecionada = pilotistas.find((p) => String(p.id) === String(pilotistaId));
 
+  // Eficiência média por pilotista no mês (SAM): média simples do % de
+  // eficiência de cada peça finalizada que tinha tempo padrão cadastrado.
+  // Peças sem tempo padrão (tipo ainda sem SAM preenchido) não entram na
+  // conta, em vez de puxar a média pra baixo com um "sem dado".
+  const eficienciaSoma = {};
+  const eficienciaN = {};
+  for (const r of rows) {
+    if (r.eficiencia_pct == null) continue;
+    const nome = r.pilotista_nome || 'Sem pilotista';
+    eficienciaSoma[nome] = (eficienciaSoma[nome] || 0) + r.eficiencia_pct;
+    eficienciaN[nome] = (eficienciaN[nome] || 0) + 1;
+  }
+  const eficienciaPorPilotista = Object.keys(eficienciaSoma).map((nome) => ({
+    nome,
+    media: Math.round((eficienciaSoma[nome] / eficienciaN[nome]) * 10) / 10,
+    n: eficienciaN[nome],
+  }));
+
   return (
     <div className="card">
       <h1>
@@ -106,6 +124,8 @@ export default function RelatorioPage({ searchParams }) {
                 <th>Aprovação</th>
                 <th>Valor Pilotista</th>
                 <th>Valor Modelista</th>
+                <th>Tempo</th>
+                <th>Eficiência</th>
               </tr>
             </thead>
             <tbody>
@@ -125,6 +145,12 @@ export default function RelatorioPage({ searchParams }) {
                   </td>
                   <td>R$ {(r.valor || 0).toFixed(2)}</td>
                   <td>{r.valor_modelista != null ? `R$ ${r.valor_modelista.toFixed(2)}` : '-'}</td>
+                  <td>
+                    {r.segundos_trabalhados != null
+                      ? `${Math.round(r.segundos_trabalhados / 60)} min`
+                      : '-'}
+                  </td>
+                  <td>{r.eficiencia_pct != null ? `${r.eficiencia_pct}%` : '-'}</td>
                 </tr>
               ))}
             </tbody>
@@ -145,6 +171,29 @@ export default function RelatorioPage({ searchParams }) {
       <p className="total-geral">
         Total Geral Pilotistas: <strong>R$ {totalGeral.toFixed(2)}</strong>
       </p>
+
+      {eficienciaPorPilotista.length > 0 && (
+        <>
+          <h2>Eficiência Média por Pilotista</h2>
+          <p className="subtitle">
+            Método SAM (padrão da indústria de confecção): peças produzidas × tempo padrão ÷
+            tempo trabalhado × 100. Só entra na conta a peça cujo tipo já tem tempo padrão
+            cadastrado em Preços.
+          </p>
+          <ul className="totals">
+            {eficienciaPorPilotista.map(({ nome, media, n }) => (
+              <li key={nome}>
+                <span>
+                  {nome} <span className="subtitle" style={{ margin: 0 }}>({n} peça{n > 1 ? 's' : ''})</span>
+                </span>
+                <strong className={media >= 100 ? 'efic-boa' : media >= 75 ? 'efic-media' : 'efic-baixa'}>
+                  {media}%
+                </strong>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
 
       {Object.keys(porModelista).length > 0 && (
         <>
