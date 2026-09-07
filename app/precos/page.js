@@ -30,104 +30,91 @@ export default function PrecosPage() {
       </h1>
       <p className="subtitle">Valores usados para calcular automaticamente cada lançamento</p>
 
+      {/* Grid em vez de <table>: cada linha é um <form> de verdade (envolvendo
+          seus próprios campos, do jeito mais simples e confiável de submeter),
+          com display:contents pra ele "desaparecer" do layout e os campos
+          caírem direto nas colunas do grid — sem precisar do truque de
+          associar input a formulário por id, que não é tão confiável. */}
       <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Tipo de Peça</th>
-              <th>Simples (R$)</th>
-              <th>Médio (R$)</th>
-              <th>Difícil (R$)</th>
-              <th>Tempo Simples (min)</th>
-              <th>Tempo Médio (min)</th>
-              <th>Tempo Difícil (min)</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {tipos.map((t) => {
-              const formId = `tipo-${t.id}`;
-              return (
-                <tr key={t.id}>
-                  <td>
-                    <input form={formId} name="nome" defaultValue={t.nome} required />
-                  </td>
-                  <td>
-                    <input
-                      form={formId}
-                      type="number"
-                      step="0.01"
-                      name="preco_simples"
-                      defaultValue={t.preco_simples ?? ''}
-                      placeholder="R$"
-                    />
-                  </td>
-                  <td>
-                    <input
-                      form={formId}
-                      type="number"
-                      step="0.01"
-                      name="preco_medio"
-                      defaultValue={t.preco_medio ?? ''}
-                      placeholder="R$"
-                    />
-                  </td>
-                  <td>
-                    <input
-                      form={formId}
-                      type="number"
-                      step="0.01"
-                      name="preco_dificil"
-                      defaultValue={t.preco_dificil ?? ''}
-                      placeholder="R$"
-                    />
-                  </td>
-                  <td>
-                    <input
-                      form={formId}
-                      type="number"
-                      step="0.01"
-                      name="tempo_padrao_simples"
-                      defaultValue={t.tempo_padrao_simples ?? ''}
-                      placeholder="min"
-                    />
-                  </td>
-                  <td>
-                    <input
-                      form={formId}
-                      type="number"
-                      step="0.01"
-                      name="tempo_padrao_medio"
-                      defaultValue={t.tempo_padrao_medio ?? ''}
-                      placeholder="min"
-                    />
-                  </td>
-                  <td>
-                    <input
-                      form={formId}
-                      type="number"
-                      step="0.01"
-                      name="tempo_padrao_dificil"
-                      defaultValue={t.tempo_padrao_dificil ?? ''}
-                      placeholder="min"
-                    />
-                  </td>
-                  <td>
-                    {/* O <form> fica fora da estrutura da tabela (não pode envolver <td>s
-                        de colunas diferentes) — cada input/botão da linha se liga a ele
-                        pelo atributo form=, assim cada campo fica na coluna certa. */}
-                    <form id={formId} action={salvarTipoPecaAction}>
-                      <input type="hidden" name="id" value={t.id} />
-                    </form>
-                    <button form={formId} className="btn-sm" type="submit">
-                      Salvar
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="grid-table" style={{ gridTemplateColumns: '1.6fr 1fr 1fr 1fr 1fr 1fr 1fr auto' }}>
+          <div className="grid-row grid-header">
+            <div>Tipo de Peça</div>
+            <div>Simples (R$)</div>
+            <div>Médio (R$)</div>
+            <div>Difícil (R$)</div>
+            <div>Tempo Simples (min)</div>
+            <div>Tempo Médio (min)</div>
+            <div>Tempo Difícil (min)</div>
+            <div></div>
+          </div>
+          {tipos.map((t) => (
+            <form key={t.id} action={salvarTipoPecaAction} className="grid-row">
+              <input type="hidden" name="id" value={t.id} />
+              <div>
+                <input name="nome" defaultValue={t.nome} required />
+              </div>
+              <div>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="preco_simples"
+                  defaultValue={t.preco_simples ?? ''}
+                  placeholder="R$"
+                />
+              </div>
+              <div>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="preco_medio"
+                  defaultValue={t.preco_medio ?? ''}
+                  placeholder="R$"
+                />
+              </div>
+              <div>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="preco_dificil"
+                  defaultValue={t.preco_dificil ?? ''}
+                  placeholder="R$"
+                />
+              </div>
+              <div>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="tempo_padrao_simples"
+                  defaultValue={t.tempo_padrao_simples ?? ''}
+                  placeholder="min"
+                />
+              </div>
+              <div>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="tempo_padrao_medio"
+                  defaultValue={t.tempo_padrao_medio ?? ''}
+                  placeholder="min"
+                />
+              </div>
+              <div>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="tempo_padrao_dificil"
+                  defaultValue={t.tempo_padrao_dificil ?? ''}
+                  placeholder="min"
+                />
+              </div>
+              <div>
+                <button className="btn-sm" type="submit">
+                  Salvar
+                </button>
+              </div>
+            </form>
+          ))}
+        </div>
       </div>
 
       <h2>Importar Tabela de Preços (Excel)</h2>
