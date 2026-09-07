@@ -35,9 +35,9 @@ export default function PrecosPage() {
           <thead>
             <tr>
               <th>Tipo de Peça</th>
-              <th>Simples</th>
-              <th>Médio</th>
-              <th>Difícil</th>
+              <th>Simples (R$)</th>
+              <th>Médio (R$)</th>
+              <th>Difícil (R$)</th>
               <th>Tempo Simples (min)</th>
               <th>Tempo Médio (min)</th>
               <th>Tempo Difícil (min)</th>
@@ -45,64 +45,87 @@ export default function PrecosPage() {
             </tr>
           </thead>
           <tbody>
-            {tipos.map((t) => (
-              <tr key={t.id}>
-                <td colSpan={8}>
-                  <form action={salvarTipoPecaAction} className="inline-form">
-                    <input type="hidden" name="id" value={t.id} />
-                    <input name="nome" defaultValue={t.nome} required />
+            {tipos.map((t) => {
+              const formId = `tipo-${t.id}`;
+              return (
+                <tr key={t.id}>
+                  <td>
+                    <input form={formId} name="nome" defaultValue={t.nome} required />
+                  </td>
+                  <td>
                     <input
+                      form={formId}
                       type="number"
                       step="0.01"
                       name="preco_simples"
                       defaultValue={t.preco_simples ?? ''}
                       placeholder="R$"
                     />
+                  </td>
+                  <td>
                     <input
+                      form={formId}
                       type="number"
                       step="0.01"
                       name="preco_medio"
                       defaultValue={t.preco_medio ?? ''}
                       placeholder="R$"
                     />
+                  </td>
+                  <td>
                     <input
+                      form={formId}
                       type="number"
                       step="0.01"
                       name="preco_dificil"
                       defaultValue={t.preco_dificil ?? ''}
                       placeholder="R$"
                     />
+                  </td>
+                  <td>
                     <input
+                      form={formId}
                       type="number"
                       step="0.01"
                       name="tempo_padrao_simples"
                       defaultValue={t.tempo_padrao_simples ?? ''}
                       placeholder="min"
-                      title="Tempo padrão (SAM) — Simples"
                     />
+                  </td>
+                  <td>
                     <input
+                      form={formId}
                       type="number"
                       step="0.01"
                       name="tempo_padrao_medio"
                       defaultValue={t.tempo_padrao_medio ?? ''}
                       placeholder="min"
-                      title="Tempo padrão (SAM) — Médio"
                     />
+                  </td>
+                  <td>
                     <input
+                      form={formId}
                       type="number"
                       step="0.01"
                       name="tempo_padrao_dificil"
                       defaultValue={t.tempo_padrao_dificil ?? ''}
                       placeholder="min"
-                      title="Tempo padrão (SAM) — Difícil"
                     />
-                    <button className="btn-sm" type="submit">
+                  </td>
+                  <td>
+                    {/* O <form> fica fora da estrutura da tabela (não pode envolver <td>s
+                        de colunas diferentes) — cada input/botão da linha se liga a ele
+                        pelo atributo form=, assim cada campo fica na coluna certa. */}
+                    <form id={formId} action={salvarTipoPecaAction}>
+                      <input type="hidden" name="id" value={t.id} />
+                    </form>
+                    <button form={formId} className="btn-sm" type="submit">
                       Salvar
                     </button>
-                  </form>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

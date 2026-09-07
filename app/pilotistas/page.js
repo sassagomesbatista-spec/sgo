@@ -42,51 +42,77 @@ export default function PilotistasPage({ searchParams }) {
               <th>Contato</th>
               <th>Tabela de Preço</th>
               <th>Carga horária/dia (min)</th>
-              <th>Login de acesso</th>
+              <th>Usuário</th>
+              <th>Senha</th>
               <th>Ativo</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {pilotistas.map((p) => (
-              <tr key={p.id}>
-                <td colSpan={7}>
-                  <form action={salvarPilotistaAction} className="inline-form">
-                    <input type="hidden" name="id" value={p.id} />
-                    <input name="nome" defaultValue={p.nome} required />
-                    <input name="contato" defaultValue={p.contato || ''} placeholder="Whatsapp/telefone" />
-                    <select name="tabela_preco_id" defaultValue={p.tabela_preco_id || ''}>
+            {pilotistas.map((p) => {
+              const formId = `pilotista-${p.id}`;
+              return (
+                <tr key={p.id}>
+                  <td>
+                    <input form={formId} name="nome" defaultValue={p.nome} required />
+                  </td>
+                  <td>
+                    <input
+                      form={formId}
+                      name="contato"
+                      defaultValue={p.contato || ''}
+                      placeholder="Whatsapp/telefone"
+                    />
+                  </td>
+                  <td>
+                    <select form={formId} name="tabela_preco_id" defaultValue={p.tabela_preco_id || ''}>
                       <option value="">Regra padrão</option>
                       {tabelas.map((t) => (
                         <option key={t.id} value={t.id}>{t.nome}</option>
                       ))}
                     </select>
+                  </td>
+                  <td>
                     <input
+                      form={formId}
                       type="number"
                       name="carga_horaria_diaria_min"
                       defaultValue={p.carga_horaria_diaria_min ?? 480}
                       title="Carga horária diária (minutos) — usada pra calcular a eficiência do dia"
                     />
+                  </td>
+                  <td>
                     <input
+                      form={formId}
                       name="login_usuario"
                       defaultValue={p.login_usuario || ''}
                       placeholder="usuário de acesso"
                     />
+                  </td>
+                  <td>
                     <input
+                      form={formId}
                       type="password"
                       name="login_senha"
-                      placeholder={p.login_usuario ? 'nova senha (deixe em branco p/ manter)' : 'senha inicial'}
+                      placeholder={p.login_usuario ? 'nova senha (deixar em branco mantém)' : 'senha inicial'}
                     />
+                  </td>
+                  <td>
                     <label className="checkbox">
-                      <input type="checkbox" name="ativo" defaultChecked={!!p.ativo} /> Ativo
+                      <input form={formId} type="checkbox" name="ativo" defaultChecked={!!p.ativo} />
                     </label>
-                    <button className="btn-sm" type="submit">
+                  </td>
+                  <td>
+                    <form id={formId} action={salvarPilotistaAction}>
+                      <input type="hidden" name="id" value={p.id} />
+                    </form>
+                    <button form={formId} className="btn-sm" type="submit">
                       Salvar
                     </button>
-                  </form>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
