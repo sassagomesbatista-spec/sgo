@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import db from '@/lib/db';
-import { getSession } from '@/lib/auth';
+import { getSession, homeFor } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { salvarTipoPecaAction, criarTabelaPrecoAction } from '@/app/actions';
 import Icon from '@/app/icons';
+import ImportarPrecosExcel from './ImportarPrecosExcel';
 
 export default function PrecosPage() {
   const session = getSession();
-  if (session.role !== 'admin') redirect('/lancar');
+  if (session.role !== 'admin') redirect(homeFor(session.role));
 
   const tipos = db.prepare('SELECT * FROM tipos_peca ORDER BY nome').all();
   const tabelas = db
@@ -78,6 +79,14 @@ export default function PrecosPage() {
           </tbody>
         </table>
       </div>
+
+      <h2>Importar Tabela de Preços (Excel)</h2>
+      <p className="subtitle">
+        Colunas: <strong>Tipo de Peça</strong>, <strong>Preço Simples</strong>,{' '}
+        <strong>Preço Médio</strong>, <strong>Preço Difícil</strong>. Tipo já cadastrado tem os
+        preços atualizados; tipo novo é criado.
+      </p>
+      <ImportarPrecosExcel />
 
       <h2>Novo Tipo de Peça</h2>
       <form action={salvarTipoPecaAction} className="form">

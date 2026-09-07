@@ -12,6 +12,7 @@ function currentMonth() {
 
 export default function EditarLancamentoPage({ params }) {
   const session = getSession();
+  if (session.role === 'pilotista') redirect('/pilotagem');
   const row = db.prepare('SELECT * FROM lancamentos WHERE id = ?').get(Number(params.id));
   if (!row) notFound();
 

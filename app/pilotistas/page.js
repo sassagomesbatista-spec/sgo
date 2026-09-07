@@ -1,14 +1,21 @@
 import db from '@/lib/db';
-import { getSession } from '@/lib/auth';
+import { getSession, homeFor } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { salvarPilotistaAction } from '@/app/actions';
 import Icon from '@/app/icons';
 
-export default function PilotistasPage() {
+export default function PilotistasPage({ searchParams }) {
   const session = getSession();
-  if (session.role !== 'admin') redirect('/lancar');
+  if (session.role !== 'admin') redirect(homeFor(session.role));
 
-  const pilotistas = db.prepare('SELECT * FROM pilotistas ORDER BY ativo DESC, nome').all();
+  const pilotistas = db
+    .prepare(
+      `SELECT p.*, u.usuario AS login_usuario
+       FROM pilotistas p
+       LEFT JOIN usuarios u ON u.pilotista_id = p.id
+       ORDER BY p.ativo DESC, p.nome`
+    )
+    .all();
   const tabelas = db.prepare('SELECT * FROM tabelas_preco ORDER BY nome').all();
 
   return (
@@ -19,6 +26,13 @@ export default function PilotistasPage() {
         </span>
         Pilotistas
       </h1>
+      <p className="subtitle">
+        O usuário/senha aqui é o login que ela usa no celular dela pra ver a produção em tempo
+        real. É a equipe do escritório que define — não a pilotista.
+      </p>
+      {searchParams?.erro === 'usuario_em_uso' && (
+        <p className="error">Esse nome de usuário já está em uso por outra pessoa. Escolha outro.</p>
+      )}
 
       <div className="table-wrap">
         <table>
@@ -27,6 +41,7 @@ export default function PilotistasPage() {
               <th>Nome</th>
               <th>Contato</th>
               <th>Tabela de Preço</th>
+              <th>Login de acesso</th>
               <th>Ativo</th>
               <th></th>
             </tr>
@@ -34,7 +49,7 @@ export default function PilotistasPage() {
           <tbody>
             {pilotistas.map((p) => (
               <tr key={p.id}>
-                <td colSpan={5}>
+                <td colSpan={6}>
                   <form action={salvarPilotistaAction} className="inline-form">
                     <input type="hidden" name="id" value={p.id} />
                     <input name="nome" defaultValue={p.nome} required />
@@ -45,6 +60,16 @@ export default function PilotistasPage() {
                         <option key={t.id} value={t.id}>{t.nome}</option>
                       ))}
                     </select>
+                    <input
+                      name="login_usuario"
+                      defaultValue={p.login_usuario || ''}
+                      placeholder="usuário de acesso"
+                    />
+                    <input
+                      type="password"
+                      name="login_senha"
+                      placeholder={p.login_usuario ? 'nova senha (deixe em branco p/ manter)' : 'senha inicial'}
+                    />
                     <label className="checkbox">
                       <input type="checkbox" name="ativo" defaultChecked={!!p.ativo} /> Ativo
                     </label>
@@ -77,6 +102,14 @@ export default function PilotistasPage() {
               <option key={t.id} value={t.id}>{t.nome}</option>
             ))}
           </select>
+        </label>
+        <label>
+          Usuário de acesso (celular)
+          <input name="login_usuario" placeholder="ex: maria" />
+        </label>
+        <label>
+          Senha inicial
+          <input type="password" name="login_senha" placeholder="ex: 1234" />
         </label>
         <label className="checkbox">
           <input type="checkbox" name="ativo" defaultChecked /> Ativo

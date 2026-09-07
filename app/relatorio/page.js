@@ -1,5 +1,5 @@
 import db from '@/lib/db';
-import { getSession } from '@/lib/auth';
+import { getSession, homeFor } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import PrintButton from './PrintButton';
 import AprovacaoBadge from '@/app/AprovacaoBadge';
@@ -11,7 +11,7 @@ function currentMonth() {
 
 export default function RelatorioPage({ searchParams }) {
   const session = getSession();
-  if (session.role !== 'admin') redirect('/lancar');
+  if (session.role !== 'admin') redirect(homeFor(session.role));
 
   const mes = searchParams?.mes || currentMonth();
   const pilotistaId = searchParams?.pilotista || '';

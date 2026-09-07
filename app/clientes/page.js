@@ -1,8 +1,12 @@
 import db from '@/lib/db';
+import { getSession, homeFor } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 import { salvarClienteAction } from '@/app/actions';
 import Icon from '@/app/icons';
 
 export default function ClientesPage() {
+  const session = getSession();
+  if (session.role === 'pilotista') redirect(homeFor(session.role));
   const clientes = db.prepare('SELECT * FROM clientes ORDER BY nome').all();
 
   return (

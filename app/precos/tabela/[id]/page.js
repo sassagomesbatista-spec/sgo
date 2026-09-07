@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import db from '@/lib/db';
-import { getSession } from '@/lib/auth';
+import { getSession, homeFor } from '@/lib/auth';
 import {
   salvarTabelaPrecoItemAction,
   renomearTabelaPrecoAction,
@@ -13,7 +13,7 @@ import Icon from '@/app/icons';
 
 export default function TabelaPrecoPage({ params }) {
   const session = getSession();
-  if (session.role !== 'admin') redirect('/lancar');
+  if (session.role !== 'admin') redirect(homeFor(session.role));
 
   const tabela = db.prepare('SELECT * FROM tabelas_preco WHERE id = ?').get(Number(params.id));
   if (!tabela) notFound();

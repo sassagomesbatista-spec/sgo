@@ -7,6 +7,7 @@ import {
   SESSION_COOKIE,
   hashPassword,
   checkPassword,
+  homeFor,
 } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -24,6 +25,26 @@ function requireLogin() {
   const session = getSession();
   if (!session) throw new Error('Não autenticado.');
   return session;
+}
+
+// Admin ou assistente — as duas montam lote/lançam peça, só a pilotista fica
+// de fora dessas telas (ela tem a dela própria).
+function requireEscritorio() {
+  const session = requireLogin();
+  if (session.role === 'pilotista') throw new Error('Acesso restrito à equipe do escritório.');
+  return session;
+}
+
+function requirePilotista() {
+  const session = requireLogin();
+  if (session.role !== 'pilotista' || !session.pilotista_id) {
+    throw new Error('Acesso restrito à pilotista.');
+  }
+  return session;
+}
+
+function nowIso() {
+  return new Date().toISOString();
 }
 
 function currentMonth() {
@@ -46,6 +67,7 @@ export async function loginAction(formData) {
     usuario: user.usuario,
     role: user.role,
     nome: user.nome,
+    pilotista_id: user.pilotista_id || null,
   });
   cookies().set(SESSION_COOKIE, token, {
     httpOnly: true,
@@ -54,7 +76,7 @@ export async function loginAction(formData) {
     maxAge: 60 * 60 * 24 * 30,
   });
 
-  redirect(user.role === 'admin' ? '/dashboard' : '/lancar');
+  redirect(homeFor(user.role));
 }
 
 export async function logoutAction() {
@@ -89,22 +111,53 @@ export async function salvarPilotistaAction(formData) {
   const tabelaPrecoId = Number(formData.get('tabela_preco_id')) || null;
   if (!nome) return;
 
-  if (id) {
+  let pilotistaId = id ? Number(id) : null;
+  if (pilotistaId) {
     db.prepare('UPDATE pilotistas SET nome=?, contato=?, ativo=?, tabela_preco_id=? WHERE id=?').run(
       nome,
       contato,
       ativo,
       tabelaPrecoId,
-      id
+      pilotistaId
     );
   } else {
-    db.prepare('INSERT INTO pilotistas (nome, contato, ativo, tabela_preco_id) VALUES (?,?,?,?)').run(
-      nome,
-      contato,
-      ativo,
-      tabelaPrecoId
-    );
+    const info = db
+      .prepare('INSERT INTO pilotistas (nome, contato, ativo, tabela_preco_id) VALUES (?,?,?,?)')
+      .run(nome, contato, ativo, tabelaPrecoId);
+    pilotistaId = info.lastInsertRowid;
   }
+
+  // Login da pilotista no celular dela: é o escritório que define
+  // usuário/senha (nunca a própria pilotista) e passa por WhatsApp. Campos
+  // em branco no formulário significam "não mexer no login agora".
+  const usuario = formData.get('login_usuario')?.toString().trim();
+  const senha = formData.get('login_senha')?.toString() || '';
+  if (usuario) {
+    const existente = db.prepare('SELECT id, pilotista_id FROM usuarios WHERE usuario = ?').get(usuario);
+    if (existente && existente.pilotista_id !== pilotistaId) {
+      redirect(`/pilotistas?erro=usuario_em_uso`);
+    }
+    const loginAtual = db.prepare('SELECT id FROM usuarios WHERE pilotista_id = ?').get(pilotistaId);
+    if (loginAtual) {
+      if (senha) {
+        db.prepare('UPDATE usuarios SET usuario=?, senha_hash=?, nome=? WHERE id=?').run(
+          usuario,
+          hashPassword(senha),
+          nome,
+          loginAtual.id
+        );
+      } else {
+        db.prepare('UPDATE usuarios SET usuario=?, nome=? WHERE id=?').run(usuario, nome, loginAtual.id);
+      }
+    } else if (senha) {
+      db.prepare(
+        'INSERT INTO usuarios (usuario, senha_hash, role, nome, pilotista_id) VALUES (?,?,?,?,?)'
+      ).run(usuario, hashPassword(senha), 'pilotista', nome, pilotistaId);
+    }
+    // usuário preenchido sem senha e sem login existente: ainda não dá pra
+    // criar (precisa de uma senha inicial), formulário simplesmente ignora.
+  }
+
   revalidatePath('/pilotistas');
 }
 
@@ -470,6 +523,264 @@ export async function atualizarLancamentoAction(formData) {
 
   revalidatePath('/lancamentos');
   redirect('/lancamentos');
+}
+
+// ---------- ORDENS DE PRODUÇÃO (lote) ----------
+
+// A assistente monta o lote pra uma pilotista escolhendo várias peças de
+// uma vez (uma linha por peça: tipo, referência, cliente, tamanho, nível,
+// quantidade). Chega pra pilotista já com o nome dela, antes dela começar.
+export async function criarOrdensAction(formData) {
+  requireEscritorio();
+  const session = getSession();
+  const pilotistaId = Number(formData.get('pilotista_id')) || null;
+  if (!pilotistaId) return;
+
+  const tipos = formData.getAll('tipo_peca_id[]');
+  const referencias = formData.getAll('referencia[]');
+  const clientes = formData.getAll('cliente[]');
+  const tamanhos = formData.getAll('tamanho[]');
+  const niveis = formData.getAll('nivel[]');
+  const quantidades = formData.getAll('quantidade[]');
+
+  const proximaFila = db
+    .prepare('SELECT COALESCE(MAX(ordem_fila), 0) AS m FROM ordens_producao WHERE pilotista_id = ?')
+    .get(pilotistaId).m;
+
+  const insert = db.prepare(
+    `INSERT INTO ordens_producao
+      (pilotista_id, tipo_peca_id, referencia, cliente, tamanho, nivel, quantidade, ordem_fila, criado_em, criado_por)
+     VALUES (?,?,?,?,?,?,?,?,?,?)`
+  );
+
+  let fila = proximaFila;
+  let criadas = 0;
+  for (let i = 0; i < tipos.length; i++) {
+    const tipoPecaId = Number(tipos[i]) || null;
+    const quantidade = Number(quantidades[i]) || 1;
+    if (!tipoPecaId) continue;
+    fila += 1;
+    insert.run(
+      pilotistaId,
+      tipoPecaId,
+      referencias[i]?.toString().trim() || '',
+      clientes[i]?.toString().trim() || '',
+      tamanhos[i]?.toString().trim() || '',
+      niveis[i]?.toString().trim() || '',
+      quantidade,
+      fila,
+      nowIso(),
+      session.nome || session.usuario
+    );
+    criadas += 1;
+  }
+
+  if (criadas > 0) {
+    for (const c of clientes) syncLookup('clientes', c?.toString().trim());
+    revalidatePath('/ordens');
+    revalidatePath('/pilotagem');
+  }
+  redirect('/ordens');
+}
+
+export async function reatribuirOrdemAction(formData) {
+  requireAdmin();
+  const id = Number(formData.get('id'));
+  const novoPilotistaId = Number(formData.get('novo_pilotista_id'));
+  if (!id || !novoPilotistaId) return;
+
+  const ordem = db.prepare('SELECT * FROM ordens_producao WHERE id = ?').get(id);
+  if (!ordem || ordem.status === 'concluido' || ordem.status === 'cancelado') return;
+
+  const emAndamento = db
+    .prepare("SELECT id FROM execucoes WHERE ordem_id = ? AND status = 'em_andamento'")
+    .get(id);
+  if (emAndamento) {
+    throw new Error('Essa peça está sendo costurada agora — não dá pra redirecionar até finalizar ou cancelar.');
+  }
+
+  const proximaFila = db
+    .prepare('SELECT COALESCE(MAX(ordem_fila), 0) AS m FROM ordens_producao WHERE pilotista_id = ?')
+    .get(novoPilotistaId).m;
+
+  db.prepare(
+    "UPDATE ordens_producao SET pilotista_id=?, ordem_fila=?, status='pendente' WHERE id=?"
+  ).run(novoPilotistaId, proximaFila + 1, id);
+
+  revalidatePath('/ordens');
+  revalidatePath('/pilotagem');
+}
+
+export async function cancelarOrdemAction(formData) {
+  requireAdmin();
+  const id = Number(formData.get('id'));
+  if (!id) return;
+  const emAndamento = db
+    .prepare("SELECT id FROM execucoes WHERE ordem_id = ? AND status = 'em_andamento'")
+    .get(id);
+  if (emAndamento) {
+    throw new Error('Essa peça está sendo costurada agora — não dá pra cancelar até finalizar.');
+  }
+  db.prepare("UPDATE ordens_producao SET status='cancelado' WHERE id=? AND status != 'concluido'").run(id);
+  revalidatePath('/ordens');
+  revalidatePath('/pilotagem');
+}
+
+// ---------- EXECUÇÕES (Iniciar / Pausar / Retomar / Finalizar) ----------
+
+function proximaOrdemDaFila(pilotistaId) {
+  return db
+    .prepare(
+      `SELECT * FROM ordens_producao
+       WHERE pilotista_id = ? AND status IN ('pendente','em_andamento') AND quantidade_feita < quantidade
+       ORDER BY ordem_fila ASC LIMIT 1`
+    )
+    .get(pilotistaId);
+}
+
+function execucaoAtual(pilotistaId) {
+  return db
+    .prepare("SELECT * FROM execucoes WHERE pilotista_id = ? AND status = 'em_andamento'")
+    .get(pilotistaId);
+}
+
+// A pilotista não escolhe a peça — segue a fila na ordem que a assistente
+// cadastrou. Por isso essa ação nem recebe qual ordem iniciar: sempre pega
+// a próxima da fila dela, calculado aqui, nunca confiando em nada vindo do
+// formulário.
+export async function iniciarExecucaoAction() {
+  const session = requirePilotista();
+  if (execucaoAtual(session.pilotista_id)) return; // já tem uma em andamento
+
+  const ordem = proximaOrdemDaFila(session.pilotista_id);
+  if (!ordem) return;
+
+  db.prepare("INSERT INTO execucoes (ordem_id, pilotista_id, iniciado_em, status) VALUES (?,?,?,'em_andamento')").run(
+    ordem.id,
+    session.pilotista_id,
+    nowIso()
+  );
+  if (ordem.status === 'pendente') {
+    db.prepare("UPDATE ordens_producao SET status='em_andamento' WHERE id=?").run(ordem.id);
+  }
+  revalidatePath('/pilotagem');
+}
+
+export async function pausarExecucaoAction(formData) {
+  const session = requirePilotista();
+  const motivo = formData.get('motivo')?.toString().trim() || 'Não informado';
+  const exec = execucaoAtual(session.pilotista_id);
+  if (!exec) return;
+  const pausaAberta = db
+    .prepare('SELECT id FROM pausas WHERE execucao_id = ? AND retomada_em IS NULL')
+    .get(exec.id);
+  if (pausaAberta) return;
+  db.prepare('INSERT INTO pausas (execucao_id, motivo, iniciada_em) VALUES (?,?,?)').run(
+    exec.id,
+    motivo,
+    nowIso()
+  );
+  revalidatePath('/pilotagem');
+}
+
+function fecharPausaAberta(execucaoId) {
+  const pausa = db
+    .prepare('SELECT * FROM pausas WHERE execucao_id = ? AND retomada_em IS NULL')
+    .get(execucaoId);
+  if (!pausa) return 0;
+  const fim = nowIso();
+  db.prepare('UPDATE pausas SET retomada_em = ? WHERE id = ?').run(fim, pausa.id);
+  const segundos = Math.round((new Date(fim) - new Date(pausa.iniciada_em)) / 1000);
+  db.prepare('UPDATE execucoes SET segundos_pausados = segundos_pausados + ? WHERE id = ?').run(
+    segundos,
+    execucaoId
+  );
+  return segundos;
+}
+
+export async function retomarExecucaoAction() {
+  const session = requirePilotista();
+  const exec = execucaoAtual(session.pilotista_id);
+  if (!exec) return;
+  fecharPausaAberta(exec.id);
+  revalidatePath('/pilotagem');
+}
+
+export async function finalizarExecucaoAction() {
+  const session = requirePilotista();
+  const exec = execucaoAtual(session.pilotista_id);
+  if (!exec) return;
+
+  fecharPausaAberta(exec.id); // se estava pausada, fecha a pausa antes de finalizar
+
+  const atualizado = db.prepare('SELECT * FROM execucoes WHERE id = ?').get(exec.id);
+  const ordem = db.prepare('SELECT * FROM ordens_producao WHERE id = ?').get(atualizado.ordem_id);
+  const fim = nowIso();
+  const segundosTotais = Math.round((new Date(fim) - new Date(atualizado.iniciado_em)) / 1000);
+  const segundosTrabalhados = Math.max(0, segundosTotais - atualizado.segundos_pausados);
+
+  const valor = calcularValorPilotista(session.pilotista_id, ordem.tipo_peca_id, ordem.nivel);
+  const hoje = fim.slice(0, 10);
+
+  const info = db
+    .prepare(
+      `INSERT INTO lancamentos
+        (data, referencia, cliente, descricao_produto, tipo_peca_id, tamanho, nivel, nome_modelista, pilotista_id, aprovacao, observacoes, valor, mes_ano, ordem_id, execucao_id, segundos_trabalhados, segundos_pausados)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+    )
+    .run(
+      hoje,
+      ordem.referencia,
+      ordem.cliente,
+      '',
+      ordem.tipo_peca_id,
+      ordem.tamanho,
+      ordem.nivel,
+      '',
+      session.pilotista_id,
+      'Pendente',
+      'Lançamento automático — Pilotagem em tempo real',
+      valor,
+      hoje.slice(0, 7),
+      ordem.id,
+      exec.id,
+      segundosTrabalhados,
+      atualizado.segundos_pausados
+    );
+
+  db.prepare("UPDATE execucoes SET status='finalizada', finalizado_em=?, lancamento_id=? WHERE id=?").run(
+    fim,
+    info.lastInsertRowid,
+    exec.id
+  );
+
+  const quantidadeFeita = ordem.quantidade_feita + 1;
+  const concluido = quantidadeFeita >= ordem.quantidade;
+  db.prepare('UPDATE ordens_producao SET quantidade_feita = ?, status = ? WHERE id = ?').run(
+    quantidadeFeita,
+    concluido ? 'concluido' : 'em_andamento',
+    ordem.id
+  );
+
+  revalidatePath('/pilotagem');
+  revalidatePath('/dashboard');
+  revalidatePath('/lancamentos');
+  revalidatePath('/ordens');
+}
+
+// Ela iniciou por engano e quer desfazer — nenhum lançamento existe ainda
+// nesse ponto (só nasce no Finalizar), então é só apagar a execução.
+export async function cancelarExecucaoAction() {
+  const session = requirePilotista();
+  const exec = execucaoAtual(session.pilotista_id);
+  if (!exec) return;
+  db.prepare('DELETE FROM pausas WHERE execucao_id = ?').run(exec.id);
+  db.prepare('DELETE FROM execucoes WHERE id = ?').run(exec.id);
+  const ordem = db.prepare('SELECT * FROM ordens_producao WHERE id = ?').get(exec.ordem_id);
+  if (ordem && ordem.quantidade_feita === 0) {
+    db.prepare("UPDATE ordens_producao SET status='pendente' WHERE id=?").run(ordem.id);
+  }
+  revalidatePath('/pilotagem');
 }
 
 export async function excluirLancamentoAction(formData) {

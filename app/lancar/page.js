@@ -1,9 +1,14 @@
 import db from '@/lib/db';
+import { getSession, homeFor } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 import { criarLancamentoAction } from '@/app/actions';
 import SelectOrNew from '@/app/SelectOrNew';
 import Icon from '@/app/icons';
 
 export default function LancarPage() {
+  const session = getSession();
+  if (session.role === 'pilotista') redirect(homeFor(session.role));
+
   const tipos = db.prepare('SELECT * FROM tipos_peca ORDER BY nome').all();
   const pilotistas = db.prepare('SELECT * FROM pilotistas WHERE ativo = 1 ORDER BY nome').all();
   const clientes = db.prepare('SELECT nome FROM clientes ORDER BY nome').all().map((c) => c.nome);

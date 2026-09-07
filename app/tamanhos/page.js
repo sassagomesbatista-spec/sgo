@@ -1,8 +1,12 @@
 import db from '@/lib/db';
+import { getSession, homeFor } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 import { salvarTamanhoAction } from '@/app/actions';
 import Icon from '@/app/icons';
 
 export default function TamanhosPage() {
+  const session = getSession();
+  if (session.role === 'pilotista') redirect(homeFor(session.role));
   const tamanhos = db.prepare('SELECT * FROM tamanhos ORDER BY nome').all();
 
   return (

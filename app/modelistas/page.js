@@ -1,10 +1,12 @@
 import db from '@/lib/db';
-import { getSession } from '@/lib/auth';
+import { getSession, homeFor } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 import { salvarModelistaAction } from '@/app/actions';
 import Icon from '@/app/icons';
 
 export default function ModelistasPage() {
   const session = getSession();
+  if (session.role === 'pilotista') redirect(homeFor(session.role));
   const isAdmin = session.role === 'admin';
   const modelistas = db.prepare('SELECT * FROM modelistas ORDER BY nome').all();
   const tabelas = isAdmin ? db.prepare('SELECT * FROM tabelas_preco ORDER BY nome').all() : [];

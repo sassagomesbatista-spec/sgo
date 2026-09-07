@@ -97,6 +97,47 @@ export default function Icon({ name }) {
           <path d="M10 5.5V10l3 2" />
         </svg>
       );
+    case 'play':
+      return (
+        <svg {...props}>
+          <path d="M6 4.5l10 5.5-10 5.5v-11z" strokeLinejoin="round" />
+        </svg>
+      );
+    case 'pause':
+      return (
+        <svg {...props}>
+          <path d="M6.5 4.5v11M13.5 4.5v11" />
+        </svg>
+      );
+    case 'check':
+      return (
+        <svg {...props}>
+          <circle cx="10" cy="10" r="7.5" />
+          <path d="M6.5 10.2l2.4 2.4 4.6-5.2" />
+        </svg>
+      );
+    case 'swap':
+      return (
+        <svg {...props}>
+          <path d="M4 7h11M12 4l3 3-3 3" />
+          <path d="M16 13H5M8 10l-3 3 3 3" />
+        </svg>
+      );
+    case 'upload':
+      return (
+        <svg {...props}>
+          <path d="M10 13V4M6.5 7.5L10 4l3.5 3.5" />
+          <path d="M4 14v2a1 1 0 001 1h10a1 1 0 001-1v-2" />
+        </svg>
+      );
+    case 'boxes':
+      return (
+        <svg {...props}>
+          <rect x="3" y="10" width="6" height="6" rx="1" />
+          <rect x="11" y="10" width="6" height="6" rx="1" />
+          <rect x="7" y="3" width="6" height="6" rx="1" />
+        </svg>
+      );
     default:
       return null;
   }

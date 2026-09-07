@@ -21,7 +21,8 @@ export default function ContaPage() {
         Minha Conta
       </h1>
       <p className="subtitle">
-        Logada como {session.nome} ({isAdmin ? 'Administradora' : 'Assistente'})
+        Logada como {session.nome} (
+        {isAdmin ? 'Administradora' : session.role === 'pilotista' ? 'Pilotista' : 'Assistente'})
       </p>
 
       <h2>Trocar Senha</h2>

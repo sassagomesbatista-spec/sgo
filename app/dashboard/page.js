@@ -1,7 +1,9 @@
 import db from '@/lib/db';
-import { getSession } from '@/lib/auth';
+import { getSession, homeFor } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import Icon from '@/app/icons';
+import DashboardLive from './DashboardLive';
+import { dashboardStatus } from '@/lib/status';
 
 function currentMonth() {
   return new Date().toISOString().slice(0, 7);
@@ -9,9 +11,10 @@ function currentMonth() {
 
 export default function DashboardPage() {
   const session = getSession();
-  if (session.role !== 'admin') redirect('/lancar');
+  if (session.role !== 'admin') redirect(homeFor(session.role));
 
   const mes = currentMonth();
+  const liveInitial = dashboardStatus();
   const rows = db
     .prepare(
       `SELECT l.*, p.nome AS pilotista_nome
@@ -65,6 +68,9 @@ export default function DashboardPage() {
           <span className="stat-value">{pendentes}</span>
         </div>
       </div>
+
+      <h2>Em produção agora</h2>
+      <DashboardLive initial={liveInitial} />
 
       <h2>Total por Pilotista</h2>
       {ranking.length === 0 && <p className="subtitle">Nenhum lançamento este mês ainda.</p>}

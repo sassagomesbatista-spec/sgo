@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import db from '@/lib/db';
-import { getSession } from '@/lib/auth';
+import { getSession, homeFor } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 import AprovacaoBadge from '@/app/AprovacaoBadge';
 import Icon from '@/app/icons';
 
@@ -10,6 +11,7 @@ function currentMonth() {
 
 export default function LancamentosPage() {
   const session = getSession();
+  if (session.role === 'pilotista') redirect(homeFor(session.role));
   const mes = currentMonth();
   const isAdmin = session.role === 'admin';
 

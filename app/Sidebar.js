@@ -26,6 +26,7 @@ function NavItem({ href, icon, children, onNavigate }) {
 export default function Sidebar({ session }) {
   const [open, setOpen] = useState(false);
   const isAdmin = session.role === 'admin';
+  const isPilotista = session.role === 'pilotista';
   const close = () => setOpen(false);
 
   return (
@@ -50,46 +51,61 @@ export default function Sidebar({ session }) {
         <div className="sidebar-brand">Pilotagem</div>
 
         <nav className="sidebar-nav">
-          <NavGroup>
-            {isAdmin && (
-              <NavItem href="/dashboard" icon="home" onNavigate={close}>
-                Painel
-              </NavItem>
-            )}
-            <NavItem href="/lancar" icon="plus-circle" onNavigate={close}>
-              Lançar Peça
-            </NavItem>
-            <NavItem href="/lancamentos" icon="list" onNavigate={close}>
-              Lançamentos
-            </NavItem>
-          </NavGroup>
-
-          <NavGroup label="Cadastros">
-            <NavItem href="/clientes" icon="users" onNavigate={close}>
-              Clientes
-            </NavItem>
-            <NavItem href="/modelistas" icon="user" onNavigate={close}>
-              Modelistas
-            </NavItem>
-            <NavItem href="/tamanhos" icon="tag" onNavigate={close}>
-              Tamanhos
-            </NavItem>
-            {isAdmin && (
-              <NavItem href="/pilotistas" icon="scissors" onNavigate={close}>
-                Pilotistas
-              </NavItem>
-            )}
-          </NavGroup>
-
-          {isAdmin && (
-            <NavGroup label="Administração">
-              <NavItem href="/precos" icon="dollar" onNavigate={close}>
-                Preços
-              </NavItem>
-              <NavItem href="/relatorio" icon="file" onNavigate={close}>
-                Relatório
+          {isPilotista && (
+            <NavGroup>
+              <NavItem href="/pilotagem" icon="scissors" onNavigate={close}>
+                Minhas Peças
               </NavItem>
             </NavGroup>
+          )}
+
+          {!isPilotista && (
+            <>
+              <NavGroup>
+                {isAdmin && (
+                  <NavItem href="/dashboard" icon="home" onNavigate={close}>
+                    Painel
+                  </NavItem>
+                )}
+                <NavItem href="/ordens" icon="boxes" onNavigate={close}>
+                  Ordens de Produção
+                </NavItem>
+                <NavItem href="/lancar" icon="plus-circle" onNavigate={close}>
+                  Lançar Peça
+                </NavItem>
+                <NavItem href="/lancamentos" icon="list" onNavigate={close}>
+                  Lançamentos
+                </NavItem>
+              </NavGroup>
+
+              <NavGroup label="Cadastros">
+                <NavItem href="/clientes" icon="users" onNavigate={close}>
+                  Clientes
+                </NavItem>
+                <NavItem href="/modelistas" icon="user" onNavigate={close}>
+                  Modelistas
+                </NavItem>
+                <NavItem href="/tamanhos" icon="tag" onNavigate={close}>
+                  Tamanhos
+                </NavItem>
+                {isAdmin && (
+                  <NavItem href="/pilotistas" icon="scissors" onNavigate={close}>
+                    Pilotistas
+                  </NavItem>
+                )}
+              </NavGroup>
+
+              {isAdmin && (
+                <NavGroup label="Administração">
+                  <NavItem href="/precos" icon="dollar" onNavigate={close}>
+                    Preços
+                  </NavItem>
+                  <NavItem href="/relatorio" icon="file" onNavigate={close}>
+                    Relatório
+                  </NavItem>
+                </NavGroup>
+              )}
+            </>
           )}
 
           <NavGroup>
@@ -102,7 +118,9 @@ export default function Sidebar({ session }) {
         <div className="sidebar-footer">
           <div className="sidebar-user">
             <span className="sidebar-user-name">{session.nome}</span>
-            <span className="sidebar-user-role">{isAdmin ? 'Administradora' : 'Assistente'}</span>
+            <span className="sidebar-user-role">
+              {isAdmin ? 'Administradora' : isPilotista ? 'Pilotista' : 'Assistente'}
+            </span>
           </div>
           <form action={logoutAction}>
             <button className="nav-item nav-item-logout" type="submit">

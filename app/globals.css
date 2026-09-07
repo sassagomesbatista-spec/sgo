@@ -679,6 +679,152 @@ tbody tr:last-child td {
   margin-top: 4px;
 }
 
+/* ---------- Pilotagem em tempo real ---------- */
+
+.timer-card {
+  text-align: center;
+  max-width: 480px;
+}
+
+.timer-display {
+  font-size: 3rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--accent-dark);
+  margin: 10px 0 14px;
+}
+
+.timer-display.timer-paused {
+  color: var(--text-faint);
+}
+
+.timer-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.timer-actions .btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  font-size: 1.05rem;
+}
+
+.btn-finalizar {
+  background: #1f7a3d;
+}
+
+.btn-finalizar:hover {
+  background: #185f30;
+}
+
+.btn-iniciar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  font-size: 1.05rem;
+  width: 100%;
+}
+
+.btn-pause {
+  background: var(--text-light);
+}
+
+.btn-pause:hover {
+  background: var(--text);
+}
+
+.pausa-motivos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.pausa-motivos .btn-sm {
+  background: #fff;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.pausa-motivos .btn-sm.motivo-ativo {
+  background: var(--accent-light);
+  color: var(--accent-dark);
+  border-color: var(--accent);
+}
+
+.live-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.live-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-left: 4px solid #1f7a3d;
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+}
+
+.live-card.live-paused {
+  border-left-color: #b3812f;
+}
+
+.live-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.live-name {
+  font-weight: 700;
+}
+
+.live-timer {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--accent-dark);
+}
+
+.live-card-bottom {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--text-light);
+  margin-top: 8px;
+}
+
+.live-idle-list {
+  grid-column: 1 / -1;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+
+.live-idle-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.88rem;
+}
+
+.live-idle-row:last-child {
+  border-bottom: none;
+}
+
 @media print {
   .app-shell {
     display: block;
