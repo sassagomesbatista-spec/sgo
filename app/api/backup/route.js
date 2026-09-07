@@ -32,7 +32,10 @@ export async function GET(request) {
   }
 
   const tmpPath = path.join(os.tmpdir(), `pilotagem-backup-${Date.now()}.db`);
-  await db.backup(tmpPath);
+  // VACUUM INTO em vez de db.backup() (assíncrono) — ver comentário em
+  // lib/db.js: mesmo bug conhecido do better-sqlite3 que pode derrubar o
+  // servidor inteiro em vez de só falhar esse download.
+  db.exec(`VACUUM INTO '${tmpPath.replace(/'/g, "''")}'`);
   const fileBuffer = fs.readFileSync(tmpPath);
   fs.unlinkSync(tmpPath);
 
