@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import Icon from '@/app/icons';
+import { corEficiencia } from '@/lib/eficiencia';
 
 const POLL_MS = 6000;
 
@@ -12,15 +14,6 @@ function fmtTempo(segundos) {
   const ss = s % 60;
   const pad = (n) => String(n).padStart(2, '0');
   return h > 0 ? `${h}:${pad(m)}:${pad(ss)}` : `${pad(m)}:${pad(ss)}`;
-}
-
-// Faixas de eficiência (SAM): peças produzidas x tempo padrão / carga
-// horária do dia x 100 — método padrão da indústria de confecção.
-function corEficiencia(pct) {
-  if (pct == null) return '';
-  if (pct >= 100) return 'efic-boa';
-  if (pct >= 75) return 'efic-media';
-  return 'efic-baixa';
 }
 
 export default function DashboardLive({ initial }) {
@@ -61,7 +54,9 @@ export default function DashboardLive({ initial }) {
         return (
           <div key={l.pilotista_id} className={`live-card ${l.atual.pausada ? 'live-paused' : ''}`}>
             <div className="live-card-top">
-              <span className="live-name">{l.nome}</span>
+              <Link href={`/pilotagem/historico?pilotista=${l.pilotista_id}`} className="live-name">
+                {l.nome}
+              </Link>
               <span className="live-timer">{decorrido}</span>
             </div>
             <p className="subtitle" style={{ margin: '2px 0' }}>
@@ -89,7 +84,7 @@ export default function DashboardLive({ initial }) {
           </div>
           {paradas.map((l) => (
             <div key={l.pilotista_id} className="live-idle-row">
-              <span>{l.nome}</span>
+              <Link href={`/pilotagem/historico?pilotista=${l.pilotista_id}`}>{l.nome}</Link>
               <span className="subtitle" style={{ margin: 0 }}>
                 {l.filaRestante > 0 ? `${l.filaRestante} na fila` : 'fila vazia'} · {l.hoje.pecas} hoje · R${' '}
                 {l.hoje.valor.toFixed(2)}

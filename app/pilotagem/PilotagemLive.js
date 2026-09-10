@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
+import Link from 'next/link';
 import Icon from '@/app/icons';
+import { corEficiencia } from '@/lib/eficiencia';
 import {
   iniciarExecucaoAction,
   pausarExecucaoAction,
@@ -24,15 +26,6 @@ function fmtTempo(segundos) {
 function fmtMin(min) {
   if (min == null) return null;
   return min < 60 ? `${min.toFixed(min % 1 ? 1 : 0)} min` : fmtTempo(min * 60);
-}
-
-// Faixas de eficiência inspiradas no padrão da indústria de confecção
-// (SAM: peças produzidas x tempo padrão / tempo trabalhado x 100).
-function corEficiencia(pct) {
-  if (pct == null) return '';
-  if (pct >= 100) return 'efic-boa';
-  if (pct >= 75) return 'efic-media';
-  return 'efic-baixa';
 }
 
 export default function PilotagemLive({ initial }) {
@@ -127,6 +120,10 @@ export default function PilotagemLive({ initial }) {
           <span className="stat-value">{status.filaRestante}</span>
         </div>
       </div>
+
+      <p style={{ margin: '-14px 0 20px' }}>
+        <Link href="/pilotagem/historico">Ver histórico dos últimos dias →</Link>
+      </p>
 
       {resumoFinalizado && (
         <div className="card resumo-card">
