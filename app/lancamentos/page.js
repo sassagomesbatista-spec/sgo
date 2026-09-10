@@ -11,18 +11,27 @@ function currentMonth() {
 export default function LancamentosPage({ searchParams }) {
   const session = getSession();
   const mes = searchParams?.mes || currentMonth();
+  const pilotistaId = searchParams?.pilotista || '';
   const isAdmin = session.role === 'admin';
 
-  const rows = db
-    .prepare(
-      `SELECT l.*, t.nome AS tipo_nome, p.nome AS pilotista_nome
-       FROM lancamentos l
-       LEFT JOIN tipos_peca t ON t.id = l.tipo_peca_id
-       LEFT JOIN pilotistas p ON p.id = l.pilotista_id
-       WHERE l.mes_ano = ?
-       ORDER BY l.data DESC, l.id DESC`
-    )
-    .all(mes);
+  const pilotistas = db.prepare('SELECT * FROM pilotistas ORDER BY nome').all();
+
+  let query = `
+    SELECT l.*, t.nome AS tipo_nome, p.nome AS pilotista_nome
+    FROM lancamentos l
+    LEFT JOIN tipos_peca t ON t.id = l.tipo_peca_id
+    LEFT JOIN pilotistas p ON p.id = l.pilotista_id
+    WHERE l.mes_ano = ?
+  `;
+  const args = [mes];
+  if (pilotistaId) {
+    query += ' AND l.pilotista_id = ?';
+    args.push(pilotistaId);
+  }
+  query += ' ORDER BY l.data DESC, l.id DESC';
+
+  const rows = db.prepare(query).all(...args);
+  const pilotistaSelecionada = pilotistas.find((p) => String(p.id) === String(pilotistaId));
 
   return (
     <div className="card">
@@ -38,12 +47,26 @@ export default function LancamentosPage({ searchParams }) {
           Mês
           <input type="month" name="mes" defaultValue={mes} />
         </label>
+        <label>
+          Pilotista
+          <select name="pilotista" defaultValue={pilotistaId}>
+            <option value="">Todas</option>
+            {pilotistas.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nome}
+              </option>
+            ))}
+          </select>
+        </label>
         <button className="btn" type="submit">
           Filtrar
         </button>
       </form>
 
-      <p className="subtitle">{mes}</p>
+      <p className="subtitle">
+        {mes}
+        {pilotistaSelecionada ? ` — ${pilotistaSelecionada.nome}` : ''}
+      </p>
       {rows.length === 0 && <p>Nenhuma peça lançada neste mês.</p>}
       {rows.length > 0 && (
         <div className="table-wrap">
