@@ -8,9 +8,9 @@ function currentMonth() {
   return new Date().toISOString().slice(0, 7);
 }
 
-export default function LancamentosPage() {
+export default function LancamentosPage({ searchParams }) {
   const session = getSession();
-  const mes = currentMonth();
+  const mes = searchParams?.mes || currentMonth();
   const isAdmin = session.role === 'admin';
 
   const rows = db
@@ -32,8 +32,19 @@ export default function LancamentosPage() {
         </span>
         Lançamentos do Mês
       </h1>
+
+      <form method="get" className="filters no-print">
+        <label>
+          Mês
+          <input type="month" name="mes" defaultValue={mes} />
+        </label>
+        <button className="btn" type="submit">
+          Filtrar
+        </button>
+      </form>
+
       <p className="subtitle">{mes}</p>
-      {rows.length === 0 && <p>Nenhuma peça lançada este mês ainda.</p>}
+      {rows.length === 0 && <p>Nenhuma peça lançada neste mês.</p>}
       {rows.length > 0 && (
         <div className="table-wrap">
           <table>

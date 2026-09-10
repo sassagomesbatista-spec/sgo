@@ -1,4 +1,4 @@
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import db from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { atualizarLancamentoAction, excluirLancamentoAction } from '@/app/actions';
@@ -16,9 +16,9 @@ export default function EditarLancamentoPage({ params }) {
   if (!row) notFound();
 
   const isAdmin = session.role === 'admin';
-  if (!isAdmin && row.mes_ano !== currentMonth()) {
-    redirect('/lancamentos');
-  }
+  // Assistente pode editar peça de qualquer mês (útil pra corrigir data
+  // digitada errado); excluir de mês passado continua só com a admin.
+  const podeExcluir = isAdmin || row.mes_ano === currentMonth();
 
   const tipos = db.prepare('SELECT * FROM tipos_peca ORDER BY nome').all();
   const pilotistas = db.prepare('SELECT * FROM pilotistas ORDER BY nome').all();
@@ -140,17 +140,19 @@ export default function EditarLancamentoPage({ params }) {
         </button>
       </form>
 
-      <div className="danger-zone">
-        <ConfirmForm
-          action={excluirLancamentoAction}
-          confirmMessage="Tem certeza que quer excluir esse lançamento? Essa ação não pode ser desfeita."
-        >
-          <input type="hidden" name="id" value={row.id} />
-          <button className="btn-sm btn-danger" type="submit">
-            Excluir Peça
-          </button>
-        </ConfirmForm>
-      </div>
+      {podeExcluir && (
+        <div className="danger-zone">
+          <ConfirmForm
+            action={excluirLancamentoAction}
+            confirmMessage="Tem certeza que quer excluir esse lançamento? Essa ação não pode ser desfeita."
+          >
+            <input type="hidden" name="id" value={row.id} />
+            <button className="btn-sm btn-danger" type="submit">
+              Excluir Peça
+            </button>
+          </ConfirmForm>
+        </div>
+      )}
     </div>
   );
 }

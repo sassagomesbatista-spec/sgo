@@ -411,9 +411,9 @@ export async function atualizarLancamentoAction(formData) {
   const existente = db.prepare('SELECT * FROM lancamentos WHERE id = ?').get(id);
   if (!existente) return;
 
-  if (session.role !== 'admin' && existente.mes_ano !== currentMonth()) {
-    return;
-  }
+  // Assistente pode editar peça de qualquer mês (ex: corrigir data digitada
+  // errado que jogou a peça pro mês errado). Valores em R$ continuam
+  // protegidos abaixo, independente do mês.
 
   const data = formData.get('data')?.toString();
   const referencia = formData.get('referencia')?.toString() || '';
